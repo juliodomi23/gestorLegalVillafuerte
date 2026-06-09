@@ -375,3 +375,8 @@ INSERT INTO sucursales (nombre) VALUES
   ('Tuxtla'), ('San Cristóbal'), ('Tapachula'), ('Villaflores'), ('Comitán');
 
 -- Los juzgados y usuarios (abogados) reales se cargan en el alta.
+
+-- Usuario admin inicial (contraseña: villafuerte2026 — cámbiala desde Configuración)
+INSERT INTO usuarios (nombre, email, password_hash, rol, activo)
+SELECT 'Christian', 'christian@villafuerte.mx', '$2b$10$MHn/Xe.a4CAhDuaOsUF7du9NA0..Sx3RiTnX42MfQ38.FTlVdBSYi', 'admin', true
+WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE email = 'christian@villafuerte.mx');
