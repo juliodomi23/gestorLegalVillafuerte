@@ -14,7 +14,7 @@ export type MovimientoView = {
   expediente: string | null;
   tipo: "Ingreso" | "Egreso";
   monto: number;
-  origen: string;
+  origen: "WhatsApp" | "Web";
 };
 
 const vacio = { tipo: "Ingreso", concepto: "", monto: "", sucursal: "", expediente: "" };
