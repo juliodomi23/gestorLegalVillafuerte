@@ -17,8 +17,12 @@ function textoVence(fecha: Date | null): { texto: string; urgente: boolean } | n
 export default async function ExpedientesPage() {
   const session = await getServerSession(authOptions);
 
+  const esAdmin = session?.user?.rol === "admin";
+  const userId = session?.user?.id;
+
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.expediente.findMany({
+      where: esAdmin ? undefined : { abogadoResponsableId: userId },
       include: {
         cliente: true,
         abogadoResponsable: true,

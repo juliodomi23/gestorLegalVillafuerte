@@ -1,3 +1,5 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import SeguimientosClient, { type SeguimientoView } from "./client";
 
@@ -18,9 +20,13 @@ function calcAlerta(proximo: Date | null): "hoy" | "atrasado" | null {
 }
 
 export default async function SeguimientosPage() {
+  const session = await getServerSession(authOptions);
+  const esAdmin = session?.user?.rol === "admin";
+  const userId = session?.user?.id;
+
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.seguimiento.findMany({
-      where: { estado: "activo" },
+      where: esAdmin ? { estado: "activo" } : { estado: "activo", abogadoId: userId },
       include: { cliente: true, abogado: true, sucursal: true },
       orderBy: { proximoLlamado: "asc" },
     }),

@@ -16,22 +16,46 @@ function fmtDias(dias: number) {
 export default async function InicioPage() {
   const session = await getServerSession(authOptions);
   const nombre = session?.user?.name ?? "Lic.";
+  const esAdmin = session?.user?.rol === "admin";
+  const userId = session?.user?.id;
 
   const hoyInicio = new Date(); hoyInicio.setHours(0, 0, 0, 0);
   const hoyFin    = new Date(); hoyFin.setHours(23, 59, 59, 999);
   const semanaFin = new Date(); semanaFin.setDate(semanaFin.getDate() + 7); semanaFin.setHours(23, 59, 59, 999);
 
+  const expWhere = esAdmin ? { estado: "activo" as const } : { estado: "activo" as const, abogadoResponsableId: userId };
+  const expIds = esAdmin
+    ? undefined
+    : (await prisma.expediente.findMany({ where: expWhere, select: { id: true } })).map((e) => e.id);
+
   const [expActivos, terminosSemana, audienciasHoy, citasHoy, actividadRows] = await Promise.all([
-    prisma.expediente.count({ where: { estado: "activo" } }),
+    prisma.expediente.count({ where: expWhere }),
     prisma.termino.findMany({
-      where: { cumplido: false, vencimientoTermino: { gte: hoyInicio, lte: semanaFin } },
+      where: {
+        cumplido: false,
+        vencimientoTermino: { gte: hoyInicio, lte: semanaFin },
+        ...(esAdmin ? {} : { expedienteId: { in: expIds } }),
+      },
       include: { expediente: { include: { cliente: true } } },
       orderBy: { vencimientoTermino: "asc" },
       take: 5,
     }),
-    prisma.audiencia.count({ where: { fechaHora: { gte: hoyInicio, lte: hoyFin }, estado: "programada" } }),
-    prisma.cita.count({ where: { fechaHora: { gte: hoyInicio, lte: hoyFin }, estado: { not: "cancelada" } } }),
+    prisma.audiencia.count({
+      where: {
+        fechaHora: { gte: hoyInicio, lte: hoyFin },
+        estado: "programada",
+        ...(esAdmin ? {} : { expedienteId: { in: expIds } }),
+      },
+    }),
+    prisma.cita.count({
+      where: {
+        fechaHora: { gte: hoyInicio, lte: hoyFin },
+        estado: { not: "cancelada" },
+        ...(esAdmin ? {} : { abogadoId: userId }),
+      },
+    }),
     prisma.actuacion.findMany({
+      where: esAdmin ? undefined : { expedienteId: { in: expIds } },
       include: { expediente: { select: { numeroInterno: true } } },
       orderBy: { creadoEn: "desc" },
       take: 5,

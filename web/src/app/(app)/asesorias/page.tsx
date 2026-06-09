@@ -1,10 +1,17 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AsesoriasClient, { type AsesoriaView } from "./client";
 import type { StatusAsesoria } from "@/lib/constants";
 
 export default async function AsesoriasPage() {
+  const session = await getServerSession(authOptions);
+  const esAdmin = session?.user?.rol === "admin";
+  const userId = session?.user?.id;
+
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.asesoria.findMany({
+      where: esAdmin ? undefined : { abogadoId: userId },
       include: { sucursal: true, abogado: true },
       orderBy: { fecha: "desc" },
     }),

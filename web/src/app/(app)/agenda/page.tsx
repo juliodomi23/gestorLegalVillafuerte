@@ -1,7 +1,13 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AgendaClient, { type CitaView } from "./client";
 
 export default async function AgendaPage() {
+  const session = await getServerSession(authOptions);
+  const esAdmin = session?.user?.rol === "admin";
+  const userId = session?.user?.id;
+
   const hoyInicio = new Date();
   hoyInicio.setHours(0, 0, 0, 0);
   const hoyFin = new Date();
@@ -12,6 +18,7 @@ export default async function AgendaPage() {
       where: {
         fechaHora: { gte: hoyInicio, lte: hoyFin },
         estado: { not: "cancelada" },
+        ...(esAdmin ? {} : { abogadoId: userId }),
       },
       include: { cliente: true, abogado: true, sucursal: true },
       orderBy: { fechaHora: "asc" },
