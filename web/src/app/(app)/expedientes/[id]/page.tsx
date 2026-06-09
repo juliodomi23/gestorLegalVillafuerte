@@ -2,13 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Pencil, Plus, AlarmClock } from "lucide-react";
 import { Card } from "@/components/ui";
-import { ExpedienteTabs } from "@/components/expediente-tabs";
+import { ExpedienteTabs, type ActuacionData, type AudienciaData, type DocumentoData, type MovimientoTabData, type ParteData } from "@/components/expediente-tabs";
 import { prisma } from "@/lib/prisma";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "—";
   const date = d instanceof Date ? d : new Date(d);
   return `${String(date.getUTCDate()).padStart(2, "0")}/${String(date.getUTCMonth() + 1).padStart(2, "0")}/${date.getUTCFullYear()}`;
+}
+
+function fmtDateTime(d: Date): string {
+  return d.toLocaleString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function diasHasta(d: Date): number {
@@ -30,8 +34,12 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
       },
       actuaciones: {
         orderBy: { creadoEn: "desc" },
-        take: 1,
+        include: { usuario: true },
       },
+      partes: true,
+      audiencias: { orderBy: { fechaHora: "desc" } },
+      documentos: { orderBy: { creadoEn: "desc" } },
+      movimientos: { orderBy: { fecha: "desc" } },
     },
   });
 
@@ -58,6 +66,46 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
     archivado:  "bg-line/60 text-muted",
   };
   const estadoLabel = exp.estado.charAt(0).toUpperCase() + exp.estado.slice(1);
+
+  const actuacionesData: ActuacionData[] = exp.actuaciones.map((a) => ({
+    id: a.id,
+    tipo: a.tipo,
+    descripcion: a.descripcion,
+    fecha: fmtDate(a.fecha),
+    registradoPor: a.usuario?.nombre ?? null,
+    origen: a.origen,
+  }));
+
+  const partesData: ParteData[] = exp.partes.map((p) => ({
+    id: p.id,
+    nombre: p.nombre,
+    rol: p.rol,
+    contacto: p.contacto,
+  }));
+
+  const audienciasData: AudienciaData[] = exp.audiencias.map((a) => ({
+    id: a.id,
+    fechaHora: fmtDateTime(a.fechaHora),
+    tipo: a.tipo,
+    lugar: a.lugar,
+    estado: a.estado,
+  }));
+
+  const documentosData: DocumentoData[] = exp.documentos.map((d) => ({
+    id: d.id,
+    nombre: d.nombre,
+    tipo: d.tipo,
+    linkDrive: d.linkDrive,
+    fecha: d.creadoEn.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+  }));
+
+  const movimientosData: MovimientoTabData[] = exp.movimientos.map((m) => ({
+    id: m.id,
+    fecha: fmtDate(m.fecha),
+    concepto: m.concepto,
+    tipo: m.tipo,
+    monto: Number(m.monto),
+  }));
 
   return (
     <>
@@ -119,7 +167,14 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
           </div>
         </div>
 
-        <ExpedienteTabs />
+        <ExpedienteTabs
+          expedienteId={exp.id}
+          actuaciones={actuacionesData}
+          partes={partesData}
+          audiencias={audienciasData}
+          documentos={documentosData}
+          movimientos={movimientosData}
+        />
       </Card>
     </>
   );

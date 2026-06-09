@@ -29,7 +29,8 @@ model Sucursal {
   telefono   String?
   creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  usuarios     Usuario[]
+  usuarios     Usuario[] @relation("UsuarioSucursal")
+  encargados   Usuario[] @relation("EncargadoSucursal")
   expedientes  Expediente[]
   movimientos  MovimientoCaja[]
   llamadas     Llamada[]
@@ -66,16 +67,19 @@ model CatJuzgado {
 }
 
 model Usuario {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sucursalId       String?  @map("sucursal_id") @db.Uuid
-  nombre           String
-  email            String?  @unique
-  telefonoWhatsapp String?  @map("telefono_whatsapp")
-  rol              String   @default("abogado") // admin | abogado | asistente
-  activo           Boolean  @default(true)
-  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sucursalId           String?  @map("sucursal_id") @db.Uuid
+  nombre               String
+  email                String?  @unique
+  passwordHash         String?  @map("password_hash")
+  telefonoWhatsapp     String?  @map("telefono_whatsapp")
+  rol                  String   @default("abogado") // admin | abogado | asistente
+  sucursalEncargadaId  String?  @map("sucursal_encargada_id") @db.Uuid
+  activo               Boolean  @default(true)
+  creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  sucursal     Sucursal?        @relation(fields: [sucursalId], references: [id])
+  sucursal          Sucursal?        @relation("UsuarioSucursal", fields: [sucursalId], references: [id])
+  sucursalEncargada Sucursal?        @relation("EncargadoSucursal", fields: [sucursalEncargadaId], references: [id])
   expedientes  Expediente[]
   actuaciones  Actuacion[]
   citas        Cita[]

@@ -35,6 +35,9 @@ services:
       N8N_API_KEY: ${N8N_API_KEY}
     expose:
       - "3000"
+    volumes:
+      - gestorlegal_uploads:/app/uploads
 
 volumes:
   gestorlegal_data:
+  gestorlegal_uploads:

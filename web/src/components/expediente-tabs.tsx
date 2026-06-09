@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, CheckCircle2 } from "lucide-react";
+import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader } from "lucide-react";
 
 const TABS = [
   { id: "actuaciones", label: "Actuaciones" },
@@ -13,7 +13,61 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-export function ExpedienteTabs() {
+export type ActuacionData = {
+  id: string;
+  tipo: string | null;
+  descripcion: string | null;
+  fecha: string;
+  registradoPor: string | null;
+  origen: string;
+};
+
+export type ParteData = {
+  id: string;
+  nombre: string;
+  rol: string | null;
+  contacto: string | null;
+};
+
+export type AudienciaData = {
+  id: string;
+  fechaHora: string;
+  tipo: string | null;
+  lugar: string | null;
+  estado: string;
+};
+
+export type DocumentoData = {
+  id: string;
+  nombre: string;
+  tipo: string | null;
+  linkDrive: string | null;
+  fecha: string;
+};
+
+export type MovimientoTabData = {
+  id: string;
+  fecha: string;
+  concepto: string | null;
+  tipo: string;
+  monto: number;
+};
+
+export function ExpedienteTabs({
+  expedienteId,
+  actuaciones,
+  partes,
+  audiencias,
+  documentos: documentosIniciales,
+  movimientos,
+}: {
+  expedienteId: string;
+  actuaciones: ActuacionData[];
+  partes: ParteData[];
+  audiencias: AudienciaData[];
+  documentos: DocumentoData[];
+  movimientos: MovimientoTabData[];
+}) {
   const [tab, setTab] = useState<TabId>("actuaciones");
 
   return (
@@ -33,50 +87,45 @@ export function ExpedienteTabs() {
       </div>
 
       <div className="p-6">
-        {tab === "actuaciones" && <Actuaciones />}
-        {tab === "partes" && <Partes />}
-        {tab === "audiencias" && <Audiencias />}
-        {tab === "documentos" && <Documentos />}
-        {tab === "caja" && <Caja />}
+        {tab === "actuaciones" && <Actuaciones data={actuaciones} />}
+        {tab === "partes"      && <Partes data={partes} />}
+        {tab === "audiencias"  && <Audiencias data={audiencias} />}
+        {tab === "documentos"  && <Documentos expedienteId={expedienteId} inicial={documentosIniciales} />}
+        {tab === "caja"        && <Caja data={movimientos} />}
       </div>
     </>
   );
 }
 
-function Actuaciones() {
-  const eventos = [
-    { t: "Expediente creado", d: "02/06/2026 · registrado por Lic. Christian", wa: true, amber: true },
-    { t: "Auto admisorio de demanda", d: '03/06/2026 · "Se admite la demanda en la vía ordinaria mercantil…"', wa: false, amber: false },
-    { t: "Emplazamiento al demandado", d: "05/06/2026 · diligencia practicada", wa: false, amber: false },
-    { t: "Cliente entregó pagarés originales", d: "07/06/2026 · Lic. Christian", wa: true, amber: true },
-  ];
+function Actuaciones({ data }: { data: ActuacionData[] }) {
+  if (!data.length) return <p className="text-muted text-[13.5px]">Sin actuaciones registradas.</p>;
   return (
     <div className="relative pl-6">
       <div className="absolute left-[7px] top-1 bottom-1 w-px bg-line" />
-      {eventos.map((e, i) => (
-        <div key={i} className={`relative ${i < eventos.length - 1 ? "mb-5" : ""}`}>
-          <span className={`absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 border-paper ${e.amber ? "bg-amber" : "bg-navy"}`} />
+      {data.map((e, i) => (
+        <div key={e.id} className={`relative ${i < data.length - 1 ? "mb-5" : ""}`}>
+          <span className={`absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 border-paper ${e.origen === "whatsapp" ? "bg-amber" : "bg-navy"}`} />
           <div className="flex items-center gap-2">
-            <p className="text-[14px] font-bold text-ink">{e.t}</p>
-            {e.wa && (
+            <p className="text-[14px] font-bold text-ink">{e.tipo ? capitalize(e.tipo) : "Actuación"}</p>
+            {e.origen === "whatsapp" && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success-wash text-success text-[11px] font-bold">
                 <MessageCircle size={12} /> WhatsApp
               </span>
             )}
           </div>
-          <p className="text-[12.5px] text-muted">{e.d}</p>
+          <p className="text-[12.5px] text-muted">
+            {e.fecha}
+            {e.registradoPor ? ` · ${e.registradoPor}` : ""}
+            {e.descripcion ? ` · ${e.descripcion}` : ""}
+          </p>
         </div>
       ))}
     </div>
   );
 }
 
-function Partes() {
-  const partes = [
-    { nombre: "Juan Pérez", rol: "Actor (cliente)", contacto: "961 123 4567" },
-    { nombre: "Comercializadora XYZ SA", rol: "Demandado", contacto: "—" },
-    { nombre: "Lic. Roberto Díaz", rol: "Abogado contrario", contacto: "—" },
-  ];
+function Partes({ data }: { data: ParteData[] }) {
+  if (!data.length) return <p className="text-muted text-[13.5px]">Sin partes registradas.</p>;
   return (
     <table className="w-full text-[13.5px]">
       <thead>
@@ -87,11 +136,11 @@ function Partes() {
         </tr>
       </thead>
       <tbody className="divide-y divide-line/70">
-        {partes.map((p, i) => (
-          <tr key={i}>
+        {data.map((p) => (
+          <tr key={p.id}>
             <td className="px-2 py-3 font-bold">{p.nombre}</td>
-            <td className="px-2 py-3">{p.rol}</td>
-            <td className="px-2 py-3 num text-muted">{p.contacto}</td>
+            <td className="px-2 py-3">{p.rol ? capitalize(p.rol.replace(/_/g, " ")) : "—"}</td>
+            <td className="px-2 py-3 num text-muted">{p.contacto ?? "—"}</td>
           </tr>
         ))}
       </tbody>
@@ -99,11 +148,8 @@ function Partes() {
   );
 }
 
-function Audiencias() {
-  const aud = [
-    { fecha: "09/06/2026 10:00", tipo: "Conciliatoria", lugar: "Juzgado 3.º Civil", estado: "Programada", ok: false },
-    { fecha: "21/05/2026 09:00", tipo: "Inicial", lugar: "Juzgado 3.º Civil", estado: "Realizada", ok: true },
-  ];
+function Audiencias({ data }: { data: AudienciaData[] }) {
+  if (!data.length) return <p className="text-muted text-[13.5px]">Sin audiencias registradas.</p>;
   return (
     <table className="w-full text-[13.5px]">
       <thead>
@@ -115,14 +161,14 @@ function Audiencias() {
         </tr>
       </thead>
       <tbody className="divide-y divide-line/70">
-        {aud.map((a, i) => (
-          <tr key={i}>
-            <td className="px-2 py-3 num">{a.fecha}</td>
-            <td className="px-2 py-3">{a.tipo}</td>
-            <td className="px-2 py-3 text-muted">{a.lugar}</td>
+        {data.map((a) => (
+          <tr key={a.id}>
+            <td className="px-2 py-3 num">{a.fechaHora}</td>
+            <td className="px-2 py-3">{a.tipo ?? "—"}</td>
+            <td className="px-2 py-3 text-muted">{a.lugar ?? "—"}</td>
             <td className="px-2 py-3">
-              <span className={`px-2 py-0.5 rounded text-[12px] font-bold ${a.ok ? "bg-success-wash text-success" : "bg-navy/[.08] text-navy"}`}>
-                {a.estado}
+              <span className={`px-2 py-0.5 rounded text-[12px] font-bold ${a.estado === "realizada" ? "bg-success-wash text-success" : "bg-navy/[.08] text-navy"}`}>
+                {capitalize(a.estado)}
               </span>
             </td>
           </tr>
@@ -132,35 +178,30 @@ function Audiencias() {
   );
 }
 
-type Doc = { nombre: string; meta: string; estado: "guardado" | "subiendo" };
-
-function Documentos() {
-  const [docs, setDocs] = useState<Doc[]>([
-    { nombre: "Demanda.pdf", meta: "Demanda · 02/06/2026", estado: "guardado" },
-    { nombre: "Pagares.pdf", meta: "Prueba documental · 07/06/2026", estado: "guardado" },
-    { nombre: "INE_cliente.pdf", meta: "Identificación · 02/06/2026", estado: "guardado" },
-  ]);
+function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: DocumentoData[] }) {
+  const [docs, setDocs] = useState<(DocumentoData & { subiendo?: boolean })[]>(inicial);
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
 
-  function hoy() {
-    return new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
-  }
-
-  function manejar(files: FileList | null) {
+  async function manejar(files: FileList | null) {
     if (!files) return;
-    Array.from(files).forEach((file) => {
-      if (file.type !== "application/pdf") {
-        alert("Solo se permiten archivos PDF.");
-        return;
+    for (const file of Array.from(files)) {
+      if (file.type !== "application/pdf") { alert("Solo se permiten archivos PDF."); continue; }
+      const placeholder = { id: `tmp-${Date.now()}`, nombre: file.name, tipo: "pdf", linkDrive: null, fecha: hoy(), subiendo: true };
+      setDocs((prev) => [placeholder, ...prev]);
+
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/expedientes/${expedienteId}/documentos`, { method: "POST", body: fd });
+
+      if (res.ok) {
+        const saved: DocumentoData = await res.json();
+        setDocs((prev) => prev.map((d) => (d.id === placeholder.id ? saved : d)));
+      } else {
+        alert("Error al subir el archivo.");
+        setDocs((prev) => prev.filter((d) => d.id !== placeholder.id));
       }
-      const nuevo: Doc = { nombre: file.name, meta: `Subido ahora · ${hoy()}`, estado: "subiendo" };
-      setDocs((prev) => [nuevo, ...prev]);
-      // En producción aquí va la subida a Google Drive vía API; al confirmar pasa a "guardado".
-      setTimeout(() => {
-        setDocs((prev) => prev.map((d) => (d === nuevo ? { ...d, estado: "guardado" } : d)));
-      }, 1200);
-    });
+    }
   }
 
   return (
@@ -185,23 +226,26 @@ function Documentos() {
           onChange={(e) => { manejar(e.target.files); e.target.value = ""; }} />
       </div>
 
+      {docs.length === 0 && <p className="text-center text-muted text-[13.5px] py-4">Sin documentos. Sube el primero.</p>}
+
       <div className="space-y-2">
-        {docs.map((d, i) => (
-          <div key={i} className={`flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${d.estado === "subiendo" ? "border-navy/30 bg-paper/40" : "border-line hover:border-navy/30"}`}>
+        {docs.map((d) => (
+          <div key={d.id} className={`flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${d.subiendo ? "border-navy/30 bg-paper/40" : "border-line hover:border-navy/30"}`}>
             <FileText size={18} strokeWidth={1.75} className="text-navy" />
             <div className="flex-1">
               <p className="text-[13.5px] font-bold">{d.nombre}</p>
-              <p className="text-[11.5px] text-muted">{d.meta}</p>
+              <p className="text-[11.5px] text-muted">{d.fecha}</p>
             </div>
-            {d.estado === "subiendo" ? (
+            {d.subiendo ? (
               <span className="inline-flex items-center gap-1.5 text-[12px] text-amber font-bold">
                 <Loader size={16} className="animate-spin" /> Subiendo…
               </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 text-[12.5px] text-navy font-bold cursor-pointer">
-                <ExternalLink size={16} /> Abrir en Drive
-              </span>
-            )}
+            ) : d.linkDrive ? (
+              <a href={d.linkDrive} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[12.5px] text-navy font-bold cursor-pointer">
+                <ExternalLink size={16} /> Abrir
+              </a>
+            ) : null}
           </div>
         ))}
       </div>
@@ -209,11 +253,8 @@ function Documentos() {
   );
 }
 
-function Caja() {
-  const mov = [
-    { fecha: "02/06/2026", concepto: "Anticipo de honorarios", tipo: "Ingreso", monto: "$8,000", ingreso: true },
-    { fecha: "05/06/2026", concepto: "Gastos de emplazamiento", tipo: "Egreso", monto: "$650", ingreso: false },
-  ];
+function Caja({ data }: { data: MovimientoTabData[] }) {
+  if (!data.length) return <p className="text-muted text-[13.5px]">Sin movimientos registrados.</p>;
   return (
     <table className="w-full text-[13.5px]">
       <thead>
@@ -225,15 +266,22 @@ function Caja() {
         </tr>
       </thead>
       <tbody className="divide-y divide-line/70">
-        {mov.map((m, i) => (
-          <tr key={i}>
+        {data.map((m) => (
+          <tr key={m.id}>
             <td className="px-2 py-3 num">{m.fecha}</td>
-            <td className="px-2 py-3">{m.concepto}</td>
-            <td className="px-2 py-3"><span className={`font-bold ${m.ingreso ? "text-success" : "text-danger"}`}>{m.tipo}</span></td>
-            <td className="px-2 py-3 num text-right font-bold">{m.monto}</td>
+            <td className="px-2 py-3">{m.concepto ?? "—"}</td>
+            <td className="px-2 py-3">
+              <span className={`font-bold ${m.tipo === "ingreso" ? "text-success" : "text-danger"}`}>
+                {capitalize(m.tipo)}
+              </span>
+            </td>
+            <td className="px-2 py-3 num text-right font-bold">${m.monto.toLocaleString("es-MX")}</td>
           </tr>
         ))}
       </tbody>
     </table>
   );
 }
+
+function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function hoy() { return new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }); }

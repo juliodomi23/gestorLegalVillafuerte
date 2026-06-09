@@ -72,15 +72,17 @@ CREATE TABLE cat_juzgados (
 -- =====================================================================
 
 CREATE TABLE usuarios (
-  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  sucursal_id       uuid REFERENCES sucursales(id) ON DELETE SET NULL,
-  nombre            text NOT NULL,
-  email             text UNIQUE,
-  telefono_whatsapp text,                    -- identifica quién dicta por el bot
-  rol               text NOT NULL DEFAULT 'abogado'
-                      CHECK (rol IN ('admin','abogado','asistente')),
-  activo            boolean NOT NULL DEFAULT true,
-  creado_en         timestamptz NOT NULL DEFAULT now()
+  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sucursal_id          uuid REFERENCES sucursales(id) ON DELETE SET NULL,
+  nombre               text NOT NULL,
+  email                text UNIQUE,
+  password_hash        text,
+  telefono_whatsapp    text,                 -- identifica quién dicta por el bot
+  rol                  text NOT NULL DEFAULT 'abogado'
+                         CHECK (rol IN ('admin','abogado','asistente')),
+  sucursal_encargada_id uuid REFERENCES sucursales(id) ON DELETE SET NULL,
+  activo               boolean NOT NULL DEFAULT true,
+  creado_en            timestamptz NOT NULL DEFAULT now()
 );
 
 -- El bot busca al usuario por su número de WhatsApp
