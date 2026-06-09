@@ -24,9 +24,7 @@ export default async function InicioPage() {
   const semanaFin = new Date(); semanaFin.setDate(semanaFin.getDate() + 7); semanaFin.setHours(23, 59, 59, 999);
 
   const expWhere = esAdmin ? { estado: "activo" as const } : { estado: "activo" as const, abogadoResponsableId: userId };
-  const expIds = esAdmin
-    ? undefined
-    : (await prisma.expediente.findMany({ where: expWhere, select: { id: true } })).map((e) => e.id);
+  const expFilter = esAdmin ? {} : { expediente: { abogadoResponsableId: userId } };
 
   const [expActivos, terminosSemana, audienciasHoy, citasHoy, actividadRows] = await Promise.all([
     prisma.expediente.count({ where: expWhere }),
@@ -34,7 +32,7 @@ export default async function InicioPage() {
       where: {
         cumplido: false,
         vencimientoTermino: { gte: hoyInicio, lte: semanaFin },
-        ...(esAdmin ? {} : { expedienteId: { in: expIds } }),
+        ...expFilter,
       },
       include: { expediente: { include: { cliente: true } } },
       orderBy: { vencimientoTermino: "asc" },
@@ -44,7 +42,7 @@ export default async function InicioPage() {
       where: {
         fechaHora: { gte: hoyInicio, lte: hoyFin },
         estado: "programada",
-        ...(esAdmin ? {} : { expedienteId: { in: expIds } }),
+        ...expFilter,
       },
     }),
     prisma.cita.count({
@@ -55,7 +53,7 @@ export default async function InicioPage() {
       },
     }),
     prisma.actuacion.findMany({
-      where: esAdmin ? undefined : { expedienteId: { in: expIds } },
+      where: esAdmin ? undefined : expFilter,
       include: { expediente: { select: { numeroInterno: true } } },
       orderBy: { creadoEn: "desc" },
       take: 5,
