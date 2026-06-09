@@ -1,20 +1,64 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ArrowLeft, Pencil, Plus, AlarmClock } from "lucide-react";
 import { Card } from "@/components/ui";
 import { ExpedienteTabs } from "@/components/expediente-tabs";
+import { prisma } from "@/lib/prisma";
 
-const meta = [
-  { k: "Cliente", v: "Juan Pérez" },
-  { k: "Rol", v: "Actor" },
-  { k: "Cuantía", v: "$250,000", num: true },
-  { k: "Etapa procesal", v: "Contestación" },
-  { k: "Abogado", v: "Lic. Christian" },
-  { k: "Sucursal", v: "Tuxtla" },
-  { k: "Inicio", v: "02/06/2026" },
-  { k: "Última promoción", v: "07/06/2026" },
-];
+function fmtDate(d: Date | null): string {
+  if (!d) return "—";
+  const date = d instanceof Date ? d : new Date(d);
+  return `${String(date.getUTCDate()).padStart(2, "0")}/${String(date.getUTCMonth() + 1).padStart(2, "0")}/${date.getUTCFullYear()}`;
+}
 
-export default function ExpedienteDetallePage() {
+function diasHasta(d: Date): number {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+export default async function ExpedienteDetallePage({ params }: { params: { id: string } }) {
+  const exp = await prisma.expediente.findUnique({
+    where: { id: params.id },
+    include: {
+      cliente: true,
+      abogadoResponsable: true,
+      sucursal: true,
+      terminos: {
+        where: { cumplido: false },
+        orderBy: { vencimientoTermino: "asc" },
+        take: 1,
+      },
+      actuaciones: {
+        orderBy: { creadoEn: "desc" },
+        take: 1,
+      },
+    },
+  });
+
+  if (!exp) notFound();
+
+  const terminoActivo = exp.terminos[0] ?? null;
+  const diasTermino = terminoActivo?.vencimientoTermino ? diasHasta(terminoActivo.vencimientoTermino) : null;
+
+  const meta = [
+    { k: "Cliente",           v: exp.cliente?.nombre ?? "—"                                                    },
+    { k: "Rol",               v: exp.rolCliente ?? "—"                                                         },
+    { k: "Cuantía",           v: exp.cuantia ? `$${Number(exp.cuantia).toLocaleString("es-MX")}` : "—", num: true },
+    { k: "Etapa procesal",    v: exp.etapaProcesal ?? "—"                                                       },
+    { k: "Abogado",           v: exp.abogadoResponsable?.nombre ? `Lic. ${exp.abogadoResponsable.nombre}` : "—" },
+    { k: "Sucursal",          v: exp.sucursal?.nombre ?? "—"                                                    },
+    { k: "Inicio",            v: fmtDate(exp.fechaInicio)                                                       },
+    { k: "Última actuación",  v: exp.actuaciones[0]?.fecha ? fmtDate(exp.actuaciones[0].fecha) : "—"           },
+  ];
+
+  const estadoCls: Record<string, string> = {
+    activo:    "bg-success-wash text-success",
+    suspendido: "bg-amber-wash text-amber",
+    concluido:  "bg-line/60 text-muted",
+    archivado:  "bg-line/60 text-muted",
+  };
+  const estadoLabel = exp.estado.charAt(0).toUpperCase() + exp.estado.slice(1);
+
   return (
     <>
       <Link href="/expedientes" className="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-navy transition-colors mb-4">
@@ -22,18 +66,19 @@ export default function ExpedienteDetallePage() {
       </Link>
 
       <Card className="overflow-hidden">
-        {/* Cabecera */}
         <div className="p-6 border-b border-line">
           <div className="flex items-start justify-between gap-6">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="exp-no text-[26px] font-semibold text-ink">EXP-2026-0142</h1>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-success-wash text-success text-[12px] font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success" /> Activo
+                <h1 className="exp-no text-[26px] font-semibold text-ink">{exp.numeroInterno ?? "S/N"}</h1>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-bold ${estadoCls[exp.estado] ?? "bg-line/60 text-muted"}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-current" /> {estadoLabel}
                 </span>
               </div>
               <p className="text-muted text-[14px] mt-1">
-                Juicio Ordinario Mercantil · N.º de juicio <span className="exp-no">542/2026</span> · Juzgado 3.º Civil de Tuxtla
+                {exp.tipoJuicio ?? "Juicio"} · Materia {exp.materia ?? "—"}
+                {exp.numeroJudicial ? <> · N.º de juicio <span className="exp-no">{exp.numeroJudicial}</span></> : ""}
+                {exp.juzgado ? ` · ${exp.juzgado}` : ""}
               </p>
             </div>
             <div className="flex gap-2">
@@ -46,21 +91,24 @@ export default function ExpedienteDetallePage() {
             </div>
           </div>
 
-          {/* Término vigente */}
-          <div className="mt-5 rounded-lg border border-danger/30 bg-danger-wash/50 px-4 py-3 flex items-center gap-4">
-            <AlarmClock size={18} strokeWidth={1.75} className="text-danger" />
-            <div className="flex-1">
-              <p className="text-[13px] font-bold text-danger">Término vigente: contestar demanda</p>
-              <p className="text-[12px] text-muted">
-                Acuerdo 03/06 · Notificado por boletín · 9 días · Inicia 05/06 · <b className="text-ink">Vence 10/06/2026</b>
-              </p>
+          {terminoActivo && diasTermino !== null && (
+            <div className="mt-5 rounded-lg border border-danger/30 bg-danger-wash/50 px-4 py-3 flex items-center gap-4">
+              <AlarmClock size={18} strokeWidth={1.75} className="text-danger" />
+              <div className="flex-1">
+                <p className="text-[13px] font-bold text-danger">Término vigente: {terminoActivo.descripcion ?? "Término procesal"}</p>
+                <p className="text-[12px] text-muted">
+                  {terminoActivo.fechaAcuerdo ? `Acuerdo ${fmtDate(terminoActivo.fechaAcuerdo)}` : ""}
+                  {terminoActivo.diasParaContestar ? ` · ${terminoActivo.diasParaContestar} días` : ""}
+                  {terminoActivo.inicioTermino ? ` · Inicia ${fmtDate(terminoActivo.inicioTermino)}` : ""}
+                  {terminoActivo.vencimientoTermino ? <> · <b className="text-ink">Vence {fmtDate(terminoActivo.vencimientoTermino)}</b></> : ""}
+                </p>
+              </div>
+              <span className="num text-[26px] font-semibold text-danger">
+                {diasTermino < 0 ? "¡Venció!" : diasTermino === 0 ? "¡Hoy!" : <>{diasTermino}<span className="text-[14px] font-sans font-normal"> {diasTermino === 1 ? "día" : "días"}</span></>}
+              </span>
             </div>
-            <span className="num text-[26px] font-semibold text-danger">
-              1<span className="text-[14px] font-sans font-normal"> día</span>
-            </span>
-          </div>
+          )}
 
-          {/* Datos */}
           <div className="grid grid-cols-4 gap-y-4 gap-x-8 mt-5">
             {meta.map((m) => (
               <div key={m.k}>

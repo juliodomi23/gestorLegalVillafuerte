@@ -1,55 +1,67 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import {
-  FolderOpen,
-  AlarmClock,
-  Gavel,
-  CalendarCheck,
-  TrendingUp,
-  MessageCircle,
-  FilePlus,
-  MessagesSquare,
-  Paperclip,
-  Banknote,
+  FolderOpen, AlarmClock, Gavel, CalendarCheck, TrendingUp, MessageCircle,
+  FilePlus, MessagesSquare, Banknote,
 } from "lucide-react";
 
-// Datos de ejemplo (luego vendrán de la base de datos vía Prisma)
-const kpis = [
-  { label: "Expedientes activos", valor: "142", icon: FolderOpen, nota: "+6 este mes", notaColor: "text-success" },
-  { label: "Vencimientos / semana", valor: "6", icon: AlarmClock, valorColor: "text-danger", nota: "2 vencen en 48 h" },
-  { label: "Audiencias hoy", valor: "3", icon: Gavel, nota: "Próxima 10:00" },
-  { label: "Citas hoy", valor: "5", icon: CalendarCheck, nota: "2 por confirmar" },
-];
+function fmtDias(dias: number) {
+  if (dias < 0) return "Vencido";
+  if (dias === 0) return "Hoy";
+  if (dias === 1) return "Mañana";
+  return `${dias} días`;
+}
 
-const vencimientos = [
-  { t: "Contestar demanda", exp: "EXP-2026-0142", det: "Mercantil · Juan Pérez", chip: "Vence mañana", urg: true },
-  { t: "Ofrecer pruebas", exp: "EXP-2026-0098", det: "Civil · Inmobiliaria SA", chip: "2 días", urg: true },
-  { t: "Presentar alegatos", exp: "EXP-2026-0051", det: "Familiar · María López", chip: "4 días", urg: false },
-];
+export default async function InicioPage() {
+  const session = await getServerSession(authOptions);
+  const nombre = session?.user?.name ?? "Lic.";
 
-const audiencias = [
-  { hora: "10:00", tipo: "Conciliatoria", det: "EXP-0142 · Juzgado 3.º Civil" },
-  { hora: "12:30", tipo: "Desahogo de pruebas", det: "EXP-0077 · Juzgado 1.º Mercantil" },
-  { hora: "16:00", tipo: "Alegatos", det: "EXP-0051 · Juzgado Familiar" },
-];
+  const hoyInicio = new Date(); hoyInicio.setHours(0, 0, 0, 0);
+  const hoyFin    = new Date(); hoyFin.setHours(23, 59, 59, 999);
+  const semanaFin = new Date(); semanaFin.setDate(semanaFin.getDate() + 7); semanaFin.setHours(23, 59, 59, 999);
 
-const actividad = [
-  { icon: FilePlus, txt: "Nuevo expediente EXP-2026-0142 — Juan Pérez (Mercantil)", wa: true, t: "8 min" },
-  { icon: MessagesSquare, txt: "Asesoría registrada — despido injustificado", wa: true, t: "40 min" },
-  { icon: Paperclip, txt: "Documento subido — Contrato.pdf en EXP-2026-0098", wa: false, t: "1 h" },
-  { icon: Banknote, txt: "Corte de caja — Sucursal Centro $4,500", wa: true, t: "2 h" },
-];
+  const [expActivos, terminosSemana, audienciasHoy, citasHoy, actividadRows] = await Promise.all([
+    prisma.expediente.count({ where: { estado: "activo" } }),
+    prisma.termino.findMany({
+      where: { cumplido: false, vencimientoTermino: { gte: hoyInicio, lte: semanaFin } },
+      include: { expediente: { include: { cliente: true } } },
+      orderBy: { vencimientoTermino: "asc" },
+      take: 5,
+    }),
+    prisma.audiencia.count({ where: { fechaHora: { gte: hoyInicio, lte: hoyFin }, estado: "programada" } }),
+    prisma.cita.count({ where: { fechaHora: { gte: hoyInicio, lte: hoyFin }, estado: { not: "cancelada" } } }),
+    prisma.actuacion.findMany({
+      include: { expediente: { select: { numeroInterno: true } } },
+      orderBy: { creadoEn: "desc" },
+      take: 5,
+    }),
+  ]);
 
-export default function InicioPage() {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const urgentes = terminosSemana.filter((t) => {
+    const dias = Math.round((t.vencimientoTermino!.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+    return dias <= 2;
+  }).length;
+
+  const kpis = [
+    { label: "Expedientes activos",    valor: String(expActivos),        icon: FolderOpen,    nota: "Total activos",              notaColor: undefined    },
+    { label: "Vencimientos / semana",  valor: String(terminosSemana.length), icon: AlarmClock, valorColor: terminosSemana.length > 0 ? "text-danger" : undefined, nota: urgentes > 0 ? `${urgentes} vencen en 48 h` : "Sin urgentes", notaColor: urgentes > 0 ? "text-danger" : undefined },
+    { label: "Audiencias hoy",         valor: String(audienciasHoy),     icon: Gavel,         nota: "Programadas hoy",            notaColor: undefined    },
+    { label: "Citas hoy",              valor: String(citasHoy),          icon: CalendarCheck, nota: "Agendadas para hoy",         notaColor: undefined    },
+  ];
+
+  const hoyLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const hoyCapitalized = hoyLabel.charAt(0).toUpperCase() + hoyLabel.slice(1);
+
   return (
     <>
       <div className="mb-6">
-        <p className="eyebrow text-amber">Martes 9 de junio, 2026</p>
-        <h1 className="font-serif text-[30px] text-ink leading-tight mt-1">
-          Buenos días, Lic. Christian
-        </h1>
+        <p className="eyebrow text-amber">{hoyCapitalized}</p>
+        <h1 className="font-serif text-[30px] text-ink leading-tight mt-1">Buenos días, {nombre}</h1>
         <p className="text-muted text-[14px] mt-0.5">Esto es lo que necesita atención hoy.</p>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {kpis.map((k) => {
           const Icon = k.icon;
@@ -59,9 +71,7 @@ export default function InicioPage() {
                 <p className="eyebrow text-muted">{k.label}</p>
                 <Icon size={18} strokeWidth={1.75} className="text-navy/50" />
               </div>
-              <p className={`num text-[40px] font-semibold leading-none mt-3 ${k.valorColor ?? "text-ink"}`}>
-                {k.valor}
-              </p>
+              <p className={`num text-[40px] font-semibold leading-none mt-3 ${k.valorColor ?? "text-ink"}`}>{k.valor}</p>
               <p className={`text-[12px] mt-1.5 flex items-center gap-1 ${k.notaColor ?? "text-muted"}`}>
                 {k.notaColor && <TrendingUp size={14} />} {k.nota}
               </p>
@@ -71,78 +81,66 @@ export default function InicioPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5">
-        {/* Vencimientos */}
         <div className="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
           <div className="px-5 py-3.5 border-b border-line">
             <h3 className="font-serif text-[17px] text-ink">Vencimientos próximos</h3>
           </div>
-          {vencimientos.map((v, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-4 px-5 py-3.5 border-b border-line/70 last:border-0 hover:bg-paper/60 transition-colors"
-            >
-              <span className={`w-1.5 h-9 rounded-full ${v.urg ? "bg-danger" : "bg-amber-soft"}`} />
-              <div className="flex-1">
-                <p className="text-[14px] font-bold text-ink">{v.t}</p>
-                <p className="text-[12px] text-muted">
-                  <span className="exp-no">{v.exp}</span> · {v.det}
-                </p>
+          {terminosSemana.length === 0 && (
+            <p className="px-5 py-6 text-muted text-[13.5px]">No hay vencimientos esta semana.</p>
+          )}
+          {terminosSemana.map((t) => {
+            const dias = Math.round((t.vencimientoTermino!.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+            const urg = dias <= 2;
+            return (
+              <div key={t.id} className="flex items-center gap-4 px-5 py-3.5 border-b border-line/70 last:border-0 hover:bg-paper/60 transition-colors">
+                <span className={`w-1.5 h-9 rounded-full ${urg ? "bg-danger" : "bg-amber-soft"}`} />
+                <div className="flex-1">
+                  <p className="text-[14px] font-bold text-ink">{t.descripcion ?? "Término"}</p>
+                  <p className="text-[12px] text-muted">
+                    <span className="exp-no">{t.expediente.numeroInterno ?? "S/N"}</span>
+                    {t.expediente.cliente?.nombre ? ` · ${t.expediente.cliente.nombre}` : ""}
+                  </p>
+                </div>
+                <span className={`px-2.5 py-1 rounded-md text-[11.5px] font-bold ${urg ? "bg-danger-wash text-danger" : "bg-amber-wash text-amber"}`}>
+                  {fmtDias(dias)}
+                </span>
               </div>
-              <span
-                className={`px-2.5 py-1 rounded-md text-[11.5px] font-bold ${
-                  v.urg ? "bg-danger-wash text-danger" : "bg-amber-wash text-amber"
-                }`}
-              >
-                {v.chip}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Audiencias */}
         <div className="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
           <div className="px-5 py-3.5 border-b border-line">
-            <h3 className="font-serif text-[17px] text-ink">Audiencias de hoy</h3>
+            <h3 className="font-serif text-[17px] text-ink">Actividad reciente</h3>
           </div>
-          <div className="p-3 space-y-2">
-            {audiencias.map((a, i) => (
-              <div key={i} className="rounded-lg border border-line p-3 flex gap-3 hover:border-navy/30 transition-colors">
-                <div className="num text-navy text-[15px] font-bold w-12">{a.hora}</div>
-                <div className="border-l border-line pl-3">
-                  <p className="text-[13.5px] font-bold text-ink">{a.tipo}</p>
-                  <p className="text-[11.5px] text-muted">{a.det}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Actividad */}
-      <div className="bg-surface rounded-xl border border-line shadow-card overflow-hidden mt-5">
-        <div className="px-5 py-3.5 border-b border-line">
-          <h3 className="font-serif text-[17px] text-ink">Actividad reciente</h3>
-        </div>
-        <div className="divide-y divide-line/70">
-          {actividad.map((a, i) => {
-            const Icon = a.icon;
-            return (
-              <div key={i} className="flex items-center gap-4 px-5 py-3">
+          <div className="divide-y divide-line/70">
+            {actividadRows.length === 0 && <p className="px-5 py-6 text-muted text-[13.5px]">Sin actividad reciente.</p>}
+            {actividadRows.map((a) => (
+              <div key={a.id} className="flex items-center gap-4 px-5 py-3">
                 <span className="w-8 h-8 rounded-lg bg-navy/[.08] text-navy flex items-center justify-center">
-                  <Icon size={18} strokeWidth={1.75} />
+                  {a.origen === "whatsapp" ? <MessagesSquare size={18} strokeWidth={1.75} /> : <FilePlus size={18} strokeWidth={1.75} />}
                 </span>
-                <div className="flex-1 text-[13.5px]">{a.txt}</div>
-                {a.wa ? (
+                <div className="flex-1 text-[13.5px]">
+                  {a.tipo ?? "Actuación"} — {a.expediente.numeroInterno ?? "S/N"}
+                  {a.descripcion ? ` · ${a.descripcion.slice(0, 40)}` : ""}
+                </div>
+                {a.origen === "whatsapp" ? (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-success-wash text-success text-[11.5px] font-bold">
                     <MessageCircle size={14} /> WhatsApp
                   </span>
                 ) : (
                   <span className="px-2.5 py-1 rounded-md bg-line/60 text-muted text-[11.5px] font-bold">Web</span>
                 )}
-                <span className="text-[12px] text-muted w-16 text-right">{a.t}</span>
               </div>
-            );
-          })}
+            ))}
+          </div>
+          {actividadRows.some((a) => a.origen === "whatsapp") && (
+            <div className="px-5 py-3 border-t border-line/60">
+              <p className="text-[12px] text-muted flex items-center gap-1.5">
+                <Banknote size={13} className="text-navy" /> Los cortes de caja y actuaciones del bot aparecen aquí en tiempo real.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </>

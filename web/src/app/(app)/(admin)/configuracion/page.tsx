@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { SUCURSALES } from "@/lib/mock";
+const SUCURSALES = ["Tuxtla", "San Cristóbal", "Tapachula", "Villaflores", "Comitán"];
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 
