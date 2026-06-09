@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestorLegal — Prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          serif: ['"EB Garamond"', 'Georgia', 'serif'],
+          sans: ['Lato', 'system-ui', 'sans-serif'],
+        },
+        colors: {
+          paper:   '#F6F2EA',   // fondo hueso cálido (papel)
+          surface: '#FFFFFF',
+          ink:     '#1A1714',   // tinta (texto principal)
+          muted:   '#6B6259',   // texto secundario cálido
+          line:    '#E7E0D4',   // bordes cálidos
+          navy:    { DEFAULT:'#1E3A5F', deep:'#162A41' },  // autoridad
+          amber:   { DEFAULT:'#B45309', soft:'#C8881E', wash:'#F4E9D7' }, // sello / acento
+          success: { DEFAULT:'#3F6B4F', wash:'#E6EEE7' },
+          danger:  { DEFAULT:'#9B2C2C', wash:'#F3E2E0' },
+        },
+        boxShadow: {
+          card: '0 1px 2px rgba(22,20,16,.04), 0 1px 12px rgba(22,20,16,.05)',
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body{background:#F6F2EA}
+  .num{font-family:"EB Garamond",serif;font-variant-numeric:tabular-nums}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+  .exp-no{font-family:"EB Garamond",serif;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+  .view{display:none} .view.show{display:block}
+  .tabpane{display:none} .tabpane.show{display:block}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#d9cfbe;border-radius:8px}
+  [data-lucide]{width:18px;height:18px;stroke-width:1.75}
+</style>
+</head>
+<body class="font-sans text-ink antialiased">
+
+<div class="min-h-screen grid grid-cols-[244px_1fr]">
+
+  <!-- ============ SIDEBAR (tinta) ============ -->
+  <aside class="bg-navy-deep text-white/85 flex flex-col">
+    <div class="px-5 pt-6 pb-5 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-md bg-amber/90 flex items-center justify-center">
+          <span class="font-serif text-lg font-700 text-navy-deep leading-none">V</span>
+        </div>
+        <div>
+          <div class="font-serif text-[17px] leading-tight text-white">Villafuerte</div>
+          <div class="text-[11px] text-white/45 tracking-wide">y Asociados</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 py-4 text-[14px]">
+      <p class="eyebrow text-white/30 px-5 mb-2">Despacho</p>
+      <a data-nav="dashboard" class="nav-item group flex items-center gap-3 px-5 py-2.5 cursor-pointer border-l-[3px] border-amber text-white bg-white/[.06]">
+        <i data-lucide="layout-dashboard"></i> Inicio</a>
+      <a data-nav="expedientes" class="nav-item flex items-center gap-3 px-5 py-2.5 cursor-pointer border-l-[3px] border-transparent hover:bg-white/[.04] transition-colors">
+        <i data-lucide="folder-open"></i> Expedientes</a>
+      <a data-nav="agenda" class="nav-item flex items-center gap-3 px-5 py-2.5 cursor-pointer border-l-[3px] border-transparent hover:bg-white/[.04] transition-colors">
+        <i data-lucide="calendar-days"></i> Agenda</a>
+      <a data-nav="clientes" class="nav-item flex items-center gap-3 px-5 py-2.5 cursor-pointer border-l-[3px] border-transparent hover:bg-white/[.04] transition-colors">
+        <i data-lucide="users"></i> Clientes</a>
+
+      <p class="eyebrow text-white/30 px-5 mt-5 mb-2">Administración</p>
+      <a data-nav="caja" class="nav-item flex items-center gap-3 px-5 py-2.5 cursor-pointer border-l-[3px] border-transparent hover:bg-white/[.04] transition-colors">
+        <i data-lucide="wallet"></i> Caja</a>
+      <a data-nav="config" class="nav-item flex items-center gap-3 px-5 py-2.5 cursor-pointer border-l-[3px] border-transparent hover:bg-white/[.04] transition-colors">
+        <i data-lucide="settings"></i> Configuración</a>
+    </nav>
+
+    <div class="px-5 py-4 border-t border-white/10 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-[12px] font-700">CV</div>
+      <div class="leading-tight">
+        <div class="text-[13px] text-white">Lic. Christian</div>
+        <div class="text-[11px] text-white/45">Administrador</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="flex flex-col min-h-screen">
+
+    <!-- Topbar -->
+    <header class="bg-paper/80 backdrop-blur border-b border-line sticky top-0 z-20">
+      <div class="px-8 py-3.5 flex items-center gap-4">
+        <div class="relative flex-1 max-w-md">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
+          <input placeholder="Buscar expediente, cliente o número de juicio…"
+            class="w-full pl-10 pr-4 py-2 rounded-lg bg-surface border border-line text-[13.5px] placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40 transition">
+        </div>
+        <button class="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] text-ink hover:border-navy/40 transition-colors cursor-pointer">
+          <i data-lucide="bell"></i>
+          <span class="w-1.5 h-1.5 rounded-full bg-danger"></span>
+        </button>
+        <button class="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-700 hover:bg-navy-deep transition-colors cursor-pointer shadow-sm">
+          <i data-lucide="plus"></i> Nuevo expediente
+        </button>
+      </div>
+      <div class="h-px bg-gradient-to-r from-amber/60 via-amber/20 to-transparent"></div>
+    </header>
+
+    <main class="flex-1 px-8 py-7">
+
+      <!-- ============ DASHBOARD ============ -->
+      <section class="view show" id="dashboard">
+        <div class="flex items-end justify-between mb-6">
+          <div>
+            <p class="eyebrow text-amber">Martes 9 de junio, 2026</p>
+            <h1 class="font-serif text-[30px] text-ink leading-tight mt-1">Buenos días, Lic. Christian</h1>
+            <p class="text-muted text-[14px] mt-0.5">Esto es lo que necesita atención hoy.</p>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="grid grid-cols-4 gap-4 mb-6">
+          <div class="bg-surface rounded-xl border border-line shadow-card p-5">
+            <div class="flex items-center justify-between">
+              <p class="eyebrow text-muted">Expedientes activos</p>
+              <i data-lucide="folder-open" class="text-navy/50"></i>
+            </div>
+            <p class="num text-[40px] font-600 text-ink leading-none mt-3">142</p>
+            <p class="text-[12px] text-success mt-1.5 flex items-center gap-1"><i data-lucide="trending-up" class="w-3.5 h-3.5"></i> +6 este mes</p>
+          </div>
+          <div class="bg-surface rounded-xl border border-line shadow-card p-5">
+            <div class="flex items-center justify-between">
+              <p class="eyebrow text-muted">Vencimientos / semana</p>
+              <i data-lucide="alarm-clock" class="text-danger/60"></i>
+            </div>
+            <p class="num text-[40px] font-600 text-danger leading-none mt-3">6</p>
+            <p class="text-[12px] text-muted mt-1.5">2 vencen en 48 h</p>
+          </div>
+          <div class="bg-surface rounded-xl border border-line shadow-card p-5">
+            <div class="flex items-center justify-between">
+              <p class="eyebrow text-muted">Audiencias hoy</p>
+              <i data-lucide="gavel" class="text-navy/50"></i>
+            </div>
+            <p class="num text-[40px] font-600 text-ink leading-none mt-3">3</p>
+            <p class="text-[12px] text-muted mt-1.5">Próxima 10:00</p>
+          </div>
+          <div class="bg-surface rounded-xl border border-line shadow-card p-5">
+            <div class="flex items-center justify-between">
+              <p class="eyebrow text-muted">Citas hoy</p>
+              <i data-lucide="calendar-check" class="text-navy/50"></i>
+            </div>
+            <p class="num text-[40px] font-600 text-ink leading-none mt-3">5</p>
+            <p class="text-[12px] text-muted mt-1.5">2 por confirmar</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-[1.5fr_1fr] gap-5">
+          <!-- Vencimientos -->
+          <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-line flex items-center justify-between">
+              <h3 class="font-serif text-[17px] text-ink">Vencimientos próximos</h3>
+              <a data-nav="expedientes" class="text-[12px] text-navy font-700 cursor-pointer hover:text-amber transition-colors">Ver todos</a>
+            </div>
+            <div>
+              <div class="flex items-center gap-4 px-5 py-3.5 border-b border-line/70 hover:bg-paper/60 transition-colors cursor-pointer">
+                <span class="w-1.5 h-9 rounded-full bg-danger"></span>
+                <div class="flex-1">
+                  <p class="text-[14px] font-700 text-ink">Contestar demanda</p>
+                  <p class="text-[12px] text-muted"><span class="exp-no">EXP-2026-0142</span> · Mercantil · Juan Pérez</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-md bg-danger-wash text-danger text-[11.5px] font-700">Vence mañana</span>
+              </div>
+              <div class="flex items-center gap-4 px-5 py-3.5 border-b border-line/70 hover:bg-paper/60 transition-colors cursor-pointer">
+                <span class="w-1.5 h-9 rounded-full bg-danger/70"></span>
+                <div class="flex-1">
+                  <p class="text-[14px] font-700 text-ink">Ofrecer pruebas</p>
+                  <p class="text-[12px] text-muted"><span class="exp-no">EXP-2026-0098</span> · Civil · Inmobiliaria SA</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-md bg-danger-wash text-danger text-[11.5px] font-700">2 días</span>
+              </div>
+              <div class="flex items-center gap-4 px-5 py-3.5 hover:bg-paper/60 transition-colors cursor-pointer">
+                <span class="w-1.5 h-9 rounded-full bg-amber-soft"></span>
+                <div class="flex-1">
+                  <p class="text-[14px] font-700 text-ink">Presentar alegatos</p>
+                  <p class="text-[12px] text-muted"><span class="exp-no">EXP-2026-0051</span> · Familiar · María López</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-md bg-amber-wash text-amber text-[11.5px] font-700">4 días</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audiencias hoy -->
+          <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-line flex items-center justify-between">
+              <h3 class="font-serif text-[17px] text-ink">Audiencias de hoy</h3>
+              <a data-nav="agenda" class="text-[12px] text-navy font-700 cursor-pointer hover:text-amber transition-colors">Agenda</a>
+            </div>
+            <div class="p-3 space-y-2">
+              <div class="rounded-lg border border-line p-3 flex gap-3 hover:border-navy/30 transition-colors cursor-pointer">
+                <div class="num text-navy text-[15px] font-700 w-12">10:00</div>
+                <div class="border-l border-line pl-3">
+                  <p class="text-[13.5px] font-700 text-ink">Conciliatoria</p>
+                  <p class="text-[11.5px] text-muted"><span class="exp-no">EXP-0142</span> · Juzgado 3.º Civil</p>
+                </div>
+              </div>
+              <div class="rounded-lg border border-line p-3 flex gap-3 hover:border-navy/30 transition-colors cursor-pointer">
+                <div class="num text-navy text-[15px] font-700 w-12">12:30</div>
+                <div class="border-l border-line pl-3">
+                  <p class="text-[13.5px] font-700 text-ink">Desahogo de pruebas</p>
+                  <p class="text-[11.5px] text-muted"><span class="exp-no">EXP-0077</span> · Juzgado 1.º Mercantil</p>
+                </div>
+              </div>
+              <div class="rounded-lg border border-line p-3 flex gap-3 hover:border-navy/30 transition-colors cursor-pointer">
+                <div class="num text-navy text-[15px] font-700 w-12">16:00</div>
+                <div class="border-l border-line pl-3">
+                  <p class="text-[13.5px] font-700 text-ink">Alegatos</p>
+                  <p class="text-[11.5px] text-muted"><span class="exp-no">EXP-0051</span> · Juzgado Familiar</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actividad -->
+        <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden mt-5">
+          <div class="px-5 py-3.5 border-b border-line">
+            <h3 class="font-serif text-[17px] text-ink">Actividad reciente</h3>
+          </div>
+          <div class="divide-y divide-line/70">
+            <div class="flex items-center gap-4 px-5 py-3">
+              <span class="w-8 h-8 rounded-lg bg-navy/8 text-navy flex items-center justify-center"><i data-lucide="file-plus"></i></span>
+              <div class="flex-1 text-[13.5px]"><b>Nuevo expediente</b> <span class="exp-no text-muted">EXP-2026-0142</span> — Juan Pérez (Mercantil)</div>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-success-wash text-success text-[11.5px] font-700"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp</span>
+              <span class="text-[12px] text-muted w-16 text-right">8 min</span>
+            </div>
+            <div class="flex items-center gap-4 px-5 py-3">
+              <span class="w-8 h-8 rounded-lg bg-navy/8 text-navy flex items-center justify-center"><i data-lucide="messages-square"></i></span>
+              <div class="flex-1 text-[13.5px]"><b>Asesoría registrada</b> — despido injustificado</div>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-success-wash text-success text-[11.5px] font-700"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp</span>
+              <span class="text-[12px] text-muted w-16 text-right">40 min</span>
+            </div>
+            <div class="flex items-center gap-4 px-5 py-3">
+              <span class="w-8 h-8 rounded-lg bg-navy/8 text-navy flex items-center justify-center"><i data-lucide="paperclip"></i></span>
+              <div class="flex-1 text-[13.5px]"><b>Documento subido</b> — Contrato.pdf en <span class="exp-no text-muted">EXP-2026-0098</span></div>
+              <span class="px-2.5 py-1 rounded-md bg-line/60 text-muted text-[11.5px] font-700">Web</span>
+              <span class="text-[12px] text-muted w-16 text-right">1 h</span>
+            </div>
+            <div class="flex items-center gap-4 px-5 py-3">
+              <span class="w-8 h-8 rounded-lg bg-navy/8 text-navy flex items-center justify-center"><i data-lucide="banknote"></i></span>
+              <div class="flex-1 text-[13.5px]"><b>Corte de caja</b> — Sucursal Centro <span class="num">$4,500</span></div>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-success-wash text-success text-[11.5px] font-700"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp</span>
+              <span class="text-[12px] text-muted w-16 text-right">2 h</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ EXPEDIENTES (lista) ============ -->
+      <section class="view" id="expedientes">
+        <p class="eyebrow text-amber">Despacho</p>
+        <h1 class="font-serif text-[28px] text-ink leading-tight mt-1">Expedientes</h1>
+        <p class="text-muted text-[14px] mt-0.5 mb-5">142 activos · 38 concluidos · 12 archivados</p>
+
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button class="filter-chip flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors cursor-pointer">Materia <i data-lucide="chevron-down" class="w-4 h-4 text-muted"></i></button>
+          <button class="filter-chip flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors cursor-pointer">Estado <i data-lucide="chevron-down" class="w-4 h-4 text-muted"></i></button>
+          <button class="filter-chip flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors cursor-pointer">Abogado <i data-lucide="chevron-down" class="w-4 h-4 text-muted"></i></button>
+          <button class="filter-chip flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors cursor-pointer">Sucursal <i data-lucide="chevron-down" class="w-4 h-4 text-muted"></i></button>
+          <button class="filter-chip flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors cursor-pointer">Etapa <i data-lucide="chevron-down" class="w-4 h-4 text-muted"></i></button>
+        </div>
+
+        <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-line text-left">
+                <th class="eyebrow text-muted font-700 px-5 py-3">N.º expediente</th>
+                <th class="eyebrow text-muted font-700 px-3 py-3">Cliente</th>
+                <th class="eyebrow text-muted font-700 px-3 py-3">Materia</th>
+                <th class="eyebrow text-muted font-700 px-3 py-3">Etapa</th>
+                <th class="eyebrow text-muted font-700 px-3 py-3">Abogado</th>
+                <th class="eyebrow text-muted font-700 px-3 py-3">Estado</th>
+                <th class="eyebrow text-muted font-700 px-3 py-3">Vencimiento</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line/70 text-[13.5px]">
+              <tr data-nav="expediente" class="hover:bg-paper/60 cursor-pointer transition-colors">
+                <td class="px-5 py-3.5"><span class="exp-no font-600 text-ink">EXP-2026-0142</span><br><span class="text-[11.5px] text-muted">542/2026</span></td>
+                <td class="px-3 py-3.5">Juan Pérez</td>
+                <td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-navy/8 text-navy text-[12px] font-700">Mercantil</span></td>
+                <td class="px-3 py-3.5 text-muted">Contestación</td>
+                <td class="px-3 py-3.5">Christian</td>
+                <td class="px-3 py-3.5"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-700 text-success"><span class="w-1.5 h-1.5 rounded-full bg-success"></span> Activo</span></td>
+                <td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-danger-wash text-danger text-[12px] font-700">Mañana</span></td>
+              </tr>
+              <tr data-nav="expediente" class="hover:bg-paper/60 cursor-pointer transition-colors">
+                <td class="px-5 py-3.5"><span class="exp-no font-600 text-ink">EXP-2026-0098</span><br><span class="text-[11.5px] text-muted">311/2026</span></td>
+                <td class="px-3 py-3.5">Inmobiliaria SA</td>
+                <td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-navy/8 text-navy text-[12px] font-700">Civil</span></td>
+                <td class="px-3 py-3.5 text-muted">Pruebas</td>
+                <td class="px-3 py-3.5">Ana</td>
+                <td class="px-3 py-3.5"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-700 text-success"><span class="w-1.5 h-1.5 rounded-full bg-success"></span> Activo</span></td>
+                <td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-danger-wash text-danger text-[12px] font-700">2 días</span></td>
+              </tr>
+              <tr data-nav="expediente" class="hover:bg-paper/60 cursor-pointer transition-colors">
+                <td class="px-5 py-3.5"><span class="exp-no font-600 text-ink">EXP-2026-0051</span><br><span class="text-[11.5px] text-muted">120/2026</span></td>
+                <td class="px-3 py-3.5">María López</td>
+                <td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-navy/8 text-navy text-[12px] font-700">Familiar</span></td>
+                <td class="px-3 py-3.5 text-muted">Alegatos</td>
+                <td class="px-3 py-3.5">Christian</td>
+                <td class="px-3 py-3.5"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-700 text-success"><span class="w-1.5 h-1.5 rounded-full bg-success"></span> Activo</span></td>
+                <td class="px-3 py-3.5 text-muted">4 días</td>
+              </tr>
+              <tr data-nav="expediente" class="hover:bg-paper/60 cursor-pointer transition-colors">
+                <td class="px-5 py-3.5"><span class="exp-no font-600 text-ink">EXP-2026-0077</span><br><span class="text-[11.5px] text-muted">205/2026</span></td>
+                <td class="px-3 py-3.5">Constructora del Sur</td>
+                <td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-navy/8 text-navy text-[12px] font-700">Mercantil</span></td>
+                <td class="px-3 py-3.5 text-muted">Sentencia</td>
+                <td class="px-3 py-3.5">Ana</td>
+                <td class="px-3 py-3.5"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-700 text-success"><span class="w-1.5 h-1.5 rounded-full bg-success"></span> Activo</span></td>
+                <td class="px-3 py-3.5 text-muted">—</td>
+              </tr>
+              <tr data-nav="expediente" class="hover:bg-paper/60 cursor-pointer transition-colors">
+                <td class="px-5 py-3.5"><span class="exp-no font-600 text-ink">EXP-2025-0410</span><br><span class="text-[11.5px] text-muted">889/2025</span></td>
+                <td class="px-3 py-3.5">Pedro Ramírez</td>
+                <td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-navy/8 text-navy text-[12px] font-700">Laboral</span></td>
+                <td class="px-3 py-3.5 text-muted">Ejecución</td>
+                <td class="px-3 py-3.5">Christian</td>
+                <td class="px-3 py-3.5"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-700 text-muted"><span class="w-1.5 h-1.5 rounded-full bg-muted"></span> Suspendido</span></td>
+                <td class="px-3 py-3.5 text-muted">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ EXPEDIENTE (detalle) ============ -->
+      <section class="view" id="expediente">
+        <a data-nav="expedientes" class="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-navy transition-colors cursor-pointer mb-4">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i> Expedientes</a>
+
+        <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
+          <!-- cabecera -->
+          <div class="p-6 border-b border-line">
+            <div class="flex items-start justify-between gap-6">
+              <div>
+                <div class="flex items-center gap-3">
+                  <h1 class="exp-no text-[26px] font-600 text-ink">EXP-2026-0142</h1>
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-success-wash text-success text-[12px] font-700"><span class="w-1.5 h-1.5 rounded-full bg-success"></span> Activo</span>
+                </div>
+                <p class="text-muted text-[14px] mt-1">Juicio Ordinario Mercantil · N.º de juicio <span class="exp-no">542/2026</span> · Juzgado 3.º Civil de Tuxtla</p>
+              </div>
+              <div class="flex gap-2">
+                <button class="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors cursor-pointer"><i data-lucide="pencil"></i> Editar</button>
+                <button class="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-navy text-white text-[13px] font-700 hover:bg-navy-deep transition-colors cursor-pointer"><i data-lucide="plus"></i> Actuación</button>
+              </div>
+            </div>
+
+            <!-- término vigente (destacado) -->
+            <div class="mt-5 rounded-lg border border-danger/30 bg-danger-wash/50 px-4 py-3 flex items-center gap-4">
+              <i data-lucide="alarm-clock" class="text-danger"></i>
+              <div class="flex-1">
+                <p class="text-[13px] font-700 text-danger">Término vigente: contestar demanda</p>
+                <p class="text-[12px] text-muted">Acuerdo 03/06 · Notificado por boletín · 9 días · Inicia 05/06 · <b class="text-ink">Vence 10/06/2026</b></p>
+              </div>
+              <span class="num text-[26px] font-600 text-danger">1<span class="text-[14px] font-sans font-400"> día</span></span>
+            </div>
+
+            <!-- meta -->
+            <div class="grid grid-cols-4 gap-y-4 gap-x-8 mt-5">
+              <div><p class="eyebrow text-muted">Cliente</p><p class="text-[14px] font-700 text-ink mt-1">Juan Pérez</p></div>
+              <div><p class="eyebrow text-muted">Rol</p><p class="text-[14px] font-700 text-ink mt-1">Actor</p></div>
+              <div><p class="eyebrow text-muted">Cuantía</p><p class="num text-[14px] font-700 text-ink mt-1">$250,000</p></div>
+              <div><p class="eyebrow text-muted">Etapa procesal</p><p class="text-[14px] font-700 text-ink mt-1">Contestación</p></div>
+              <div><p class="eyebrow text-muted">Abogado</p><p class="text-[14px] font-700 text-ink mt-1">Lic. Christian</p></div>
+              <div><p class="eyebrow text-muted">Sucursal</p><p class="text-[14px] font-700 text-ink mt-1">Centro</p></div>
+              <div><p class="eyebrow text-muted">Inicio</p><p class="text-[14px] font-700 text-ink mt-1">02/06/2026</p></div>
+              <div><p class="eyebrow text-muted">Última promoción</p><p class="text-[14px] font-700 text-ink mt-1">07/06/2026</p></div>
+            </div>
+          </div>
+
+          <!-- tabs -->
+          <div class="px-6 flex gap-1 border-b border-line">
+            <button class="tab px-4 py-3 text-[13.5px] font-700 text-ink border-b-2 border-amber cursor-pointer" data-tab="t-timeline">Actuaciones</button>
+            <button class="tab px-4 py-3 text-[13.5px] text-muted border-b-2 border-transparent hover:text-ink transition-colors cursor-pointer" data-tab="t-partes">Partes</button>
+            <button class="tab px-4 py-3 text-[13.5px] text-muted border-b-2 border-transparent hover:text-ink transition-colors cursor-pointer" data-tab="t-aud">Audiencias</button>
+            <button class="tab px-4 py-3 text-[13.5px] text-muted border-b-2 border-transparent hover:text-ink transition-colors cursor-pointer" data-tab="t-docs">Documentos</button>
+            <button class="tab px-4 py-3 text-[13.5px] text-muted border-b-2 border-transparent hover:text-ink transition-colors cursor-pointer" data-tab="t-caja">Caja</button>
+          </div>
+
+          <div class="p-6">
+            <!-- timeline -->
+            <div class="tabpane show" id="t-timeline">
+              <div class="relative pl-6">
+                <div class="absolute left-[7px] top-1 bottom-1 w-px bg-line"></div>
+                <div class="relative mb-5">
+                  <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-amber border-2 border-paper"></span>
+                  <div class="flex items-center gap-2">
+                    <p class="text-[14px] font-700 text-ink">Expediente creado</p>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success-wash text-success text-[11px] font-700"><i data-lucide="message-circle" class="w-3 h-3"></i> WhatsApp</span>
+                  </div>
+                  <p class="text-[12.5px] text-muted">02/06/2026 · registrado por Lic. Christian</p>
+                </div>
+                <div class="relative mb-5">
+                  <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-navy border-2 border-paper"></span>
+                  <p class="text-[14px] font-700 text-ink">Auto admisorio de demanda</p>
+                  <p class="text-[12.5px] text-muted">03/06/2026 · "Se admite la demanda en la vía ordinaria mercantil…"</p>
+                </div>
+                <div class="relative mb-5">
+                  <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-navy border-2 border-paper"></span>
+                  <p class="text-[14px] font-700 text-ink">Emplazamiento al demandado</p>
+                  <p class="text-[12.5px] text-muted">05/06/2026 · diligencia practicada</p>
+                </div>
+                <div class="relative">
+                  <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-amber border-2 border-paper"></span>
+                  <div class="flex items-center gap-2">
+                    <p class="text-[14px] font-700 text-ink">Cliente entregó pagarés originales</p>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success-wash text-success text-[11px] font-700"><i data-lucide="message-circle" class="w-3 h-3"></i> WhatsApp</span>
+                  </div>
+                  <p class="text-[12.5px] text-muted">07/06/2026 · Lic. Christian</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- partes -->
+            <div class="tabpane" id="t-partes">
+              <table class="w-full text-[13.5px]">
+                <thead><tr class="border-b border-line text-left"><th class="eyebrow text-muted px-2 py-2.5">Nombre</th><th class="eyebrow text-muted px-2 py-2.5">Rol</th><th class="eyebrow text-muted px-2 py-2.5">Contacto</th></tr></thead>
+                <tbody class="divide-y divide-line/70">
+                  <tr><td class="px-2 py-3 font-700">Juan Pérez</td><td class="px-2 py-3">Actor (cliente)</td><td class="px-2 py-3 num text-muted">961 123 4567</td></tr>
+                  <tr><td class="px-2 py-3 font-700">Comercializadora XYZ SA</td><td class="px-2 py-3">Demandado</td><td class="px-2 py-3 text-muted">—</td></tr>
+                  <tr><td class="px-2 py-3 font-700">Lic. Roberto Díaz</td><td class="px-2 py-3">Abogado contrario</td><td class="px-2 py-3 text-muted">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- audiencias -->
+            <div class="tabpane" id="t-aud">
+              <table class="w-full text-[13.5px]">
+                <thead><tr class="border-b border-line text-left"><th class="eyebrow text-muted px-2 py-2.5">Fecha y hora</th><th class="eyebrow text-muted px-2 py-2.5">Tipo</th><th class="eyebrow text-muted px-2 py-2.5">Lugar</th><th class="eyebrow text-muted px-2 py-2.5">Estado</th></tr></thead>
+                <tbody class="divide-y divide-line/70">
+                  <tr><td class="px-2 py-3 num">09/06/2026 10:00</td><td class="px-2 py-3">Conciliatoria</td><td class="px-2 py-3 text-muted">Juzgado 3.º Civil</td><td class="px-2 py-3"><span class="px-2 py-0.5 rounded bg-navy/8 text-navy text-[12px] font-700">Programada</span></td></tr>
+                  <tr><td class="px-2 py-3 num">21/05/2026 09:00</td><td class="px-2 py-3">Inicial</td><td class="px-2 py-3 text-muted">Juzgado 3.º Civil</td><td class="px-2 py-3"><span class="px-2 py-0.5 rounded bg-success-wash text-success text-[12px] font-700">Realizada</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- docs -->
+            <div class="tabpane" id="t-docs">
+              <!-- zona de carga -->
+              <div id="dropzone" class="rounded-xl border-2 border-dashed border-line bg-paper/40 px-6 py-7 text-center cursor-pointer hover:border-navy/40 hover:bg-paper transition-colors mb-4">
+                <div class="w-11 h-11 mx-auto rounded-full bg-navy/8 flex items-center justify-center text-navy">
+                  <i data-lucide="upload-cloud"></i>
+                </div>
+                <p class="text-[14px] font-700 text-ink mt-3">Arrastra un PDF aquí o <span class="text-navy underline decoration-amber/60 underline-offset-2">haz clic para seleccionar</span></p>
+                <p class="text-[12px] text-muted mt-1">Solo archivos PDF · máximo 20 MB</p>
+                <input id="fileInput" type="file" accept="application/pdf" multiple class="hidden">
+              </div>
+
+              <!-- lista de documentos -->
+              <div id="docList" class="space-y-2">
+                <div class="flex items-center gap-3 rounded-lg border border-line px-4 py-3 hover:border-navy/30 transition-colors cursor-pointer">
+                  <i data-lucide="file-text" class="text-navy"></i>
+                  <div class="flex-1"><p class="text-[13.5px] font-700">Demanda.pdf</p><p class="text-[11.5px] text-muted">Demanda · 02/06/2026</p></div>
+                  <span class="inline-flex items-center gap-1.5 text-[12.5px] text-navy font-700"><i data-lucide="external-link" class="w-4 h-4"></i> Abrir en Drive</span>
+                </div>
+                <div class="flex items-center gap-3 rounded-lg border border-line px-4 py-3 hover:border-navy/30 transition-colors cursor-pointer">
+                  <i data-lucide="file-text" class="text-navy"></i>
+                  <div class="flex-1"><p class="text-[13.5px] font-700">Pagares.pdf</p><p class="text-[11.5px] text-muted">Prueba documental · 07/06/2026</p></div>
+                  <span class="inline-flex items-center gap-1.5 text-[12.5px] text-navy font-700"><i data-lucide="external-link" class="w-4 h-4"></i> Abrir en Drive</span>
+                </div>
+                <div class="flex items-center gap-3 rounded-lg border border-line px-4 py-3 hover:border-navy/30 transition-colors cursor-pointer">
+                  <i data-lucide="file-text" class="text-navy"></i>
+                  <div class="flex-1"><p class="text-[13.5px] font-700">INE_cliente.pdf</p><p class="text-[11.5px] text-muted">Identificación · 02/06/2026</p></div>
+                  <span class="inline-flex items-center gap-1.5 text-[12.5px] text-navy font-700"><i data-lucide="external-link" class="w-4 h-4"></i> Abrir en Drive</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- caja -->
+            <div class="tabpane" id="t-caja">
+              <table class="w-full text-[13.5px]">
+                <thead><tr class="border-b border-line text-left"><th class="eyebrow text-muted px-2 py-2.5">Fecha</th><th class="eyebrow text-muted px-2 py-2.5">Concepto</th><th class="eyebrow text-muted px-2 py-2.5">Tipo</th><th class="eyebrow text-muted px-2 py-2.5 text-right">Monto</th></tr></thead>
+                <tbody class="divide-y divide-line/70">
+                  <tr><td class="px-2 py-3 num">02/06/2026</td><td class="px-2 py-3">Anticipo de honorarios</td><td class="px-2 py-3"><span class="text-success font-700">Ingreso</span></td><td class="px-2 py-3 num text-right font-700">$8,000</td></tr>
+                  <tr><td class="px-2 py-3 num">05/06/2026</td><td class="px-2 py-3">Gastos de emplazamiento</td><td class="px-2 py-3"><span class="text-danger font-700">Egreso</span></td><td class="px-2 py-3 num text-right font-700">$650</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ AGENDA ============ -->
+      <section class="view" id="agenda">
+        <p class="eyebrow text-amber">Despacho</p>
+        <h1 class="font-serif text-[28px] text-ink leading-tight mt-1">Agenda</h1>
+        <p class="text-muted text-[14px] mt-0.5 mb-5">Audiencias, citas y vencimientos · semana del 8 al 14 de junio</p>
+
+        <div class="flex items-center gap-2 mb-4">
+          <button class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors cursor-pointer"><i data-lucide="chevron-left" class="w-4 h-4"></i> Semana anterior</button>
+          <button class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors cursor-pointer">Siguiente <i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+          <span class="flex-1"></span>
+          <span class="inline-flex items-center gap-1.5 text-[12px] text-muted"><span class="w-2.5 h-2.5 rounded-sm bg-navy"></span> Audiencia</span>
+          <span class="inline-flex items-center gap-1.5 text-[12px] text-muted ml-3"><span class="w-2.5 h-2.5 rounded-sm bg-amber-soft"></span> Cita</span>
+          <span class="inline-flex items-center gap-1.5 text-[12px] text-muted ml-3"><span class="w-2.5 h-2.5 rounded-sm bg-danger"></span> Vencimiento</span>
+        </div>
+
+        <div class="grid grid-cols-5 gap-3">
+          <div class="bg-surface rounded-xl border border-line shadow-card p-3 min-h-[220px]">
+            <p class="eyebrow text-muted mb-2">Lun 8</p>
+            <div class="rounded-lg border-l-[3px] border-danger bg-danger-wash/40 px-2.5 py-2 mb-2 text-[12px]"><b>Vence:</b> ofrecer pruebas<br><span class="exp-no text-muted">EXP-0098</span></div>
+          </div>
+          <div class="bg-surface rounded-xl border-2 border-navy/30 shadow-card p-3 min-h-[220px]">
+            <p class="eyebrow text-navy mb-2">Mar 9 · hoy</p>
+            <div class="rounded-lg border-l-[3px] border-navy bg-navy/[.04] px-2.5 py-2 mb-2 text-[12px]"><b class="num">10:00</b> Audiencia<br><span class="exp-no text-muted">EXP-0142</span></div>
+            <div class="rounded-lg border-l-[3px] border-navy bg-navy/[.04] px-2.5 py-2 mb-2 text-[12px]"><b class="num">12:30</b> Audiencia<br><span class="exp-no text-muted">EXP-0077</span></div>
+            <div class="rounded-lg border-l-[3px] border-amber-soft bg-amber-wash/40 px-2.5 py-2 mb-2 text-[12px]"><b class="num">15:00</b> Cita · M. López</div>
+            <div class="rounded-lg border-l-[3px] border-navy bg-navy/[.04] px-2.5 py-2 text-[12px]"><b class="num">16:00</b> Alegatos<br><span class="exp-no text-muted">EXP-0051</span></div>
+          </div>
+          <div class="bg-surface rounded-xl border border-line shadow-card p-3 min-h-[220px]">
+            <p class="eyebrow text-muted mb-2">Mié 10</p>
+            <div class="rounded-lg border-l-[3px] border-danger bg-danger-wash/40 px-2.5 py-2 mb-2 text-[12px]"><b>Vence:</b> contestar demanda<br><span class="exp-no text-muted">EXP-0142</span></div>
+            <div class="rounded-lg border-l-[3px] border-amber-soft bg-amber-wash/40 px-2.5 py-2 text-[12px]"><b class="num">11:00</b> Cita · nuevo cliente</div>
+          </div>
+          <div class="bg-surface rounded-xl border border-line shadow-card p-3 min-h-[220px]">
+            <p class="eyebrow text-muted mb-2">Jue 11</p>
+            <div class="rounded-lg border-l-[3px] border-amber-soft bg-amber-wash/40 px-2.5 py-2 text-[12px]"><b class="num">17:00</b> Cita · P. Ramírez</div>
+          </div>
+          <div class="bg-surface rounded-xl border border-line shadow-card p-3 min-h-[220px]">
+            <p class="eyebrow text-muted mb-2">Vie 12</p>
+            <div class="rounded-lg border-l-[3px] border-navy bg-navy/[.04] px-2.5 py-2 text-[12px]"><b class="num">09:30</b> Audiencia<br><span class="exp-no text-muted">EXP-0410</span></div>
+          </div>
+        </div>
+        <p class="text-[12px] text-muted mt-4">Las citas entran solas desde el bot de WhatsApp; las audiencias y vencimientos, desde cada expediente.</p>
+      </section>
+
+      <!-- ============ CLIENTES ============ -->
+      <section class="view" id="clientes">
+        <p class="eyebrow text-amber">Despacho</p>
+        <h1 class="font-serif text-[28px] text-ink leading-tight mt-1">Clientes</h1>
+        <p class="text-muted text-[14px] mt-0.5 mb-5">98 clientes registrados</p>
+
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors cursor-pointer">Tipo <i data-lucide="chevron-down" class="w-4 h-4 text-muted"></i></button>
+          <span class="flex-1"></span>
+          <button class="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-700 hover:bg-navy-deep transition-colors cursor-pointer"><i data-lucide="plus"></i> Nuevo cliente</button>
+        </div>
+
+        <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
+          <table class="w-full text-[13.5px]">
+            <thead><tr class="border-b border-line text-left">
+              <th class="eyebrow text-muted px-5 py-3">Nombre</th>
+              <th class="eyebrow text-muted px-3 py-3">Tipo</th>
+              <th class="eyebrow text-muted px-3 py-3">Teléfono</th>
+              <th class="eyebrow text-muted px-3 py-3">Expedientes</th>
+              <th class="eyebrow text-muted px-3 py-3">Última asesoría</th>
+            </tr></thead>
+            <tbody class="divide-y divide-line/70">
+              <tr class="hover:bg-paper/60 cursor-pointer transition-colors"><td class="px-5 py-3.5 font-700">Juan Pérez</td><td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-line/60 text-muted text-[12px] font-700">Física</span></td><td class="px-3 py-3.5 num text-muted">961 123 4567</td><td class="px-3 py-3.5 num">2</td><td class="px-3 py-3.5 num text-muted">07/06/2026</td></tr>
+              <tr class="hover:bg-paper/60 cursor-pointer transition-colors"><td class="px-5 py-3.5 font-700">Inmobiliaria SA</td><td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-navy/8 text-navy text-[12px] font-700">Moral</span></td><td class="px-3 py-3.5 num text-muted">961 987 6543</td><td class="px-3 py-3.5 num">3</td><td class="px-3 py-3.5 num text-muted">01/06/2026</td></tr>
+              <tr class="hover:bg-paper/60 cursor-pointer transition-colors"><td class="px-5 py-3.5 font-700">María López</td><td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-line/60 text-muted text-[12px] font-700">Física</span></td><td class="px-3 py-3.5 num text-muted">961 555 1212</td><td class="px-3 py-3.5 num">1</td><td class="px-3 py-3.5 num text-muted">28/05/2026</td></tr>
+              <tr class="hover:bg-paper/60 cursor-pointer transition-colors"><td class="px-5 py-3.5 font-700">Constructora del Sur</td><td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-navy/8 text-navy text-[12px] font-700">Moral</span></td><td class="px-3 py-3.5 num text-muted">961 444 2020</td><td class="px-3 py-3.5 num">1</td><td class="px-3 py-3.5 text-muted">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ CAJA ============ -->
+      <section class="view" id="caja">
+        <p class="eyebrow text-amber">Administración</p>
+        <h1 class="font-serif text-[28px] text-ink leading-tight mt-1">Caja</h1>
+        <p class="text-muted text-[14px] mt-0.5 mb-5">Cortes y movimientos · junio 2026</p>
+
+        <div class="grid grid-cols-4 gap-4 mb-6">
+          <div class="bg-surface rounded-xl border border-line shadow-card p-5"><p class="eyebrow text-muted">Ingresos del mes</p><p class="num text-[34px] font-600 text-success leading-none mt-3">$42,300</p></div>
+          <div class="bg-surface rounded-xl border border-line shadow-card p-5"><p class="eyebrow text-muted">Egresos del mes</p><p class="num text-[34px] font-600 text-danger leading-none mt-3">$7,100</p></div>
+          <div class="bg-surface rounded-xl border border-line shadow-card p-5"><p class="eyebrow text-muted">Balance</p><p class="num text-[34px] font-600 text-ink leading-none mt-3">$35,200</p></div>
+          <div class="bg-surface rounded-xl border border-line shadow-card p-5"><p class="eyebrow text-muted">Sucursales</p><p class="num text-[34px] font-600 text-ink leading-none mt-3">3</p></div>
+        </div>
+
+        <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
+          <table class="w-full text-[13.5px]">
+            <thead><tr class="border-b border-line text-left">
+              <th class="eyebrow text-muted px-5 py-3">Fecha</th>
+              <th class="eyebrow text-muted px-3 py-3">Sucursal</th>
+              <th class="eyebrow text-muted px-3 py-3">Concepto</th>
+              <th class="eyebrow text-muted px-3 py-3">Expediente</th>
+              <th class="eyebrow text-muted px-3 py-3">Tipo</th>
+              <th class="eyebrow text-muted px-3 py-3 text-right">Monto</th>
+              <th class="eyebrow text-muted px-3 py-3">Origen</th>
+            </tr></thead>
+            <tbody class="divide-y divide-line/70">
+              <tr class="hover:bg-paper/60 transition-colors"><td class="px-5 py-3.5 num">09/06</td><td class="px-3 py-3.5">Centro</td><td class="px-3 py-3.5">Corte de caja</td><td class="px-3 py-3.5 text-muted">—</td><td class="px-3 py-3.5"><span class="text-success font-700">Ingreso</span></td><td class="px-3 py-3.5 num text-right font-700">$4,500</td><td class="px-3 py-3.5"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-success-wash text-success text-[11.5px] font-700"><i data-lucide="message-circle" class="w-3 h-3"></i> WhatsApp</span></td></tr>
+              <tr class="hover:bg-paper/60 transition-colors"><td class="px-5 py-3.5 num">02/06</td><td class="px-3 py-3.5">Centro</td><td class="px-3 py-3.5">Anticipo honorarios</td><td class="px-3 py-3.5"><span class="exp-no text-muted">EXP-0142</span></td><td class="px-3 py-3.5"><span class="text-success font-700">Ingreso</span></td><td class="px-3 py-3.5 num text-right font-700">$8,000</td><td class="px-3 py-3.5"><span class="px-2 py-0.5 rounded bg-line/60 text-muted text-[11.5px] font-700">Web</span></td></tr>
+              <tr class="hover:bg-paper/60 transition-colors"><td class="px-5 py-3.5 num">05/06</td><td class="px-3 py-3.5">Centro</td><td class="px-3 py-3.5">Gastos emplazamiento</td><td class="px-3 py-3.5"><span class="exp-no text-muted">EXP-0142</span></td><td class="px-3 py-3.5"><span class="text-danger font-700">Egreso</span></td><td class="px-3 py-3.5 num text-right font-700">$650</td><td class="px-3 py-3.5"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-success-wash text-success text-[11.5px] font-700"><i data-lucide="message-circle" class="w-3 h-3"></i> WhatsApp</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ CONFIG ============ -->
+      <section class="view" id="config">
+        <p class="eyebrow text-amber">Administración</p>
+        <h1 class="font-serif text-[28px] text-ink leading-tight mt-1">Configuración</h1>
+        <p class="text-muted text-[14px] mt-0.5 mb-5">Personalización del despacho — esto hace al sistema reutilizable</p>
+
+        <div class="grid grid-cols-2 gap-5">
+          <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-line"><h3 class="font-serif text-[17px]">Datos del despacho</h3></div>
+            <div class="divide-y divide-line/70 text-[13.5px]">
+              <div class="flex items-center justify-between px-5 py-3"><span class="text-muted">Nombre</span><span class="font-700">Villafuerte y Asociados</span></div>
+              <div class="flex items-center justify-between px-5 py-3"><span class="text-muted">Logo</span><span class="text-navy font-700 cursor-pointer">Subir imagen</span></div>
+              <div class="flex items-center justify-between px-5 py-3"><span class="text-muted">Sucursales</span><span class="font-700">Centro · Norte · Plaza</span></div>
+            </div>
+          </div>
+          <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-line"><h3 class="font-serif text-[17px]">Catálogos editables</h3></div>
+            <div class="divide-y divide-line/70 text-[13.5px]">
+              <div class="flex items-center justify-between px-5 py-3"><span class="text-muted">Materias</span><span class="font-700">Civil, Mercantil, Penal, Familiar…</span></div>
+              <div class="flex items-center justify-between px-5 py-3"><span class="text-muted">Etapas procesales</span><span class="font-700">Demanda → Contestación → Pruebas…</span></div>
+              <div class="flex items-center justify-between px-5 py-3"><span class="text-muted">Juzgados</span><span class="font-700">12 registrados</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden mt-5">
+          <div class="px-5 py-3.5 border-b border-line flex items-center justify-between">
+            <h3 class="font-serif text-[17px]">Usuarios y WhatsApp</h3>
+            <button class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg border border-line text-[12.5px] hover:border-navy/40 transition-colors cursor-pointer"><i data-lucide="plus" class="w-4 h-4"></i> Agregar</button>
+          </div>
+          <table class="w-full text-[13.5px]">
+            <thead><tr class="border-b border-line text-left"><th class="eyebrow text-muted px-5 py-3">Nombre</th><th class="eyebrow text-muted px-3 py-3">Rol</th><th class="eyebrow text-muted px-3 py-3">WhatsApp (dictado)</th></tr></thead>
+            <tbody class="divide-y divide-line/70">
+              <tr><td class="px-5 py-3 font-700">Lic. Christian</td><td class="px-3 py-3"><span class="px-2 py-0.5 rounded bg-amber-wash text-amber text-[12px] font-700">Admin</span></td><td class="px-3 py-3 num text-muted">961 268 3551</td></tr>
+              <tr><td class="px-5 py-3 font-700">Lic. Ana</td><td class="px-3 py-3"><span class="px-2 py-0.5 rounded bg-navy/8 text-navy text-[12px] font-700">Abogado</span></td><td class="px-3 py-3 num text-muted">961 550 9634</td></tr>
+            </tbody>
+          </table>
+          <p class="text-[12px] text-muted px-5 py-3">El teléfono identifica quién dicta por el bot, para registrar la actuación a su nombre.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  function nav(view){
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('show'));
+    var el=document.getElementById(view); if(el) el.classList.add('show');
+    document.querySelectorAll('.nav-item').forEach(a=>{
+      var on = a.dataset.nav===view;
+      a.classList.toggle('text-white',on);
+      a.classList.toggle('bg-white/[.06]',on);
+      a.classList.toggle('border-amber',on);
+      a.classList.toggle('border-transparent',!on);
+    });
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('[data-nav]').forEach(el=>el.addEventListener('click',()=>nav(el.dataset.nav)));
+  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>{x.classList.remove('text-ink','border-amber','font-700');x.classList.add('text-muted','border-transparent');});
+    document.querySelectorAll('.tabpane').forEach(x=>x.classList.remove('show'));
+    t.classList.add('text-ink','border-amber','font-700');t.classList.remove('text-muted','border-transparent');
+    document.getElementById(t.dataset.tab).classList.add('show');
+  }));
+
+  // ---- Subida de PDFs por expediente ----
+  var dropzone=document.getElementById('dropzone');
+  var fileInput=document.getElementById('fileInput');
+  var docList=document.getElementById('docList');
+
+  function hoy(){ return new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+
+  function agregarDoc(file){
+    if(file.type!=='application/pdf'){ alert('Solo se permiten archivos PDF.'); return; }
+    var row=document.createElement('div');
+    row.className='flex items-center gap-3 rounded-lg border border-navy/30 bg-paper/40 px-4 py-3';
+    row.innerHTML =
+      '<i data-lucide="file-text" class="text-navy"></i>'+
+      '<div class="flex-1"><p class="text-[13.5px] font-700">'+file.name+'</p>'+
+      '<p class="text-[11.5px] text-muted">Subido ahora · '+hoy()+'</p></div>'+
+      '<span class="inline-flex items-center gap-1.5 text-[12px] text-amber font-700">'+
+      '<i data-lucide="loader" class="w-4 h-4"></i> Subiendo…</span>';
+    docList.prepend(row);
+    lucide.createIcons();
+    // simula que termina la carga (en producción: respuesta del backend con el link)
+    setTimeout(function(){
+      row.querySelector('span').outerHTML =
+        '<span class="inline-flex items-center gap-1.5 text-[12.5px] text-success font-700">'+
+        '<i data-lucide="check-circle-2" class="w-4 h-4"></i> Guardado</span>';
+      lucide.createIcons();
+    },1200);
+  }
+
+  function manejar(files){ Array.from(files).forEach(agregarDoc); }
+
+  if(dropzone){
+    dropzone.addEventListener('click',function(){ fileInput.click(); });
+    fileInput.addEventListener('change',function(e){ manejar(e.target.files); fileInput.value=''; });
+    ['dragenter','dragover'].forEach(function(ev){
+      dropzone.addEventListener(ev,function(e){ e.preventDefault(); dropzone.classList.add('border-navy/60','bg-paper'); });
+    });
+    ['dragleave','drop'].forEach(function(ev){
+      dropzone.addEventListener(ev,function(e){ e.preventDefault(); dropzone.classList.remove('border-navy/60','bg-paper'); });
+    });
+    dropzone.addEventListener('drop',function(e){ manejar(e.dataTransfer.files); });
+  }
+
+  lucide.createIcons();
+</script>
+</body>
+</html>

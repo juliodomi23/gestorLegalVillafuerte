@@ -1,0 +1,27 @@
+# GestorLegal — Postgres en el VPS del despacho
+# Levantar con: docker compose up -d
+# El puerto se publica SOLO en 127.0.0.1 (no accesible desde internet).
+# La app Next.js y n8n se conectan por la red local del VPS.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: gestorlegal-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"   # solo local — NO exponer a internet
+    volumes:
+      - gestorlegal_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro  # se corre solo en el primer arranque
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  gestorlegal_data:

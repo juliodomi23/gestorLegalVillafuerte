@@ -1,0 +1,41 @@
+# GestorLegal — despliegue todo-en-uno para EasyPanel (app Next.js + Postgres)
+# EasyPanel: crear servicio tipo "Compose" apuntando a este archivo.
+# Las variables se definen en el .env del proyecto (ver .env.example).
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - gestorlegal_data:/var/lib/postgresql/data
+      # Crea las tablas + seed solo en el PRIMER arranque (cuando el volumen está vacío)
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      N8N_API_KEY: ${N8N_API_KEY}
+    ports:
+      # EasyPanel enruta el dominio a este puerto (3000)
+      - "3000:3000"
+
+volumes:
+  gestorlegal_data:

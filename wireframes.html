@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestorLegal — Wireframes lo-fi</title>
+<style>
+  :root{
+    --bg:#fafafa; --panel:#fff; --line:#cfcfcf; --line2:#e3e3e3;
+    --ink:#2b2b2b; --muted:#8a8a8a; --ghost:#b6b6b6;
+    --chip:#ededed; --wa:#dfeee2; --wa-ink:#3a6b48;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+  .lofi-banner{background:#222;color:#eee;text-align:center;padding:6px;font-size:12px;letter-spacing:.04em}
+  .app{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+
+  /* Sidebar */
+  .side{border-right:1px solid var(--line);background:var(--panel);padding:16px 0}
+  .brand{padding:0 16px 14px;border-bottom:1px dashed var(--line);margin-bottom:10px}
+  .brand .logo{width:34px;height:34px;border:1px solid var(--line);border-radius:6px;
+    display:flex;align-items:center;justify-content:center;color:var(--ghost);font-size:11px;margin-bottom:8px}
+  .brand b{font-size:13px}
+  .brand small{color:var(--muted);display:block}
+  .nav a{display:flex;gap:10px;align-items:center;padding:9px 16px;color:var(--ink);
+    text-decoration:none;cursor:pointer;border-left:3px solid transparent}
+  .nav a .ic{width:16px;height:16px;border:1px solid var(--line);border-radius:3px;flex:none}
+  .nav a:hover{background:#f3f3f3}
+  .nav a.active{background:#f0f0f0;border-left-color:#777;font-weight:600}
+
+  /* Topbar */
+  .top{display:flex;align-items:center;justify-content:space-between;
+    padding:12px 22px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .search{flex:1;max-width:420px;border:1px solid var(--line);border-radius:6px;
+    padding:8px 12px;color:var(--ghost);background:#fff}
+  .top .user{display:flex;align-items:center;gap:8px;color:var(--muted)}
+  .avatar{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:#eee}
+
+  main{padding:22px}
+  .view{display:none}
+  .view.show{display:block}
+  h1{font-size:19px;margin:0 0 2px}
+  .sub{color:var(--muted);margin:0 0 18px}
+
+  /* Generic blocks */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+  .kpi b{font-size:26px;display:block}
+  .kpi span{color:var(--muted);font-size:12.5px}
+  .card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .card-h h3{margin:0;font-size:14px}
+  .link{color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline}
+
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line2);font-size:13px}
+  th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:#f6f6f6}
+
+  .chip{display:inline-block;background:var(--chip);border:1px solid var(--line2);
+    border-radius:20px;padding:2px 9px;font-size:11.5px;color:#555}
+  .chip.wa{background:var(--wa);border-color:#bcd9c4;color:var(--wa-ink)}
+  .chip.alert{background:#f7e6e6;border-color:#e2c2c2;color:#9a4a4a}
+  .chip.ok{background:#e8efe8;border-color:#cdddce;color:#4a6b4a}
+
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .ph{border:1px solid var(--line);border-radius:6px;padding:7px 12px;color:var(--ghost);background:#fff;font-size:12.5px}
+  .btn{border:1px solid #888;border-radius:6px;padding:7px 14px;background:#efefef;cursor:pointer;font-size:12.5px}
+  .btn.solid{background:#333;color:#fff;border-color:#333}
+
+  .list-row{display:flex;justify-content:space-between;align-items:center;
+    padding:10px 0;border-bottom:1px dashed var(--line2)}
+  .list-row:last-child{border-bottom:0}
+  .list-row small{color:var(--muted)}
+
+  /* Expediente detail */
+  .crumb{color:var(--muted);font-size:12.5px;margin-bottom:10px;cursor:pointer}
+  .exp-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+  .meta{display:grid;grid-template-columns:repeat(4,auto);gap:14px 28px;margin-top:14px}
+  .meta div span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .meta div b{font-size:13.5px;font-weight:600}
+  .tabs{display:flex;gap:4px;margin:18px 0 0;border-bottom:1px solid var(--line)}
+  .tab{padding:9px 14px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;font-size:13px}
+  .tab.active{color:var(--ink);border-bottom-color:#555;font-weight:600}
+  .tabpane{display:none;padding-top:16px}
+  .tabpane.show{display:block}
+
+  .timeline .ev{display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line2)}
+  .timeline .dot{width:10px;height:10px;border-radius:50%;border:1px solid #999;background:#fff;margin-top:5px;flex:none}
+  .timeline .ev small{color:var(--muted);display:block}
+
+  .agenda-day{border:1px solid var(--line);border-radius:8px;padding:12px;background:#fff}
+  .agenda-day h4{margin:0 0 8px;font-size:12.5px;color:var(--muted)}
+  .slot{border:1px solid var(--line2);border-left:3px solid #999;border-radius:5px;padding:8px 10px;margin-bottom:8px;font-size:12.5px}
+  .slot.aud{border-left-color:#666}
+  .slot.cita{border-left-color:#aaa}
+
+  .note{margin-top:22px;color:var(--muted);font-size:12px;border-top:1px dashed var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<div class="lofi-banner">WIREFRAME LO-FI · GestorLegal · estructura y contenido, NO diseño final · navega con el menú izquierdo</div>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">LOGO</div>
+      <b>Villafuerte y Asoc.</b>
+      <small>Despacho jurídico</small>
+    </div>
+    <nav class="nav">
+      <a data-view="dashboard" class="active"><span class="ic"></span> Inicio</a>
+      <a data-view="expedientes"><span class="ic"></span> Expedientes</a>
+      <a data-view="agenda"><span class="ic"></span> Agenda</a>
+      <a data-view="clientes"><span class="ic"></span> Clientes</a>
+      <a data-view="caja" class="admin-only"><span class="ic"></span> Caja</a>
+      <a data-view="config" class="admin-only"><span class="ic"></span> Configuración</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <div>
+    <div class="top">
+      <div class="search">Buscar expediente, cliente, número de juicio…</div>
+      <div class="user">
+        <span style="font-size:12px;color:var(--muted)">Ver como:</span>
+        <select id="roleSel" class="ph" style="padding:6px 8px;color:var(--ink)">
+          <option value="admin">Admin · Lic. Christian</option>
+          <option value="abogado">Abogado · Lic. Ana</option>
+        </select>
+        <span class="avatar"></span>
+      </div>
+    </div>
+    <div id="roleNote" style="display:none;background:#eef3ee;border-bottom:1px solid #cdddce;
+      color:#4a6b4a;padding:7px 22px;font-size:12.5px">
+      Vista de <b>abogado</b>: solo se muestran <b>tus</b> expedientes, agenda y clientes. Sin acceso a Caja ni Configuración.
+    </div>
+
+    <main>
+
+      <!-- ============ DASHBOARD ============ -->
+      <section class="view show" id="dashboard">
+        <h1>Inicio</h1>
+        <p class="sub">Resumen del día — martes 9 de junio</p>
+
+        <div class="grid4" style="margin-bottom:16px">
+          <div class="panel kpi"><b class="swap" data-admin="142" data-abogado="18">142</b><span class="swap" data-admin="Expedientes activos" data-abogado="Mis expedientes">Expedientes activos</span></div>
+          <div class="panel kpi"><b class="swap" data-admin="6" data-abogado="2">6</b><span class="swap" data-admin="Vencimientos esta semana" data-abogado="Mis vencimientos">Vencimientos esta semana</span></div>
+          <div class="panel kpi"><b class="swap" data-admin="3" data-abogado="2">3</b><span class="swap" data-admin="Audiencias hoy" data-abogado="Mis audiencias hoy">Audiencias hoy</span></div>
+          <div class="panel kpi"><b class="swap" data-admin="5" data-abogado="2">5</b><span class="swap" data-admin="Citas hoy" data-abogado="Mis citas hoy">Citas hoy</span></div>
+        </div>
+
+        <div class="grid2">
+          <div class="panel">
+            <div class="card-h"><h3>Vencimientos próximos</h3><span class="link" data-view="expedientes">Ver todos</span></div>
+            <div class="list-row">
+              <div><b>Contestar demanda</b><br><small>EXP-2026-0142 · Mercantil · J. Pérez</small></div>
+              <span class="chip alert">vence mañana</span>
+            </div>
+            <div class="list-row">
+              <div><b>Ofrecer pruebas</b><br><small>EXP-2026-0098 · Civil · Inmobiliaria SA</small></div>
+              <span class="chip alert">2 días</span>
+            </div>
+            <div class="list-row">
+              <div><b>Presentar alegatos</b><br><small>EXP-2026-0051 · Familiar · M. López</small></div>
+              <span class="chip">4 días</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="card-h"><h3>Audiencias de hoy</h3><span class="link" data-view="agenda">Agenda</span></div>
+            <div class="list-row"><div><b>10:00</b> · Conciliatoria<br><small>EXP-2026-0142 · Juzgado 3º Civil</small></div><span class="chip">Lic. Christian</span></div>
+            <div class="list-row"><div><b>12:30</b> · Desahogo pruebas<br><small>EXP-2026-0077 · Juzgado 1º Mercantil</small></div><span class="chip">Lic. Ana</span></div>
+            <div class="list-row"><div><b>16:00</b> · Alegatos<br><small>EXP-2026-0051 · Juzgado Familiar</small></div><span class="chip">Lic. Christian</span></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:16px">
+          <div class="card-h"><h3>Actividad reciente</h3></div>
+          <div class="list-row">
+            <div><b>Nuevo expediente</b> EXP-2026-0142 — Juan Pérez (Mercantil)<br><small>hace 8 min</small></div>
+            <span class="chip wa">vía WhatsApp · Lic. Christian</span>
+          </div>
+          <div class="list-row">
+            <div><b>Asesoría registrada</b> — despido injustificado<br><small>hace 40 min</small></div>
+            <span class="chip wa">vía WhatsApp · Lic. Ana</span>
+          </div>
+          <div class="list-row">
+            <div><b>Documento subido</b> — Contrato.pdf en EXP-2026-0098<br><small>hace 1 h</small></div>
+            <span class="chip">web</span>
+          </div>
+          <div class="list-row">
+            <div><b>Corte de caja</b> — Sucursal Centro $4,500<br><small>hace 2 h</small></div>
+            <span class="chip wa">vía WhatsApp</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ EXPEDIENTES (lista) ============ -->
+      <section class="view" id="expedientes">
+        <h1 class="swap" data-admin="Expedientes" data-abogado="Mis expedientes">Expedientes</h1>
+        <p class="sub swap" data-admin="142 activos · 38 concluidos · 12 archivados" data-abogado="18 activos asignados a ti">142 activos · 38 concluidos · 12 archivados</p>
+
+        <div class="filters">
+          <span class="ph">Materia ▾</span>
+          <span class="ph">Estado ▾</span>
+          <span class="ph">Abogado ▾</span>
+          <span class="ph">Sucursal ▾</span>
+          <span class="ph">Etapa procesal ▾</span>
+          <span style="flex:1"></span>
+          <span class="btn solid">+ Nuevo expediente</span>
+        </div>
+
+        <div class="panel" style="padding:0">
+          <table>
+            <thead><tr>
+              <th>N° interno</th><th>N° juicio</th><th>Cliente</th><th>Materia</th>
+              <th>Etapa</th><th>Abogado</th><th>Estado</th><th>Próx. vencimiento</th>
+            </tr></thead>
+            <tbody>
+              <tr data-view="expediente">
+                <td><b>EXP-2026-0142</b></td><td>542/2026</td><td>Juan Pérez</td><td>Mercantil</td>
+                <td>Contestación</td><td>Christian</td><td><span class="chip ok">Activo</span></td><td><span class="chip alert">mañana</span></td>
+              </tr>
+              <tr data-view="expediente">
+                <td><b>EXP-2026-0098</b></td><td>311/2026</td><td>Inmobiliaria SA</td><td>Civil</td>
+                <td>Pruebas</td><td>Ana</td><td><span class="chip ok">Activo</span></td><td><span class="chip alert">2 días</span></td>
+              </tr>
+              <tr data-view="expediente">
+                <td><b>EXP-2026-0051</b></td><td>120/2026</td><td>María López</td><td>Familiar</td>
+                <td>Alegatos</td><td>Christian</td><td><span class="chip ok">Activo</span></td><td>4 días</td>
+              </tr>
+              <tr data-view="expediente">
+                <td><b>EXP-2026-0077</b></td><td>205/2026</td><td>Constructora del Sur</td><td>Mercantil</td>
+                <td>Sentencia</td><td>Ana</td><td><span class="chip ok">Activo</span></td><td>—</td>
+              </tr>
+              <tr data-view="expediente">
+                <td><b>EXP-2025-0410</b></td><td>889/2025</td><td>Pedro Ramírez</td><td>Laboral</td>
+                <td>Ejecución</td><td>Christian</td><td><span class="chip">Suspendido</span></td><td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Click en cualquier fila para abrir la ficha del expediente →</p>
+      </section>
+
+      <!-- ============ EXPEDIENTE (detalle) ============ -->
+      <section class="view" id="expediente">
+        <div class="crumb" data-view="expedientes">← Expedientes</div>
+        <div class="panel">
+          <div class="exp-head">
+            <div>
+              <h1>EXP-2026-0142 <span class="chip ok">Activo</span></h1>
+              <p class="sub" style="margin:4px 0 0">Juicio Ordinario Mercantil · N° juicio 542/2026 · Juzgado 3º Civil de Tuxtla</p>
+            </div>
+            <div><span class="btn">Editar</span> <span class="btn">+ Actuación</span></div>
+          </div>
+          <div class="meta">
+            <div><span>Cliente</span><b>Juan Pérez</b></div>
+            <div><span>Rol</span><b>Actor</b></div>
+            <div><span>Materia</span><b>Mercantil</b></div>
+            <div><span>Cuantía</span><b>$250,000</b></div>
+            <div><span>Etapa procesal</span><b>Contestación</b></div>
+            <div><span>Abogado resp.</span><b>Lic. Christian</b></div>
+            <div><span>Sucursal</span><b>Centro</b></div>
+            <div><span>Inicio</span><b>02/06/2026</b></div>
+          </div>
+
+          <div class="tabs">
+            <div class="tab active" data-tab="t-timeline">Actuaciones</div>
+            <div class="tab" data-tab="t-partes">Partes</div>
+            <div class="tab" data-tab="t-aud">Audiencias</div>
+            <div class="tab" data-tab="t-venc">Vencimientos</div>
+            <div class="tab" data-tab="t-docs">Documentos</div>
+            <div class="tab" data-tab="t-caja">Caja</div>
+          </div>
+
+          <div class="tabpane show timeline" id="t-timeline">
+            <div class="ev"><div class="dot"></div><div>
+              <b>Expediente creado</b> <span class="chip wa">vía WhatsApp</span>
+              <small>02/06/2026 · registrado por Lic. Christian</small></div></div>
+            <div class="ev"><div class="dot"></div><div>
+              <b>Auto admisorio de demanda</b>
+              <small>03/06/2026 · "Se admite la demanda en la vía ordinaria mercantil…"</small></div></div>
+            <div class="ev"><div class="dot"></div><div>
+              <b>Emplazamiento al demandado</b>
+              <small>05/06/2026 · diligencia practicada</small></div></div>
+            <div class="ev"><div class="dot"></div><div>
+              <b>Nota: cliente entregó pagarés originales</b> <span class="chip wa">vía WhatsApp</span>
+              <small>07/06/2026 · Lic. Christian</small></div></div>
+          </div>
+
+          <div class="tabpane" id="t-partes">
+            <table><thead><tr><th>Nombre</th><th>Rol</th><th>Contacto</th></tr></thead>
+            <tbody>
+              <tr><td>Juan Pérez</td><td>Actor (cliente)</td><td>961 123 4567</td></tr>
+              <tr><td>Comercializadora XYZ SA</td><td>Demandado</td><td>—</td></tr>
+              <tr><td>Lic. Roberto Díaz</td><td>Abogado contrario</td><td>—</td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="tabpane" id="t-aud">
+            <table><thead><tr><th>Fecha / hora</th><th>Tipo</th><th>Lugar</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>09/06/2026 10:00</td><td>Conciliatoria</td><td>Juzgado 3º Civil</td><td><span class="chip">Programada</span></td></tr>
+              <tr><td>21/05/2026 09:00</td><td>Inicial</td><td>Juzgado 3º Civil</td><td><span class="chip ok">Realizada</span></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="tabpane" id="t-venc">
+            <table><thead><tr><th>Descripción</th><th>Fecha límite</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Contestar demanda</td><td>10/06/2026</td><td><span class="chip alert">vence mañana</span></td></tr>
+              <tr><td>Ofrecer pruebas</td><td>24/06/2026</td><td><span class="chip">pendiente</span></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="tabpane" id="t-docs">
+            <table><thead><tr><th>Documento</th><th>Tipo</th><th>Subido</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Demanda.pdf</td><td>Demanda</td><td>02/06/2026</td><td><span class="link">Abrir en Drive</span></td></tr>
+              <tr><td>Pagares.pdf</td><td>Prueba documental</td><td>07/06/2026</td><td><span class="link">Abrir en Drive</span></td></tr>
+              <tr><td>INE_cliente.pdf</td><td>Identificación</td><td>02/06/2026</td><td><span class="link">Abrir en Drive</span></td></tr>
+            </tbody></table>
+            <p style="margin-top:10px"><span class="btn">+ Subir documento</span></p>
+          </div>
+
+          <div class="tabpane" id="t-caja">
+            <table><thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th></tr></thead>
+            <tbody>
+              <tr><td>02/06/2026</td><td>Anticipo de honorarios</td><td>Ingreso</td><td>$8,000</td></tr>
+              <tr><td>05/06/2026</td><td>Gastos de emplazamiento</td><td>Egreso</td><td>$650</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ AGENDA ============ -->
+      <section class="view" id="agenda">
+        <h1>Agenda</h1>
+        <p class="sub">Audiencias, citas y vencimientos · semana del 8–14 de junio</p>
+        <div class="filters">
+          <span class="ph">◀ Semana ▶</span>
+          <span class="ph">Abogado: Todos ▾</span>
+          <span class="ph">Tipo: Todos ▾</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+          <div class="agenda-day"><h4>LUN 8</h4>
+            <div class="slot venc">Vence: ofrecer pruebas · EXP-0098</div>
+          </div>
+          <div class="agenda-day"><h4>MAR 9</h4>
+            <div class="slot aud">10:00 Audiencia · EXP-0142</div>
+            <div class="slot aud">12:30 Audiencia · EXP-0077</div>
+            <div class="slot cita">15:00 Cita · M. López</div>
+            <div class="slot aud">16:00 Alegatos · EXP-0051</div>
+          </div>
+          <div class="agenda-day"><h4>MIÉ 10</h4>
+            <div class="slot venc">Vence: contestar demanda · EXP-0142</div>
+            <div class="slot cita">11:00 Cita · nuevo cliente</div>
+          </div>
+          <div class="agenda-day"><h4>JUE 11</h4>
+            <div class="slot cita">17:00 Cita · P. Ramírez</div>
+          </div>
+          <div class="agenda-day"><h4>VIE 12</h4>
+            <div class="slot aud">09:30 Audiencia · EXP-0410</div>
+          </div>
+        </div>
+        <p class="note">Las citas entran solas desde el bot externo de WhatsApp · las audiencias y vencimientos desde el expediente.</p>
+      </section>
+
+      <!-- ============ CLIENTES ============ -->
+      <section class="view" id="clientes">
+        <h1 class="swap" data-admin="Clientes" data-abogado="Mis clientes">Clientes</h1>
+        <p class="sub swap" data-admin="98 clientes registrados" data-abogado="24 clientes tuyos">98 clientes registrados</p>
+        <div class="filters">
+          <span class="ph">Tipo ▾</span>
+          <span style="flex:1"></span>
+          <span class="btn solid">+ Nuevo cliente</span>
+        </div>
+        <div class="panel" style="padding:0">
+          <table>
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Teléfono</th><th>Expedientes</th><th>Última asesoría</th></tr></thead>
+            <tbody>
+              <tr><td><b>Juan Pérez</b></td><td>Física</td><td>961 123 4567</td><td>2</td><td>07/06/2026</td></tr>
+              <tr><td><b>Inmobiliaria SA</b></td><td>Moral</td><td>961 987 6543</td><td>3</td><td>01/06/2026</td></tr>
+              <tr><td><b>María López</b></td><td>Física</td><td>961 555 1212</td><td>1</td><td>28/05/2026</td></tr>
+              <tr><td><b>Constructora del Sur</b></td><td>Moral</td><td>961 444 2020</td><td>1</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ CAJA ============ -->
+      <section class="view" id="caja">
+        <h1>Caja</h1>
+        <p class="sub">Cortes y movimientos · junio 2026</p>
+        <div class="grid4" style="margin-bottom:16px">
+          <div class="panel kpi"><b>$42,300</b><span>Ingresos del mes</span></div>
+          <div class="panel kpi"><b>$7,100</b><span>Egresos del mes</span></div>
+          <div class="panel kpi"><b>$35,200</b><span>Balance</span></div>
+          <div class="panel kpi"><b>3</b><span>Sucursales</span></div>
+        </div>
+        <div class="panel" style="padding:0">
+          <table>
+            <thead><tr><th>Fecha</th><th>Sucursal</th><th>Concepto</th><th>Expediente</th><th>Tipo</th><th>Monto</th><th>Origen</th></tr></thead>
+            <tbody>
+              <tr><td>09/06</td><td>Centro</td><td>Corte de caja</td><td>—</td><td>Ingreso</td><td>$4,500</td><td><span class="chip wa">WhatsApp</span></td></tr>
+              <tr><td>02/06</td><td>Centro</td><td>Anticipo honorarios</td><td>EXP-0142</td><td>Ingreso</td><td>$8,000</td><td><span class="chip">web</span></td></tr>
+              <tr><td>05/06</td><td>Centro</td><td>Gastos emplazamiento</td><td>EXP-0142</td><td>Egreso</td><td>$650</td><td><span class="chip wa">WhatsApp</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ CONFIG ============ -->
+      <section class="view" id="config">
+        <h1>Configuración</h1>
+        <p class="sub">Personalización del despacho (esto hace al producto reutilizable)</p>
+        <div class="grid2">
+          <div class="panel">
+            <div class="card-h"><h3>Datos del despacho</h3></div>
+            <div class="list-row"><span>Nombre</span><small>Villafuerte y Asociados</small></div>
+            <div class="list-row"><span>Logo</span><small>[ subir imagen ]</small></div>
+            <div class="list-row"><span>Sucursales</span><small>Centro · Norte · Plaza</small></div>
+          </div>
+          <div class="panel">
+            <div class="card-h"><h3>Catálogos editables</h3></div>
+            <div class="list-row"><span>Materias</span><small>Civil, Mercantil, Penal, Familiar, Laboral, Amparo</small></div>
+            <div class="list-row"><span>Etapas procesales</span><small>Demanda → Contestación → Pruebas → …</small></div>
+            <div class="list-row"><span>Juzgados</span><small>12 registrados</small></div>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <div class="card-h"><h3>Usuarios y WhatsApp</h3></div>
+          <table><thead><tr><th>Nombre</th><th>Rol</th><th>WhatsApp (dictado)</th></tr></thead>
+          <tbody>
+            <tr><td>Lic. Christian</td><td>Admin</td><td>961 268 3551</td></tr>
+            <tr><td>Lic. Ana</td><td>Abogado</td><td>961 550 9634</td></tr>
+          </tbody></table>
+          <p class="note">El teléfono identifica quién dicta por el bot, para registrar la actuación a su nombre.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // Navegación entre vistas
+  function show(view){
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('show'));
+    var el=document.getElementById(view); if(el) el.classList.add('show');
+    document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===view));
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('[data-view]').forEach(el=>{
+    el.addEventListener('click',()=>show(el.dataset.view));
+  });
+  // Cambio de rol (Admin / Abogado)
+  function setRole(role){
+    var isAbg = role==='abogado';
+    document.querySelectorAll('.admin-only').forEach(el=>el.style.display=isAbg?'none':'');
+    document.getElementById('roleNote').style.display=isAbg?'block':'none';
+    document.querySelectorAll('.swap').forEach(el=>{
+      el.textContent = isAbg ? el.dataset.abogado : el.dataset.admin;
+    });
+    // si el abogado está en una vista que ya no puede ver, mándalo a Inicio
+    var cur=document.querySelector('.view.show');
+    if(isAbg && cur && (cur.id==='caja'||cur.id==='config')) show('dashboard');
+  }
+  document.getElementById('roleSel').addEventListener('change',e=>setRole(e.target.value));
+
+  // Tabs del expediente
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tabpane').forEach(x=>x.classList.remove('show'));
+      t.classList.add('active');
+      document.getElementById(t.dataset.tab).classList.add('show');
+    });
+  });
+</script>
+</body>
+</html>

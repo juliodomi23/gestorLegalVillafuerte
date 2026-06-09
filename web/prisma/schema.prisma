@@ -1,0 +1,323 @@
+// GestorLegal — Esquema Prisma (espejo de ../../schema.sql)
+// Si la BD ya está creada con schema.sql, puedes regenerar esto con: npx prisma db pull
+// Campos con valores fijos (rol, estado, tipo…) se modelan como String; los valores
+// permitidos están en comentarios y los valida el CHECK de Postgres.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Configuracion {
+  id             Int      @id @default(1)
+  nombreDespacho String   @map("nombre_despacho")
+  logoUrl        String?  @map("logo_url")
+  preferencias   Json     @default("{}")
+  actualizadoEn  DateTime @default(now()) @map("actualizado_en") @db.Timestamptz
+
+  @@map("configuracion")
+}
+
+model Sucursal {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre     String
+  direccion  String?
+  telefono   String?
+  creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuarios     Usuario[]
+  expedientes  Expediente[]
+  movimientos  MovimientoCaja[]
+  llamadas     Llamada[]
+  asesorias    Asesoria[]
+  seguimientos Seguimiento[]
+  citas        Cita[]
+
+  @@map("sucursales")
+}
+
+model CatMateria {
+  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre String  @unique
+  activo Boolean @default(true)
+
+  @@map("cat_materias")
+}
+
+model CatEtapa {
+  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre String
+  orden  Int?
+  activo Boolean @default(true)
+
+  @@map("cat_etapas")
+}
+
+model CatJuzgado {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre    String
+  direccion String?
+
+  @@map("cat_juzgados")
+}
+
+model Usuario {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sucursalId       String?  @map("sucursal_id") @db.Uuid
+  nombre           String
+  email            String?  @unique
+  telefonoWhatsapp String?  @map("telefono_whatsapp")
+  rol              String   @default("abogado") // admin | abogado | asistente
+  activo           Boolean  @default(true)
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  sucursal     Sucursal?        @relation(fields: [sucursalId], references: [id])
+  expedientes  Expediente[]
+  actuaciones  Actuacion[]
+  citas        Cita[]
+  asesorias    Asesoria[]
+  documentos   Documento[]
+  movimientos  MovimientoCaja[]
+  seguimientos Seguimiento[]
+
+  @@map("usuarios")
+}
+
+model Cliente {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre    String
+  tipo      String   @default("fisica") // fisica | moral
+  telefono  String?
+  email     String?
+  notas     String?
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  expedientes  Expediente[]
+  citas        Cita[]
+  asesorias    Asesoria[]
+  llamadas     Llamada[]
+  seguimientos Seguimiento[]
+
+  @@map("clientes")
+}
+
+model Expediente {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numeroInterno        String?  @unique @map("numero_interno")
+  numeroJudicial       String?  @map("numero_judicial")
+  clienteId            String?  @map("cliente_id") @db.Uuid
+  rolCliente           String?  @map("rol_cliente") // actor | demandado | tercero
+  materia              String?
+  tipoJuicio           String?  @map("tipo_juicio")
+  juzgado              String?
+  etapaProcesal        String?  @map("etapa_procesal")
+  estado               String   @default("activo") // activo | suspendido | concluido | archivado
+  cuantia              Decimal? @db.Decimal(14, 2)
+  abogadoResponsableId String?  @map("abogado_responsable_id") @db.Uuid
+  sucursalId           String?  @map("sucursal_id") @db.Uuid
+  resumen              String?
+  fechaInicio          DateTime? @map("fecha_inicio") @db.Date
+  creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn        DateTime @default(now()) @map("actualizado_en") @db.Timestamptz
+
+  cliente            Cliente?         @relation(fields: [clienteId], references: [id])
+  abogadoResponsable Usuario?         @relation(fields: [abogadoResponsableId], references: [id])
+  sucursal           Sucursal?        @relation(fields: [sucursalId], references: [id])
+  partes             Parte[]
+  actuaciones        Actuacion[]
+  audiencias         Audiencia[]
+  terminos           Termino[]
+  citas              Cita[]
+  asesorias          Asesoria[]
+  documentos         Documento[]
+  movimientos        MovimientoCaja[]
+
+  @@map("expedientes")
+}
+
+model Parte {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expedienteId String  @map("expediente_id") @db.Uuid
+  nombre       String
+  rol          String? // actor | demandado | tercero | abogado_contrario
+  contacto     String?
+
+  expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+
+  @@map("partes")
+}
+
+model Actuacion {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expedienteId  String   @map("expediente_id") @db.Uuid
+  fecha         DateTime @default(now()) @db.Date
+  tipo          String?  // promocion | acuerdo | notificacion | audiencia | nota
+  descripcion   String?
+  registradoPor String?  @map("registrado_por") @db.Uuid
+  origen        String   @default("web") // web | whatsapp
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  usuario    Usuario?   @relation(fields: [registradoPor], references: [id])
+
+  @@map("actuaciones")
+}
+
+model Audiencia {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expedienteId String   @map("expediente_id") @db.Uuid
+  fechaHora    DateTime @map("fecha_hora") @db.Timestamptz
+  lugar        String?
+  tipo         String?
+  estado       String   @default("programada") // programada | realizada | diferida
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+
+  @@map("audiencias")
+}
+
+model Termino {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expedienteId       String    @map("expediente_id") @db.Uuid
+  tipo               String    @default("termino") // termino | prorroga | prevencion
+  descripcion        String?
+  fechaAcuerdo       DateTime? @map("fecha_acuerdo") @db.Date
+  tipoNotificacion   String?   @map("tipo_notificacion")
+  esPrevencion       Boolean   @default(false) @map("es_prevencion")
+  diasParaContestar  Int?      @map("dias_para_contestar")
+  inicioTermino      DateTime? @map("inicio_termino") @db.Date
+  vencimientoTermino DateTime? @map("vencimiento_termino") @db.Date
+  cumplido           Boolean   @default(false)
+  alertado           Boolean   @default(false)
+  creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+
+  expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+
+  @@map("terminos")
+}
+
+model Cita {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clienteId    String?  @map("cliente_id") @db.Uuid
+  expedienteId String?  @map("expediente_id") @db.Uuid
+  abogadoId    String?  @map("abogado_id") @db.Uuid
+  sucursalId   String?  @map("sucursal_id") @db.Uuid
+  asunto       String?
+  telefono     String?
+  fechaHora    DateTime @map("fecha_hora") @db.Timestamptz
+  estado       String   @default("agendada") // agendada | confirmada | cancelada | no_show
+  origen       String   @default("manual") // bot_externo | manual
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  cliente    Cliente?    @relation(fields: [clienteId], references: [id])
+  expediente Expediente? @relation(fields: [expedienteId], references: [id])
+  abogado    Usuario?    @relation(fields: [abogadoId], references: [id])
+  sucursal   Sucursal?   @relation(fields: [sucursalId], references: [id])
+
+  @@map("citas")
+}
+
+// Embudo de ventas (clientes potenciales), no solo una consulta.
+model Asesoria {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clienteId    String?  @map("cliente_id") @db.Uuid
+  expedienteId String?  @map("expediente_id") @db.Uuid
+  sucursalId   String?  @map("sucursal_id") @db.Uuid
+  fecha        DateTime @default(now()) @db.Date
+  nombre       String?
+  telefono     String?
+  edad         String?
+  domicilio    String?
+  tema         String?
+  resumen      String?
+  pagoAsesoria Boolean  @default(false) @map("pago_asesoria")
+  monto        Decimal? @db.Decimal(14, 2)
+  seguimiento  String?
+  status       String   @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
+  abogadoId    String?  @map("abogado_id") @db.Uuid
+  origen       String   @default("web") // web | whatsapp
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  cliente    Cliente?    @relation(fields: [clienteId], references: [id])
+  expediente Expediente? @relation(fields: [expedienteId], references: [id])
+  sucursal   Sucursal?   @relation(fields: [sucursalId], references: [id])
+  abogado    Usuario?    @relation(fields: [abogadoId], references: [id])
+
+  @@map("asesorias")
+}
+
+// CRM ligero ("Casos por Abogado"): llamadas recurrentes de seguimiento.
+model Seguimiento {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clienteId      String?   @map("cliente_id") @db.Uuid
+  abogadoId      String?   @map("abogado_id") @db.Uuid
+  sucursalId     String?   @map("sucursal_id") @db.Uuid
+  tipoCaso       String?   @map("tipo_caso")
+  fechaInicio    DateTime? @map("fecha_inicio") @db.Date
+  ultimoContacto DateTime? @map("ultimo_contacto") @db.Date
+  proximoLlamado DateTime? @map("proximo_llamado") @db.Date
+  frecuenciaDias Int?      @map("frecuencia_dias")
+  notas          String?
+  estado         String    @default("activo") // activo | suspendido | cerrado
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+
+  cliente  Cliente?  @relation(fields: [clienteId], references: [id])
+  abogado  Usuario?  @relation(fields: [abogadoId], references: [id])
+  sucursal Sucursal? @relation(fields: [sucursalId], references: [id])
+
+  @@map("seguimientos")
+}
+
+model Documento {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expedienteId String   @map("expediente_id") @db.Uuid
+  nombre       String
+  tipo         String?
+  linkDrive    String?  @map("link_drive")
+  subidoPor    String?  @map("subido_por") @db.Uuid
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  usuario    Usuario?   @relation(fields: [subidoPor], references: [id])
+
+  @@map("documentos")
+}
+
+model MovimientoCaja {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sucursalId    String?  @map("sucursal_id") @db.Uuid
+  expedienteId  String?  @map("expediente_id") @db.Uuid
+  tipo          String   // ingreso | egreso
+  concepto      String?
+  monto         Decimal  @db.Decimal(14, 2)
+  fecha         DateTime @default(now()) @db.Date
+  registradoPor String?  @map("registrado_por") @db.Uuid
+  origen        String   @default("web") // web | whatsapp
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  sucursal   Sucursal?   @relation(fields: [sucursalId], references: [id])
+  expediente Expediente? @relation(fields: [expedienteId], references: [id])
+  usuario    Usuario?    @relation(fields: [registradoPor], references: [id])
+
+  @@map("movimientos_caja")
+}
+
+model Llamada {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sucursalId String?  @map("sucursal_id") @db.Uuid
+  clienteId  String?  @map("cliente_id") @db.Uuid
+  fecha      DateTime @default(now()) @db.Date
+  resultado  String?
+  notas      String?
+  creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  sucursal Sucursal? @relation(fields: [sucursalId], references: [id])
+  cliente  Cliente?  @relation(fields: [clienteId], references: [id])
+
+  @@map("llamadas")
+}

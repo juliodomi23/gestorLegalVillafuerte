@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-paper text-ink antialiased;
+  }
+}
+
+@layer utilities {
+  .num {
+    font-family: var(--font-serif), Georgia, serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .exp-no {
+    font-family: var(--font-serif), Georgia, serif;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+}

@@ -1,0 +1,12 @@
+# Entorno — nunca al repo
+.env
+.env.local
+.env*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts de dev temporales
+screenshot*.mjs
+screenshot*.png
