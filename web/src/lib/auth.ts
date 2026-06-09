@@ -15,19 +15,14 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Contraseña", type: "password" },
       },
       async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
         try {
-          if (!credentials?.email || !credentials?.password) {
-            console.log("[AUTH] sin credenciales");
-            return null;
-          }
           const u = await prisma.usuario.findUnique({
             where: { email: credentials.email.toLowerCase() },
             include: { sucursal: true },
           });
-          console.log("[AUTH] usuario encontrado:", u ? `${u.email} activo=${u.activo} tieneHash=${!!u.passwordHash}` : "NO ENCONTRADO");
           if (!u || !u.activo || !u.passwordHash) return null;
           const ok = await bcrypt.compare(credentials.password, u.passwordHash);
-          console.log("[AUTH] bcrypt ok:", ok);
           if (!ok) return null;
           return {
             id: u.id,
@@ -36,8 +31,7 @@ export const authOptions: NextAuthOptions = {
             rol: u.rol as Rol,
             sucursal: u.sucursal?.nombre ?? "",
           };
-        } catch (e) {
-          console.error("[AUTH] error:", e);
+        } catch {
           return null;
         }
       },
