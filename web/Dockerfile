@@ -11,6 +11,10 @@ RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 RUN npm ci
 
+# Cambia BUILDTIME en el environment de EasyPanel para forzar un rebuild sin caché
+ARG BUILDTIME=unknown
+RUN echo "Build: ${BUILDTIME}"
+
 COPY . .
 
 # DATABASE_URL placeholder solo para que `prisma generate`/build no falle por env ausente
