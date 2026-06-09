@@ -13,6 +13,22 @@ export type DatosCita = {
   origen?: "bot_externo" | "manual";
 };
 
+export async function citasDelDia(fecha: string) {
+  const inicio = new Date(fecha);
+  inicio.setHours(0, 0, 0, 0);
+  const fin = new Date(fecha);
+  fin.setHours(23, 59, 59, 999);
+  return prisma.cita.findMany({
+    where: { fechaHora: { gte: inicio, lte: fin } },
+    orderBy: { fechaHora: "asc" },
+    include: { cliente: true, abogado: true, sucursal: true },
+  });
+}
+
+export async function actualizarCita(id: string, estado: "confirmada" | "cancelada") {
+  return prisma.cita.update({ where: { id }, data: { estado } });
+}
+
 export async function agendarCita(d: DatosCita) {
   const fecha = parseFecha(d.fechaHora);
   if (!fecha) throw new Error("fechaHora inválida");

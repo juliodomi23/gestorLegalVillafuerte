@@ -238,9 +238,10 @@ model Asesoria {
   pagoAsesoria Boolean  @default(false) @map("pago_asesoria")
   monto        Decimal? @db.Decimal(14, 2)
   seguimiento  String?
-  status       String   @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
-  abogadoId    String?  @map("abogado_id") @db.Uuid
-  origen       String   @default("web") // web | whatsapp
+  status        String   @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
+  urlDocumento  String?  @map("url_documento")
+  abogadoId     String?  @map("abogado_id") @db.Uuid
+  origen        String   @default("web") // web | whatsapp
   creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   cliente    Cliente?    @relation(fields: [clienteId], references: [id])

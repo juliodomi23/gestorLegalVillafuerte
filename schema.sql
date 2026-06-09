@@ -266,6 +266,7 @@ CREATE TABLE asesorias (
   seguimiento   text,                  -- acción de seguimiento definida
   status        text NOT NULL DEFAULT 'pendiente'
                   CHECK (status IN ('pendiente','contrato_firmado','no_regreso','descartado')),
+  url_documento text,                   -- link Drive al contrato/doc generado por el bot
   abogado_id    uuid REFERENCES usuarios(id) ON DELETE SET NULL,
   origen        text NOT NULL DEFAULT 'web' CHECK (origen IN ('web','whatsapp')),
   creado_en     timestamptz NOT NULL DEFAULT now()
