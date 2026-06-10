@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, UserPlus } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox, EstadoBadge, MateriaTag, Vencimiento } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
@@ -201,6 +202,7 @@ export default function ExpedientesClient({
   sesionNombre: string;
 }) {
   const esAdmin = sesionRol === "admin";
+  const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
   const [fMateria, setFMateria] = useState("");
   const [fEstado, setFEstado] = useState("");
@@ -298,9 +300,13 @@ export default function ExpedientesClient({
           </thead>
           <tbody className="divide-y divide-line/70 text-[13.5px]">
             {visibles.map((e) => (
-              <tr key={e.id} className="hover:bg-paper/60 transition-colors">
+              <tr
+                key={e.id}
+                onClick={() => router.push(`/expedientes/${e.id}`)}
+                className="hover:bg-paper/60 transition-colors cursor-pointer"
+              >
                 <td className="px-5 py-3.5">
-                  <Link href={`/expedientes/${e.id}`} className="exp-no font-semibold text-ink hover:text-navy transition-colors">{e.numeroInterno}</Link>
+                  <span className="exp-no font-semibold text-ink">{e.numeroInterno}</span>
                   <br /><span className="text-[11.5px] text-muted">{e.numeroJudicial}</span>
                 </td>
                 <td className="px-3 py-3.5">{e.cliente}</td>
@@ -310,7 +316,7 @@ export default function ExpedientesClient({
                 <td className="px-3 py-3.5 text-muted">{e.sucursal}</td>
                 <td className="px-3 py-3.5"><EstadoBadge estado={e.estado} /></td>
                 <td className="px-3 py-3.5"><Vencimiento texto={e.vencimiento} urgente={e.urgente} /></td>
-                <td className="px-3 py-3.5">
+                <td className="px-3 py-3.5" onClick={(ev) => ev.stopPropagation()}>
                   <div className="flex items-center justify-end gap-1">
                     <button onClick={() => abrirEditar(e)} className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"><Pencil size={16} /></button>
                     <button onClick={() => borrar(e.id)} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors"><Trash2 size={16} /></button>
