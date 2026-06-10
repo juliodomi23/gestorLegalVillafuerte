@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip } from "lucide-react";
-import { agregarDocumentoDriveAction } from "@/app/(app)/expedientes/actions";
+import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip, Trash2 } from "lucide-react";
+import { agregarDocumentoDriveAction, borrarActuacionAction } from "@/app/(app)/expedientes/actions";
 
 const TABS = [
   { id: "actuaciones", label: "Actuaciones" },
@@ -89,7 +89,7 @@ export function ExpedienteTabs({
       </div>
 
       <div className="p-6">
-        {tab === "actuaciones" && <Actuaciones data={actuaciones} />}
+        {tab === "actuaciones" && <Actuaciones data={actuaciones} expedienteId={expedienteId} />}
         {tab === "partes"      && <Partes data={partes} />}
         {tab === "audiencias"  && <Audiencias data={audiencias} />}
         {tab === "documentos"  && <Documentos expedienteId={expedienteId} inicial={documentosIniciales} />}
@@ -99,13 +99,22 @@ export function ExpedienteTabs({
   );
 }
 
-function Actuaciones({ data }: { data: ActuacionData[] }) {
+function Actuaciones({ data, expedienteId }: { data: ActuacionData[]; expedienteId: string }) {
+  const [borrando, setBorrando] = useState<string | null>(null);
+
+  async function borrar(id: string) {
+    if (!confirm("¿Borrar esta actuación? Esta acción no se puede deshacer.")) return;
+    setBorrando(id);
+    await borrarActuacionAction(id, expedienteId);
+    setBorrando(null);
+  }
+
   if (!data.length) return <p className="text-muted text-[13.5px]">Sin actuaciones registradas.</p>;
   return (
     <div className="relative pl-6">
       <div className="absolute left-[7px] top-1 bottom-1 w-px bg-line" />
       {data.map((e, i) => (
-        <div key={e.id} className={`relative ${i < data.length - 1 ? "mb-5" : ""}`}>
+        <div key={e.id} className={`relative group ${i < data.length - 1 ? "mb-5" : ""}`}>
           <span className={`absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 border-paper ${e.origen === "whatsapp" ? "bg-amber" : "bg-navy"}`} />
           <div className="flex items-center gap-2">
             <p className="text-[14px] font-bold text-ink">{e.tipo ? capitalize(e.tipo) : "Actuación"}</p>
@@ -114,6 +123,14 @@ function Actuaciones({ data }: { data: ActuacionData[] }) {
                 <MessageCircle size={12} /> WhatsApp
               </span>
             )}
+            <button
+              onClick={() => borrar(e.id)}
+              disabled={borrando === e.id}
+              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-danger disabled:opacity-40"
+              title="Borrar actuación"
+            >
+              <Trash2 size={14} strokeWidth={1.75} />
+            </button>
           </div>
           <p className="text-[12.5px] text-muted">
             {e.fecha}

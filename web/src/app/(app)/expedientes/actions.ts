@@ -92,6 +92,11 @@ export async function crearActuacionAction(expedienteId: string, usuarioId: stri
   return { id: actuacion.id };
 }
 
+export async function borrarActuacionAction(actuacionId: string, expedienteId: string) {
+  await prisma.actuacion.delete({ where: { id: actuacionId } });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
 export async function borrarExpedienteAction(id: string) {
   await prisma.expediente.delete({ where: { id } });
   revalidatePath("/expedientes");
