@@ -74,7 +74,7 @@ export default async function AgendaPage({
       hour12: false,
       timeZone: TZ,
     }),
-    cliente: c.cliente?.nombre ?? "—",
+    cliente: c.cliente?.nombre ?? c.clienteNombre ?? "—",
     asunto: c.asunto ?? "—",
     telefono: c.telefono ?? c.cliente?.telefono ?? "—",
     sucursal: c.sucursal?.nombre ?? "—",

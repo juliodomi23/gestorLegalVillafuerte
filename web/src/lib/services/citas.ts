@@ -69,7 +69,12 @@ export async function agendarCita(d: DatosCita) {
     if (existente) {
       return prisma.cita.update({
         where: { id: existente.id },
-        data: { clienteId, asunto: d.asunto, telefono: d.telefono ?? null },
+        data: {
+          clienteId,
+          asunto: d.asunto,
+          telefono: d.telefono ?? null,
+          clienteNombre: clienteId ? null : (d.cliente ?? null),
+        },
       });
     }
   }
@@ -98,6 +103,7 @@ export async function agendarCita(d: DatosCita) {
       fechaHora: fecha,
       origen: d.origen ?? "bot_externo",
       googleEventId: d.googleEventId ?? null,
+      clienteNombre: clienteId ? null : (d.cliente ?? null),
     },
   });
 }
