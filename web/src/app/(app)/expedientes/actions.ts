@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services/resolvers";
 
 export type FormExpediente = {
-  cliente: string;
+  clienteId: string;
+  clienteNombre: string;
   numeroJudicial: string;
   materia: string;
   etapa: string;
@@ -12,12 +13,22 @@ export type FormExpediente = {
   sucursal: string;
 };
 
+export async function crearClienteRapidoAction(nombre: string, telefono?: string) {
+  const id = await upsertCliente(nombre, telefono);
+  return { id, nombre };
+}
+
 export async function crearExpedienteAction(form: FormExpediente) {
-  const [clienteId, abogadoId, sucursalId] = await Promise.all([
-    upsertCliente(form.cliente),
+  let clienteId: string | null = form.clienteId || null;
+  if (!clienteId && form.clienteNombre) {
+    clienteId = await upsertCliente(form.clienteNombre);
+  }
+
+  const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
   ]);
+
   const año = new Date().getFullYear();
   const total = await prisma.expediente.count();
   await prisma.expediente.create({
@@ -35,11 +46,16 @@ export async function crearExpedienteAction(form: FormExpediente) {
 }
 
 export async function editarExpedienteAction(id: string, form: FormExpediente) {
-  const [clienteId, abogadoId, sucursalId] = await Promise.all([
-    upsertCliente(form.cliente),
+  let clienteId: string | null = form.clienteId || null;
+  if (!clienteId && form.clienteNombre) {
+    clienteId = await upsertCliente(form.clienteNombre);
+  }
+
+  const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
   ]);
+
   await prisma.expediente.update({
     where: { id },
     data: {

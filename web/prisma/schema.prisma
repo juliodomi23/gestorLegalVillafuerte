@@ -214,9 +214,10 @@ model Cita {
   asunto       String?
   telefono     String?
   fechaHora    DateTime @map("fecha_hora") @db.Timestamptz
-  estado       String   @default("agendada") // agendada | confirmada | cancelada | no_show
-  origen       String   @default("manual") // bot_externo | manual
-  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  estado         String   @default("agendada") // agendada | confirmada | cancelada | no_show
+  origen         String   @default("manual") // bot_externo | manual
+  googleEventId  String?  @map("google_event_id")
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   cliente    Cliente?    @relation(fields: [clienteId], references: [id])
   expediente Expediente? @relation(fields: [expedienteId], references: [id])

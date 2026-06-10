@@ -11,6 +11,7 @@ export type DatosCita = {
   sucursal?: string;
   numeroExpediente?: string;
   origen?: "bot_externo" | "manual";
+  googleEventId?: string;
 };
 
 export async function citasDelDia(fecha: string) {
@@ -32,6 +33,14 @@ export async function actualizarCita(id: string, estado: "confirmada" | "cancela
 export async function agendarCita(d: DatosCita) {
   const fecha = parseFecha(d.fechaHora);
   if (!fecha) throw new Error("fechaHora inválida");
+
+  // Dedup: si ya existe una cita con este googleEventId, retornar la existente
+  if (d.googleEventId) {
+    const existente = await prisma.cita.findFirst({
+      where: { googleEventId: d.googleEventId },
+    });
+    if (existente) return existente;
+  }
 
   const [clienteId, abogadoId, sucursalId] = await Promise.all([
     upsertCliente(d.cliente, d.telefono),
@@ -57,6 +66,7 @@ export async function agendarCita(d: DatosCita) {
       telefono: d.telefono,
       fechaHora: fecha,
       origen: d.origen ?? "bot_externo",
+      googleEventId: d.googleEventId ?? null,
     },
   });
 }

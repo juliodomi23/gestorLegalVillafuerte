@@ -240,6 +240,7 @@ CREATE TABLE citas (
                   CHECK (estado IN ('agendada','confirmada','cancelada','no_show')),
   origen        text NOT NULL DEFAULT 'manual'
                   CHECK (origen IN ('bot_externo','manual')),
+  google_event_id text,
   creado_en     timestamptz NOT NULL DEFAULT now()
 );
 

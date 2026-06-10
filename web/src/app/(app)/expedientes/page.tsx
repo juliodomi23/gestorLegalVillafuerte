@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ExpedientesClient, { type ExpView } from "./client";
+import type { ClienteBasico } from "./client";
 
 function textoVence(fecha: Date | null): { texto: string; urgente: boolean } | null {
   if (!fecha) return null;
@@ -20,7 +21,7 @@ export default async function ExpedientesPage() {
   const esAdmin = session?.user?.rol === "admin";
   const userId = session?.user?.id;
 
-  const [rows, sucursalesDb, abogadosDb] = await Promise.all([
+  const [rows, sucursalesDb, abogadosDb, clientesDb] = await Promise.all([
     prisma.expediente.findMany({
       where: esAdmin ? undefined : { abogadoResponsableId: userId },
       include: {
@@ -33,6 +34,7 @@ export default async function ExpedientesPage() {
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    prisma.cliente.findMany({ orderBy: { nombre: "asc" }, select: { id: true, nombre: true, telefono: true } }),
   ]);
 
   const expedientes: ExpView[] = rows.map((e) => {
@@ -41,6 +43,7 @@ export default async function ExpedientesPage() {
     const vence = textoVence(proximoVencimiento);
     return {
       id: e.id,
+      clienteId: e.clienteId ?? null,
       numeroInterno: e.numeroInterno ?? "S/N",
       numeroJudicial: e.numeroJudicial ?? "—",
       cliente: e.cliente?.nombre ?? "—",
@@ -56,12 +59,14 @@ export default async function ExpedientesPage() {
 
   const sucursales = sucursalesDb.map((s) => s.nombre);
   const abogados = abogadosDb.map((u) => u.nombre);
+  const clientes: ClienteBasico[] = clientesDb.map((c) => ({ id: c.id, nombre: c.nombre, telefono: c.telefono ?? undefined }));
 
   return (
     <ExpedientesClient
       expedientes={expedientes}
       sucursales={sucursales}
       abogados={abogados}
+      clientes={clientes}
       sesionRol={session?.user?.rol ?? "abogado"}
       sesionNombre={session?.user?.name ?? ""}
     />
