@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus } from "lucide-react";
+import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip } from "lucide-react";
 import { agregarDocumentoDriveAction } from "@/app/(app)/expedientes/actions";
 
 const TABS = [
@@ -21,6 +21,7 @@ export type ActuacionData = {
   fecha: string;
   registradoPor: string | null;
   origen: string;
+  documentos: DocumentoData[];
 };
 
 export type ParteData = {
@@ -119,6 +120,23 @@ function Actuaciones({ data }: { data: ActuacionData[] }) {
             {e.registradoPor ? ` · ${e.registradoPor}` : ""}
             {e.descripcion ? ` · ${e.descripcion}` : ""}
           </p>
+          {e.documentos.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {e.documentos.map((d) => (
+                <a
+                  key={d.id}
+                  href={d.linkDrive ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-line bg-paper text-[12px] text-navy font-bold hover:border-navy/40 transition-colors"
+                >
+                  {d.tipo === "drive" ? <Link2 size={12} strokeWidth={2} /> : <Paperclip size={12} strokeWidth={2} />}
+                  <span className="max-w-[180px] truncate">{d.nombre}</span>
+                  <ExternalLink size={11} className="text-muted shrink-0" />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>

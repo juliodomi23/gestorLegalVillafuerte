@@ -167,6 +167,7 @@ model Actuacion {
 
   expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   usuario    Usuario?   @relation(fields: [registradoPor], references: [id])
+  documentos Documento[]
 
   @@map("actuaciones")
 }
@@ -283,6 +284,7 @@ model Seguimiento {
 model Documento {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   expedienteId String   @map("expediente_id") @db.Uuid
+  actuacionId  String?  @map("actuacion_id") @db.Uuid
   nombre       String
   tipo         String?
   linkDrive    String?  @map("link_drive")
@@ -290,6 +292,7 @@ model Documento {
   creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  actuacion  Actuacion? @relation(fields: [actuacionId], references: [id], onDelete: SetNull)
   usuario    Usuario?   @relation(fields: [subidoPor], references: [id])
 
   @@map("documentos")

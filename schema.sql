@@ -311,6 +311,7 @@ CREATE INDEX idx_seguimientos_proximo
 CREATE TABLE documentos (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   expediente_id uuid NOT NULL REFERENCES expedientes(id) ON DELETE CASCADE,
+  actuacion_id  uuid REFERENCES actuaciones(id) ON DELETE SET NULL,
   nombre        text NOT NULL,
   tipo          text,
   link_drive    text,
@@ -319,6 +320,7 @@ CREATE TABLE documentos (
 );
 
 CREATE INDEX idx_documentos_exp ON documentos(expediente_id);
+CREATE INDEX idx_documentos_act ON documentos(actuacion_id);
 
 
 -- =====================================================================

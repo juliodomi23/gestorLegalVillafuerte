@@ -35,13 +35,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const bytes = await file.arrayBuffer();
   await writeFile(join(UPLOADS_DIR, filename), Buffer.from(bytes));
 
+  const actuacionId = (formData.get("actuacionId") as string | null) || null;
+
   const doc = await prisma.documento.create({
     data: {
       expedienteId: params.id,
+      actuacionId,
       nombre: file.name,
       tipo: "pdf",
       linkDrive: `/api/uploads/${filename}`,
-      subidoPor: session?.user ? undefined : undefined,
+      subidoPor: session?.user?.id ?? null,
     },
   });
 

@@ -78,7 +78,7 @@ export type FormActuacion = {
 };
 
 export async function crearActuacionAction(expedienteId: string, usuarioId: string, form: FormActuacion) {
-  await prisma.actuacion.create({
+  const actuacion = await prisma.actuacion.create({
     data: {
       expedienteId,
       registradoPor: usuarioId || null,
@@ -89,6 +89,7 @@ export async function crearActuacionAction(expedienteId: string, usuarioId: stri
     },
   });
   revalidatePath(`/expedientes/${expedienteId}`);
+  return { id: actuacion.id };
 }
 
 export async function borrarExpedienteAction(id: string) {
@@ -111,10 +112,12 @@ export async function agregarDocumentoDriveAction(
   expedienteId: string,
   nombre: string,
   url: string,
+  actuacionId?: string,
 ) {
   const doc = await prisma.documento.create({
     data: {
       expedienteId,
+      actuacionId: actuacionId ?? null,
       nombre: nombre.trim() || "Documento",
       tipo: "drive",
       linkDrive: url.trim(),

@@ -44,7 +44,10 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
         },
         actuaciones: {
           orderBy: { creadoEn: "desc" },
-          include: { usuario: true },
+          include: {
+            usuario: true,
+            documentos: { orderBy: { creadoEn: "asc" } },
+          },
         },
         partes: true,
         audiencias: { orderBy: { fechaHora: "desc" } },
@@ -82,6 +85,13 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
     fecha: fmtDate(a.fecha),
     registradoPor: a.usuario?.nombre ?? null,
     origen: a.origen,
+    documentos: a.documentos.map((d) => ({
+      id: d.id,
+      nombre: d.nombre,
+      tipo: d.tipo,
+      linkDrive: d.linkDrive,
+      fecha: d.creadoEn.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+    })),
   }));
 
   const partesData: ParteData[] = exp.partes.map((p) => ({
