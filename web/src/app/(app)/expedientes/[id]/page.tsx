@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ArrowLeft, AlarmClock } from "lucide-react";
 import { Card } from "@/components/ui";
-import { ExpedienteTabs, type ActuacionData, type AudienciaData, type DocumentoData, type MovimientoTabData, type ParteData } from "@/components/expediente-tabs";
+import { ExpedienteTabs, type ActuacionData, type AudienciaData, type DocumentoData, type MovimientoTabData, type ParteData, type TerminoTabData } from "@/components/expediente-tabs";
 import { EstadoEditor } from "@/components/estado-editor";
 import { DocumentosBtn } from "@/components/documentos-btn";
 import { ExpedienteAcciones } from "@/components/expediente-acciones";
@@ -38,9 +38,7 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
         abogadoResponsable: true,
         sucursal: true,
         terminos: {
-          where: { cumplido: false },
           orderBy: { vencimientoTermino: "asc" },
-          take: 1,
         },
         actuaciones: {
           orderBy: { creadoEn: "desc" },
@@ -64,8 +62,19 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
   const sucursales = sucursalesDb.map((s) => s.nombre);
   const abogados = abogadosDb.map((u) => u.nombre);
 
-  const terminoActivo = exp.terminos[0] ?? null;
+  const terminoActivo = exp.terminos.find((t) => !t.cumplido) ?? null;
   const diasTermino = terminoActivo?.vencimientoTermino ? diasHasta(terminoActivo.vencimientoTermino) : null;
+
+  const terminosData: TerminoTabData[] = exp.terminos.map((t) => ({
+    id: t.id,
+    tipo: t.tipo,
+    descripcion: t.descripcion,
+    fechaAcuerdo: fmtDate(t.fechaAcuerdo),
+    diasParaContestar: t.diasParaContestar,
+    vencimientoTermino: fmtDate(t.vencimientoTermino),
+    cumplido: t.cumplido,
+    diasRestantes: t.vencimientoTermino && !t.cumplido ? diasHasta(t.vencimientoTermino) : null,
+  }));
 
   const meta = [
     { k: "Cliente",           v: exp.cliente?.nombre ?? "—"                                                    },
@@ -214,6 +223,7 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
           actuaciones={actuacionesData}
           partes={partesData}
           audiencias={audienciasData}
+          terminos={terminosData}
           documentos={documentosData}
           movimientos={movimientosData}
         />

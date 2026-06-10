@@ -1,19 +1,21 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip, Trash2, Pencil } from "lucide-react";
+import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip, Trash2, Pencil, Check } from "lucide-react";
 import {
   agregarDocumentoDriveAction,
   borrarActuacionAction,
   crearParteAction, editarParteAction, borrarParteAction,
   crearAudienciaAction, editarAudienciaAction, borrarAudienciaAction,
   crearMovimientoAction, borrarMovimientoAction,
+  crearTerminoAction, marcarCumplidoTerminoAction, borrarTerminoAction,
 } from "@/app/(app)/expedientes/actions";
 
 const TABS = [
   { id: "actuaciones", label: "Actuaciones" },
   { id: "partes", label: "Partes" },
   { id: "audiencias", label: "Audiencias" },
+  { id: "terminos", label: "Términos" },
   { id: "documentos", label: "Documentos" },
   { id: "caja", label: "Caja" },
 ] as const;
@@ -62,12 +64,24 @@ export type MovimientoTabData = {
   monto: number;
 };
 
+export type TerminoTabData = {
+  id: string;
+  tipo: string | null;
+  descripcion: string | null;
+  fechaAcuerdo: string;
+  diasParaContestar: number | null;
+  vencimientoTermino: string;
+  cumplido: boolean;
+  diasRestantes: number | null;
+};
+
 export function ExpedienteTabs({
   expedienteId,
   usuarioId,
   actuaciones,
   partes,
   audiencias,
+  terminos,
   documentos: documentosIniciales,
   movimientos,
 }: {
@@ -76,6 +90,7 @@ export function ExpedienteTabs({
   actuaciones: ActuacionData[];
   partes: ParteData[];
   audiencias: AudienciaData[];
+  terminos: TerminoTabData[];
   documentos: DocumentoData[];
   movimientos: MovimientoTabData[];
 }) {
@@ -101,6 +116,7 @@ export function ExpedienteTabs({
         {tab === "actuaciones" && <Actuaciones data={actuaciones} expedienteId={expedienteId} />}
         {tab === "partes"      && <Partes data={partes} expedienteId={expedienteId} />}
         {tab === "audiencias"  && <Audiencias data={audiencias} expedienteId={expedienteId} />}
+        {tab === "terminos"    && <Terminos data={terminos} expedienteId={expedienteId} />}
         {tab === "documentos"  && <Documentos expedienteId={expedienteId} inicial={documentosIniciales} />}
         {tab === "caja"        && <Caja data={movimientos} expedienteId={expedienteId} usuarioId={usuarioId} />}
       </div>
@@ -365,6 +381,134 @@ function Audiencias({ data: inicial, expedienteId }: { data: AudienciaData[]; ex
           </MiniField>
           <MiniField label="Estado">
             <MiniSelect options={ESTADOS_AUDIENCIA} value={form.estado} onChange={(e) => setForm((f) => ({ ...f, estado: e.target.value }))} />
+          </MiniField>
+        </MiniModal>
+      )}
+    </>
+  );
+}
+
+const TIPOS_TERMINO = ["termino", "emplazamiento", "contestacion", "pruebas", "apelacion", "otro"];
+
+function fmtDateLocal(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function Terminos({ data: inicial, expedienteId }: { data: TerminoTabData[]; expedienteId: string }) {
+  const [data, setData] = useState(inicial);
+  const [form, setForm] = useState({ tipo: "", descripcion: "", fechaAcuerdo: "", diasParaContestar: "", vencimientoTermino: "" });
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  function cerrar() { setOpen(false); setForm({ tipo: "", descripcion: "", fechaAcuerdo: "", diasParaContestar: "", vencimientoTermino: "" }); }
+
+  async function guardar() {
+    if (!form.vencimientoTermino) return;
+    setSaving(true);
+    await crearTerminoAction(expedienteId, form);
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const vence = new Date(form.vencimientoTermino);
+    const dias = Math.round((vence.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+    setData((prev) => [...prev, {
+      id: `tmp-${Date.now()}`,
+      tipo: form.tipo || null,
+      descripcion: form.descripcion || null,
+      fechaAcuerdo: form.fechaAcuerdo ? fmtDateLocal(form.fechaAcuerdo) : "—",
+      diasParaContestar: form.diasParaContestar ? parseInt(form.diasParaContestar) : null,
+      vencimientoTermino: fmtDateLocal(form.vencimientoTermino),
+      cumplido: false,
+      diasRestantes: dias,
+    }]);
+    setSaving(false);
+    cerrar();
+  }
+
+  async function marcarCumplido(id: string) {
+    await marcarCumplidoTerminoAction(id, expedienteId);
+    setData((prev) => prev.map((t) => t.id === id ? { ...t, cumplido: true, diasRestantes: null } : t));
+  }
+
+  async function borrar(id: string) {
+    if (!confirm("¿Borrar este término?")) return;
+    await borrarTerminoAction(id, expedienteId);
+    setData((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  return (
+    <>
+      <div className="flex justify-end mb-3">
+        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
+          <Plus size={15} strokeWidth={2} /> Agregar término
+        </button>
+      </div>
+
+      {data.length === 0 ? (
+        <p className="text-muted text-[13.5px]">Sin términos registrados.</p>
+      ) : (
+        <table className="w-full text-[13.5px]">
+          <thead>
+            <tr className="border-b border-line text-left">
+              <th className="eyebrow text-muted px-2 py-2.5">Tipo</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Descripción</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Acuerdo</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Días</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Vence</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Estado</th>
+              <th className="px-2 py-2.5 w-16" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/70">
+            {data.map((t) => (
+              <tr key={t.id} className="group">
+                <td className="px-2 py-3">{t.tipo ? capitalize(t.tipo) : "—"}</td>
+                <td className="px-2 py-3 text-muted">{t.descripcion ?? "—"}</td>
+                <td className="px-2 py-3 num text-muted">{t.fechaAcuerdo}</td>
+                <td className="px-2 py-3 num text-muted">{t.diasParaContestar ?? "—"}</td>
+                <td className="px-2 py-3 num font-bold">{t.vencimientoTermino}</td>
+                <td className="px-2 py-3">
+                  {t.cumplido ? (
+                    <span className="px-2 py-0.5 rounded text-[12px] font-bold bg-success-wash text-success">Cumplido</span>
+                  ) : t.diasRestantes !== null ? (
+                    <span className={`px-2 py-0.5 rounded text-[12px] font-bold num ${t.diasRestantes < 0 ? "bg-danger-wash/50 text-danger" : t.diasRestantes <= 3 ? "bg-amber/20 text-amber" : "bg-navy/[.08] text-navy"}`}>
+                      {t.diasRestantes < 0 ? "Venció" : t.diasRestantes === 0 ? "¡Hoy!" : `${t.diasRestantes}d`}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[12px] font-bold bg-navy/[.08] text-navy">Activo</span>
+                  )}
+                </td>
+                <td className="px-2 py-3">
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                    {!t.cumplido && (
+                      <button onClick={() => marcarCumplido(t.id)} title="Marcar cumplido" className="text-muted hover:text-success">
+                        <Check size={14} strokeWidth={2} />
+                      </button>
+                    )}
+                    <button onClick={() => borrar(t.id)} className="text-muted hover:text-danger"><Trash2 size={14} strokeWidth={1.75} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {open && (
+        <MiniModal title="Nuevo término" onClose={cerrar} onSubmit={guardar} submitLabel={saving ? "Guardando…" : "Agregar"}>
+          <MiniField label="Tipo">
+            <MiniSelect options={TIPOS_TERMINO} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))} />
+          </MiniField>
+          <MiniField label="Fecha de acuerdo">
+            <MiniInput type="date" value={form.fechaAcuerdo} onChange={(e) => setForm((f) => ({ ...f, fechaAcuerdo: e.target.value }))} />
+          </MiniField>
+          <MiniField label="Días para contestar">
+            <MiniInput type="number" min="1" value={form.diasParaContestar} onChange={(e) => setForm((f) => ({ ...f, diasParaContestar: e.target.value }))} placeholder="p.ej. 9" />
+          </MiniField>
+          <MiniField label="Vencimiento *">
+            <MiniInput type="date" value={form.vencimientoTermino} onChange={(e) => setForm((f) => ({ ...f, vencimientoTermino: e.target.value }))} autoFocus />
+          </MiniField>
+          <MiniField label="Descripción" full>
+            <MiniInput value={form.descripcion} onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))} placeholder="Ej. Plazo para contestar demanda" />
           </MiniField>
         </MiniModal>
       )}
