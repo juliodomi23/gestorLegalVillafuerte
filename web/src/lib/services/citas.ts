@@ -14,6 +14,26 @@ export type DatosCita = {
   googleEventId?: string;
 };
 
+// Busca un cliente existente por teléfono o nombre — nunca crea uno nuevo.
+// Usado para sync de Calendar: no queremos inflar la lista de clientes con
+// personas que todavía no son clientes formales del despacho.
+async function buscarClienteExistente(
+  telefono?: string,
+  nombre?: string
+): Promise<string | null> {
+  if (telefono) {
+    const c = await prisma.cliente.findFirst({ where: { telefono } });
+    if (c) return c.id;
+  }
+  if (nombre) {
+    const c = await prisma.cliente.findFirst({
+      where: { nombre: { equals: nombre, mode: "insensitive" } },
+    });
+    if (c) return c.id;
+  }
+  return null;
+}
+
 export async function citasDelDia(fecha: string) {
   const inicio = new Date(fecha);
   inicio.setHours(0, 0, 0, 0);
@@ -34,13 +54,19 @@ export async function agendarCita(d: DatosCita) {
   const fecha = parseFecha(d.fechaHora);
   if (!fecha) throw new Error("fechaHora inválida");
 
+  const esCalendar = !!d.googleEventId;
+
+  // Para citas del Calendar: solo vincular cliente si ya existe en el sistema
+  const clienteId = esCalendar
+    ? await buscarClienteExistente(d.telefono, d.cliente)
+    : await upsertCliente(d.cliente, d.telefono);
+
   // Dedup: si ya existe una cita con este googleEventId, actualizar con datos frescos
   if (d.googleEventId) {
     const existente = await prisma.cita.findFirst({
       where: { googleEventId: d.googleEventId },
     });
     if (existente) {
-      const clienteId = await upsertCliente(d.cliente, d.telefono);
       return prisma.cita.update({
         where: { id: existente.id },
         data: { clienteId, asunto: d.asunto, telefono: d.telefono ?? null },
@@ -48,8 +74,7 @@ export async function agendarCita(d: DatosCita) {
     }
   }
 
-  const [clienteId, abogadoId, sucursalId] = await Promise.all([
-    upsertCliente(d.cliente, d.telefono),
+  const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(d.abogado),
     resolverSucursal(d.sucursal),
   ]);
