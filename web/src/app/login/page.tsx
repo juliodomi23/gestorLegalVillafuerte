@@ -92,12 +92,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 rounded-lg border border-line bg-paper/60 px-4 py-3 text-[12.5px] text-muted">
-            <p className="font-bold text-ink mb-1">Cuentas de prueba</p>
-            <p>Admin: christian@villafuerte.mx</p>
-            <p>Abogado: ana@villafuerte.mx</p>
-            <p>Contraseña: demo1234</p>
-          </div>
         </div>
       </div>
     </div>
