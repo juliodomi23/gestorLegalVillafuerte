@@ -74,3 +74,37 @@ export async function borrarExpedienteAction(id: string) {
   await prisma.expediente.delete({ where: { id } });
   revalidatePath("/expedientes");
 }
+
+export async function cambiarEstadoAction(id: string, estado: string, nota: string) {
+  await prisma.expediente.update({
+    where: { id },
+    data: {
+      estado,
+      resumen: nota.trim() || null,
+    },
+  });
+  revalidatePath(`/expedientes/${id}`);
+}
+
+export async function agregarDocumentoDriveAction(
+  expedienteId: string,
+  nombre: string,
+  url: string,
+) {
+  const doc = await prisma.documento.create({
+    data: {
+      expedienteId,
+      nombre: nombre.trim() || "Documento",
+      tipo: "drive",
+      linkDrive: url.trim(),
+    },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
+  return {
+    id: doc.id,
+    nombre: doc.nombre,
+    tipo: doc.tipo,
+    linkDrive: doc.linkDrive,
+    fecha: doc.creadoEn.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+  };
+}

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Pencil, Plus, AlarmClock } from "lucide-react";
 import { Card } from "@/components/ui";
 import { ExpedienteTabs, type ActuacionData, type AudienciaData, type DocumentoData, type MovimientoTabData, type ParteData } from "@/components/expediente-tabs";
+import { EstadoEditor } from "@/components/estado-editor";
+import { DocumentosBtn } from "@/components/documentos-btn";
 import { prisma } from "@/lib/prisma";
 
 function fmtDate(d: Date | null): string {
@@ -59,14 +61,6 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
     { k: "Última actuación",  v: exp.actuaciones[0]?.fecha ? fmtDate(exp.actuaciones[0].fecha) : "—"           },
   ];
 
-  const estadoCls: Record<string, string> = {
-    activo:    "bg-success-wash text-success",
-    suspendido: "bg-amber-wash text-amber",
-    concluido:  "bg-line/60 text-muted",
-    archivado:  "bg-line/60 text-muted",
-  };
-  const estadoLabel = exp.estado.charAt(0).toUpperCase() + exp.estado.slice(1);
-
   const actuacionesData: ActuacionData[] = exp.actuaciones.map((a) => ({
     id: a.id,
     tipo: a.tipo,
@@ -119,17 +113,27 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="exp-no text-[26px] font-semibold text-ink">{exp.numeroInterno ?? "S/N"}</h1>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-bold ${estadoCls[exp.estado] ?? "bg-line/60 text-muted"}`}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-current" /> {estadoLabel}
-                </span>
+                <EstadoEditor
+                  expedienteId={exp.id}
+                  estadoInicial={exp.estado}
+                  notaInicial={exp.resumen ?? null}
+                />
               </div>
               <p className="text-muted text-[14px] mt-1">
                 {exp.tipoJuicio ?? "Juicio"} · Materia {exp.materia ?? "—"}
                 {exp.numeroJudicial ? <> · N.º de juicio <span className="exp-no">{exp.numeroJudicial}</span></> : ""}
                 {exp.juzgado ? ` · ${exp.juzgado}` : ""}
               </p>
+              {exp.resumen && (
+                <p className="text-[13px] text-amber font-bold mt-1.5">{exp.resumen}</p>
+              )}
             </div>
             <div className="flex gap-2">
+              <DocumentosBtn
+                documentos={exp.documentos
+                  .filter((d) => d.linkDrive)
+                  .map((d) => ({ id: d.id, nombre: d.nombre, linkDrive: d.linkDrive! }))}
+              />
               <button className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors">
                 <Pencil size={18} strokeWidth={1.75} /> Editar
               </button>

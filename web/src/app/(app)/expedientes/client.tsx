@@ -335,10 +335,10 @@ export default function ExpedientesClient({
           />
         </Field>
         <Field label="N.º de juicio"><Input value={form.numeroJudicial} onChange={(e) => set("numeroJudicial", e.target.value)} placeholder="542/2026" /></Field>
-        <Field label="Materia"><Select options={MATERIAS} value={form.materia} onChange={(e) => set("materia", e.target.value)} /></Field>
+        <Field label="Materia *"><Select required options={MATERIAS} value={form.materia} onChange={(e) => set("materia", e.target.value)} /></Field>
         <Field label="Etapa procesal"><Select options={ETAPAS} value={form.etapa} onChange={(e) => set("etapa", e.target.value)} /></Field>
-        {esAdmin && <Field label="Abogado responsable"><Select options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} /></Field>}
-        <Field label="Sucursal"><Select options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} /></Field>
+        {esAdmin && <Field label="Abogado responsable *"><Select required options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} /></Field>}
+        <Field label="Sucursal *"><Select required options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} /></Field>
       </Modal>
     </>
   );

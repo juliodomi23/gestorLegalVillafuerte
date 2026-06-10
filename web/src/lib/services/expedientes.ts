@@ -16,6 +16,8 @@ export type DatosExpediente = {
   sucursal?: string;
   resumen?: string;
   fechaInicio?: string;
+  // Documento de Drive adjunto al crear (opcional)
+  documento?: { nombre: string; linkDrive: string; tipo?: string };
   // Si el acuerdo genera un término/prevención, se crea junto:
   termino?: DatosTermino;
 };
@@ -75,6 +77,17 @@ export async function crearExpediente(d: DatosExpediente) {
         diasParaContestar: t.diasParaContestar,
         inicioTermino: parseFecha(t.inicioTermino),
         vencimientoTermino: parseFecha(t.vencimientoTermino),
+      },
+    });
+  }
+
+  if (d.documento?.linkDrive) {
+    await prisma.documento.create({
+      data: {
+        expedienteId: expediente.id,
+        nombre: d.documento.nombre.trim(),
+        tipo: d.documento.tipo ?? "drive",
+        linkDrive: d.documento.linkDrive.trim(),
       },
     });
   }

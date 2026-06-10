@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useState } from "react";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -62,6 +63,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const iniciales = nombre.slice(0, 2).toUpperCase();
+  const [logoError, setLogoError] = useState(false);
 
   return (
     <aside
@@ -71,8 +73,17 @@ export function Sidebar({
     >
       <div className="px-5 pt-6 pb-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-amber/90 flex items-center justify-center">
-            <span className="font-serif text-lg font-bold text-navy-deep leading-none">V</span>
+          <div className="w-9 h-9 rounded-md bg-amber/90 flex items-center justify-center overflow-hidden shrink-0">
+            {!logoError ? (
+              <img
+                src="/Logo.jpg"
+                alt="Logo"
+                className="w-full h-full object-contain p-0.5"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <span className="font-serif text-lg font-bold text-navy-deep leading-none">V</span>
+            )}
           </div>
           <div>
             <div className="font-serif text-[17px] leading-tight text-white">Villafuerte</div>

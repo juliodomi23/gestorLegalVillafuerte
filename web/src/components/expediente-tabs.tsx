@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader } from "lucide-react";
+import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus } from "lucide-react";
+import { agregarDocumentoDriveAction } from "@/app/(app)/expedientes/actions";
 
 const TABS = [
   { id: "actuaciones", label: "Actuaciones" },
@@ -182,6 +183,10 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
   const [docs, setDocs] = useState<(DocumentoData & { subiendo?: boolean })[]>(inicial);
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
+  const [driveOpen, setDriveOpen] = useState(false);
+  const [driveNombre, setDriveNombre] = useState("");
+  const [driveUrl, setDriveUrl] = useState("");
+  const [driveGuardando, setDriveGuardando] = useState(false);
 
   async function manejar(files: FileList | null) {
     if (!files) return;
@@ -204,14 +209,30 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
     }
   }
 
+  async function guardarDrive() {
+    if (!driveUrl.trim()) return;
+    setDriveGuardando(true);
+    const saved = await agregarDocumentoDriveAction(
+      expedienteId,
+      driveNombre.trim() || "Documento de Drive",
+      driveUrl.trim(),
+    );
+    setDocs((prev) => [saved, ...prev]);
+    setDriveNombre("");
+    setDriveUrl("");
+    setDriveOpen(false);
+    setDriveGuardando(false);
+  }
+
   return (
     <>
+      {/* Upload PDF */}
       <div
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); manejar(e.dataTransfer.files); }}
-        className={`rounded-xl border-2 border-dashed px-6 py-7 text-center cursor-pointer transition-colors mb-4 ${
+        className={`rounded-xl border-2 border-dashed px-6 py-7 text-center cursor-pointer transition-colors mb-3 ${
           drag ? "border-navy/60 bg-paper" : "border-line bg-paper/40 hover:border-navy/40 hover:bg-paper"
         }`}
       >
@@ -226,23 +247,74 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
           onChange={(e) => { manejar(e.target.files); e.target.value = ""; }} />
       </div>
 
-      {docs.length === 0 && <p className="text-center text-muted text-[13.5px] py-4">Sin documentos. Sube el primero.</p>}
+      {/* Agregar link de Drive */}
+      {!driveOpen ? (
+        <button
+          onClick={() => setDriveOpen(true)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-line bg-paper/40 text-[13px] text-muted hover:text-navy hover:border-navy/30 transition-colors mb-4"
+        >
+          <Link2 size={15} strokeWidth={1.75} />
+          Agregar link de Google Drive
+        </button>
+      ) : (
+        <div className="rounded-xl border border-navy/20 bg-navy/[.03] p-4 mb-4">
+          <p className="eyebrow text-muted mb-3">Agregar documento de Drive</p>
+          <div className="space-y-2">
+            <input
+              value={driveNombre}
+              onChange={(e) => setDriveNombre(e.target.value)}
+              placeholder="Nombre del documento (opcional)"
+              className="w-full px-3 py-2 rounded-lg bg-white border border-line text-[13.5px] focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40 transition"
+            />
+            <input
+              value={driveUrl}
+              onChange={(e) => setDriveUrl(e.target.value)}
+              placeholder="URL de Google Drive…"
+              className="w-full px-3 py-2 rounded-lg bg-white border border-line text-[13.5px] focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40 transition"
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2 mt-3 justify-end">
+            <button
+              type="button"
+              onClick={() => { setDriveOpen(false); setDriveNombre(""); setDriveUrl(""); }}
+              className="px-3 py-1.5 text-[13px] text-muted hover:text-ink transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={guardarDrive}
+              disabled={driveGuardando || !driveUrl.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors disabled:opacity-60"
+            >
+              <Plus size={14} /> {driveGuardando ? "Guardando…" : "Agregar"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {docs.length === 0 && <p className="text-center text-muted text-[13.5px] py-4">Sin documentos. Sube el primero o agrega un link de Drive.</p>}
 
       <div className="space-y-2">
         {docs.map((d) => (
           <div key={d.id} className={`flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${d.subiendo ? "border-navy/30 bg-paper/40" : "border-line hover:border-navy/30"}`}>
-            <FileText size={18} strokeWidth={1.75} className="text-navy" />
-            <div className="flex-1">
-              <p className="text-[13.5px] font-bold">{d.nombre}</p>
-              <p className="text-[11.5px] text-muted">{d.fecha}</p>
+            {d.tipo === "drive" ? (
+              <Link2 size={18} strokeWidth={1.75} className="text-amber shrink-0" />
+            ) : (
+              <FileText size={18} strokeWidth={1.75} className="text-navy shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-[13.5px] font-bold truncate">{d.nombre}</p>
+              <p className="text-[11.5px] text-muted">{d.tipo === "drive" ? "Google Drive" : "PDF"} · {d.fecha}</p>
             </div>
             {d.subiendo ? (
-              <span className="inline-flex items-center gap-1.5 text-[12px] text-amber font-bold">
+              <span className="inline-flex items-center gap-1.5 text-[12px] text-amber font-bold shrink-0">
                 <Loader size={16} className="animate-spin" /> Subiendo…
               </span>
             ) : d.linkDrive ? (
               <a href={d.linkDrive} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[12.5px] text-navy font-bold cursor-pointer">
+                className="inline-flex items-center gap-1.5 text-[12.5px] text-navy font-bold cursor-pointer shrink-0">
                 <ExternalLink size={16} /> Abrir
               </a>
             ) : null}
