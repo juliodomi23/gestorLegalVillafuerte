@@ -73,16 +73,16 @@ export function Sidebar({
     >
       <div className="px-5 pt-6 pb-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-amber/90 flex items-center justify-center overflow-hidden shrink-0">
+          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-white/10">
             {!logoError ? (
               <img
                 src="/Logo.jpg"
                 alt="Logo"
-                className="w-full h-full object-contain p-0.5"
+                className="w-full h-full object-cover"
                 onError={() => setLogoError(true)}
               />
             ) : (
-              <span className="font-serif text-lg font-bold text-navy-deep leading-none">V</span>
+              <span className="font-serif text-lg font-bold text-white leading-none flex items-center justify-center w-full h-full">V</span>
             )}
           </div>
           <div>
