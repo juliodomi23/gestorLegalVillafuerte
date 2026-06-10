@@ -20,7 +20,14 @@ export async function POST(req: Request) {
   const r = await leerBody<DatosCita>(req, ["cliente", "fechaHora"]);
   if ("error" in r) return r.error;
   try {
-    const c = await agendarCita(r.data);
+    // Normalizar googleEventId: "null" (string) o "" → undefined para que el dedup funcione
+    const datos = {
+      ...r.data,
+      googleEventId: r.data.googleEventId && r.data.googleEventId !== "null"
+        ? r.data.googleEventId
+        : undefined,
+    };
+    const c = await agendarCita(datos);
     return ok(c, 201);
   } catch (e) {
     return fail((e as Error).message, 500);
