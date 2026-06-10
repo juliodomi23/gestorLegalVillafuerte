@@ -68,6 +68,27 @@ export async function editarExpedienteAction(id: string, form: FormExpediente) {
     },
   });
   revalidatePath("/expedientes");
+  revalidatePath(`/expedientes/${id}`);
+}
+
+export type FormActuacion = {
+  tipo: string;
+  descripcion: string;
+  fecha: string;
+};
+
+export async function crearActuacionAction(expedienteId: string, usuarioId: string, form: FormActuacion) {
+  await prisma.actuacion.create({
+    data: {
+      expedienteId,
+      registradoPor: usuarioId || null,
+      tipo: form.tipo || null,
+      descripcion: form.descripcion.trim() || null,
+      fecha: form.fecha ? new Date(form.fecha) : new Date(),
+      origen: "web",
+    },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
 }
 
 export async function borrarExpedienteAction(id: string) {

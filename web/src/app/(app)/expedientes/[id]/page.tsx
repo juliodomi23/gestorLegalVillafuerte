@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Pencil, Plus, AlarmClock } from "lucide-react";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { ArrowLeft, AlarmClock } from "lucide-react";
 import { Card } from "@/components/ui";
 import { ExpedienteTabs, type ActuacionData, type AudienciaData, type DocumentoData, type MovimientoTabData, type ParteData } from "@/components/expediente-tabs";
 import { EstadoEditor } from "@/components/estado-editor";
 import { DocumentosBtn } from "@/components/documentos-btn";
+import { ExpedienteAcciones } from "@/components/expediente-acciones";
 import { prisma } from "@/lib/prisma";
 
 function fmtDate(d: Date | null): string {
@@ -23,29 +26,40 @@ function diasHasta(d: Date): number {
 }
 
 export default async function ExpedienteDetallePage({ params }: { params: { id: string } }) {
-  const exp = await prisma.expediente.findUnique({
-    where: { id: params.id },
-    include: {
-      cliente: true,
-      abogadoResponsable: true,
-      sucursal: true,
-      terminos: {
-        where: { cumplido: false },
-        orderBy: { vencimientoTermino: "asc" },
-        take: 1,
+  const session = await getServerSession(authOptions);
+  const esAdmin = session?.user?.rol === "admin";
+  const usuarioId = session?.user?.id ?? "";
+
+  const [exp, sucursalesDb, abogadosDb] = await Promise.all([
+    prisma.expediente.findUnique({
+      where: { id: params.id },
+      include: {
+        cliente: true,
+        abogadoResponsable: true,
+        sucursal: true,
+        terminos: {
+          where: { cumplido: false },
+          orderBy: { vencimientoTermino: "asc" },
+          take: 1,
+        },
+        actuaciones: {
+          orderBy: { creadoEn: "desc" },
+          include: { usuario: true },
+        },
+        partes: true,
+        audiencias: { orderBy: { fechaHora: "desc" } },
+        documentos: { orderBy: { creadoEn: "desc" } },
+        movimientos: { orderBy: { fecha: "desc" } },
       },
-      actuaciones: {
-        orderBy: { creadoEn: "desc" },
-        include: { usuario: true },
-      },
-      partes: true,
-      audiencias: { orderBy: { fechaHora: "desc" } },
-      documentos: { orderBy: { creadoEn: "desc" } },
-      movimientos: { orderBy: { fecha: "desc" } },
-    },
-  });
+    }),
+    prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
+    prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+  ]);
 
   if (!exp) notFound();
+
+  const sucursales = sucursalesDb.map((s) => s.nombre);
+  const abogados = abogadosDb.map((u) => u.nombre);
 
   const terminoActivo = exp.terminos[0] ?? null;
   const diasTermino = terminoActivo?.vencimientoTermino ? diasHasta(terminoActivo.vencimientoTermino) : null;
@@ -134,12 +148,22 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
                   .filter((d) => d.linkDrive)
                   .map((d) => ({ id: d.id, nombre: d.nombre, linkDrive: d.linkDrive! }))}
               />
-              <button className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors">
-                <Pencil size={18} strokeWidth={1.75} /> Editar
-              </button>
-              <button className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
-                <Plus size={18} strokeWidth={1.75} /> Actuación
-              </button>
+              <ExpedienteAcciones
+                expedienteId={exp.id}
+                usuarioId={usuarioId}
+                esAdmin={esAdmin}
+                inicial={{
+                  clienteId: exp.clienteId ?? "",
+                  clienteNombre: exp.cliente?.nombre ?? "",
+                  numeroJudicial: exp.numeroJudicial ?? "",
+                  materia: exp.materia ?? "",
+                  etapa: exp.etapaProcesal ?? "",
+                  abogado: exp.abogadoResponsable?.nombre ?? "",
+                  sucursal: exp.sucursal?.nombre ?? "",
+                }}
+                sucursales={sucursales}
+                abogados={abogados}
+              />
             </div>
           </div>
 
