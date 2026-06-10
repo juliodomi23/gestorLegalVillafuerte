@@ -16,6 +16,7 @@ export type DatosAsesoria = {
   abogado?: string;
   sucursal?: string;
   origen?: "web" | "whatsapp";
+  urlDocumento?: string;
 };
 
 export type FiltrosAsesoria = {
@@ -110,6 +111,7 @@ export async function registrarAsesoria(d: DatosAsesoria) {
       monto: d.monto,
       seguimiento: d.seguimiento,
       status: d.status ?? "pendiente",
+      urlDocumento: d.urlDocumento || null,
       abogadoId,
       sucursalId,
       origen: d.origen ?? "whatsapp",
