@@ -11,6 +11,8 @@ export type FormExpediente = {
   etapa: string;
   abogado: string;
   sucursal: string;
+  rolCliente: string;
+  cuantia: string;
 };
 
 export async function crearClienteRapidoAction(nombre: string, telefono?: string) {
@@ -65,6 +67,8 @@ export async function editarExpedienteAction(id: string, form: FormExpediente) {
       etapaProcesal: form.etapa || null,
       abogadoResponsableId: abogadoId,
       sucursalId,
+      rolCliente: form.rolCliente || null,
+      cuantia: form.cuantia ? parseFloat(form.cuantia) : null,
     },
   });
   revalidatePath("/expedientes");
@@ -112,6 +116,93 @@ export async function cambiarEstadoAction(id: string, estado: string, nota: stri
   });
   revalidatePath(`/expedientes/${id}`);
 }
+
+// ── Partes ────────────────────────────────────────────────────────────────────
+
+export async function crearParteAction(expedienteId: string, data: { nombre: string; rol: string; contacto: string }) {
+  await prisma.parte.create({
+    data: {
+      expedienteId,
+      nombre: data.nombre.trim(),
+      rol: data.rol || null,
+      contacto: data.contacto.trim() || null,
+    },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+export async function editarParteAction(parteId: string, expedienteId: string, data: { nombre: string; rol: string; contacto: string }) {
+  await prisma.parte.update({
+    where: { id: parteId },
+    data: {
+      nombre: data.nombre.trim(),
+      rol: data.rol || null,
+      contacto: data.contacto.trim() || null,
+    },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+export async function borrarParteAction(parteId: string, expedienteId: string) {
+  await prisma.parte.delete({ where: { id: parteId } });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+// ── Audiencias ────────────────────────────────────────────────────────────────
+
+export async function crearAudienciaAction(expedienteId: string, data: { fechaHora: string; tipo: string; lugar: string; estado: string }) {
+  await prisma.audiencia.create({
+    data: {
+      expedienteId,
+      fechaHora: new Date(data.fechaHora),
+      tipo: data.tipo || null,
+      lugar: data.lugar.trim() || null,
+      estado: data.estado || "programada",
+    },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+export async function editarAudienciaAction(audienciaId: string, expedienteId: string, data: { fechaHora: string; tipo: string; lugar: string; estado: string }) {
+  await prisma.audiencia.update({
+    where: { id: audienciaId },
+    data: {
+      fechaHora: new Date(data.fechaHora),
+      tipo: data.tipo || null,
+      lugar: data.lugar.trim() || null,
+      estado: data.estado || "programada",
+    },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+export async function borrarAudienciaAction(audienciaId: string, expedienteId: string) {
+  await prisma.audiencia.delete({ where: { id: audienciaId } });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+// ── Caja ──────────────────────────────────────────────────────────────────────
+
+export async function crearMovimientoAction(expedienteId: string, usuarioId: string, data: { tipo: string; concepto: string; monto: string; fecha: string }) {
+  await prisma.movimientoCaja.create({
+    data: {
+      expedienteId,
+      registradoPor: usuarioId || null,
+      tipo: data.tipo,
+      concepto: data.concepto.trim() || null,
+      monto: parseFloat(data.monto),
+      fecha: data.fecha ? new Date(data.fecha) : new Date(),
+    },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+export async function borrarMovimientoAction(movimientoId: string, expedienteId: string) {
+  await prisma.movimientoCaja.delete({ where: { id: movimientoId } });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function agregarDocumentoDriveAction(
   expedienteId: string,

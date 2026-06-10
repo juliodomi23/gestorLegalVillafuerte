@@ -1,8 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip, Trash2 } from "lucide-react";
-import { agregarDocumentoDriveAction, borrarActuacionAction } from "@/app/(app)/expedientes/actions";
+import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip, Trash2, Pencil } from "lucide-react";
+import {
+  agregarDocumentoDriveAction,
+  borrarActuacionAction,
+  crearParteAction, editarParteAction, borrarParteAction,
+  crearAudienciaAction, editarAudienciaAction, borrarAudienciaAction,
+  crearMovimientoAction, borrarMovimientoAction,
+} from "@/app/(app)/expedientes/actions";
 
 const TABS = [
   { id: "actuaciones", label: "Actuaciones" },
@@ -34,6 +40,7 @@ export type ParteData = {
 export type AudienciaData = {
   id: string;
   fechaHora: string;
+  fechaHoraRaw: Date;
   tipo: string | null;
   lugar: string | null;
   estado: string;
@@ -57,6 +64,7 @@ export type MovimientoTabData = {
 
 export function ExpedienteTabs({
   expedienteId,
+  usuarioId,
   actuaciones,
   partes,
   audiencias,
@@ -64,6 +72,7 @@ export function ExpedienteTabs({
   movimientos,
 }: {
   expedienteId: string;
+  usuarioId: string;
   actuaciones: ActuacionData[];
   partes: ParteData[];
   audiencias: AudienciaData[];
@@ -90,10 +99,10 @@ export function ExpedienteTabs({
 
       <div className="p-6">
         {tab === "actuaciones" && <Actuaciones data={actuaciones} expedienteId={expedienteId} />}
-        {tab === "partes"      && <Partes data={partes} />}
-        {tab === "audiencias"  && <Audiencias data={audiencias} />}
+        {tab === "partes"      && <Partes data={partes} expedienteId={expedienteId} />}
+        {tab === "audiencias"  && <Audiencias data={audiencias} expedienteId={expedienteId} />}
         {tab === "documentos"  && <Documentos expedienteId={expedienteId} inicial={documentosIniciales} />}
-        {tab === "caja"        && <Caja data={movimientos} />}
+        {tab === "caja"        && <Caja data={movimientos} expedienteId={expedienteId} usuarioId={usuarioId} />}
       </div>
     </>
   );
@@ -160,57 +169,206 @@ function Actuaciones({ data, expedienteId }: { data: ActuacionData[]; expediente
   );
 }
 
-function Partes({ data }: { data: ParteData[] }) {
-  if (!data.length) return <p className="text-muted text-[13.5px]">Sin partes registradas.</p>;
+const ROLES_PARTE = ["actor", "demandado", "tercero", "abogado_contrario"];
+
+function Partes({ data: inicial, expedienteId }: { data: ParteData[]; expedienteId: string }) {
+  const [data, setData] = useState(inicial);
+  const [form, setForm] = useState({ nombre: "", rol: "", contacto: "" });
+  const [editando, setEditando] = useState<ParteData | null>(null);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  function abrirNueva() { setForm({ nombre: "", rol: "", contacto: "" }); setEditando(null); setOpen(true); }
+  function abrirEditar(p: ParteData) { setForm({ nombre: p.nombre, rol: p.rol ?? "", contacto: p.contacto ?? "" }); setEditando(p); setOpen(true); }
+  function cerrar() { setOpen(false); setEditando(null); }
+
+  async function guardar() {
+    if (!form.nombre.trim()) return;
+    setSaving(true);
+    if (editando) {
+      await editarParteAction(editando.id, expedienteId, form);
+      setData((prev) => prev.map((p) => p.id === editando.id ? { ...p, ...form, rol: form.rol || null, contacto: form.contacto || null } : p));
+    } else {
+      await crearParteAction(expedienteId, form);
+      setData((prev) => [...prev, { id: `tmp-${Date.now()}`, nombre: form.nombre, rol: form.rol || null, contacto: form.contacto || null }]);
+    }
+    setSaving(false);
+    cerrar();
+  }
+
+  async function borrar(id: string) {
+    if (!confirm("¿Borrar esta parte?")) return;
+    await borrarParteAction(id, expedienteId);
+    setData((prev) => prev.filter((p) => p.id !== id));
+  }
+
   return (
-    <table className="w-full text-[13.5px]">
-      <thead>
-        <tr className="border-b border-line text-left">
-          <th className="eyebrow text-muted px-2 py-2.5">Nombre</th>
-          <th className="eyebrow text-muted px-2 py-2.5">Rol</th>
-          <th className="eyebrow text-muted px-2 py-2.5">Contacto</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-line/70">
-        {data.map((p) => (
-          <tr key={p.id}>
-            <td className="px-2 py-3 font-bold">{p.nombre}</td>
-            <td className="px-2 py-3">{p.rol ? capitalize(p.rol.replace(/_/g, " ")) : "—"}</td>
-            <td className="px-2 py-3 num text-muted">{p.contacto ?? "—"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <>
+      <div className="flex justify-end mb-3">
+        <button onClick={abrirNueva} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
+          <Plus size={15} strokeWidth={2} /> Agregar parte
+        </button>
+      </div>
+
+      {data.length === 0 ? (
+        <p className="text-muted text-[13.5px]">Sin partes registradas.</p>
+      ) : (
+        <table className="w-full text-[13.5px]">
+          <thead>
+            <tr className="border-b border-line text-left">
+              <th className="eyebrow text-muted px-2 py-2.5">Nombre</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Rol</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Contacto</th>
+              <th className="px-2 py-2.5 w-16" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/70">
+            {data.map((p) => (
+              <tr key={p.id} className="group">
+                <td className="px-2 py-3 font-bold">{p.nombre}</td>
+                <td className="px-2 py-3">{p.rol ? capitalize(p.rol.replace(/_/g, " ")) : "—"}</td>
+                <td className="px-2 py-3 num text-muted">{p.contacto ?? "—"}</td>
+                <td className="px-2 py-3">
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                    <button onClick={() => abrirEditar(p)} className="text-muted hover:text-navy"><Pencil size={14} strokeWidth={1.75} /></button>
+                    <button onClick={() => borrar(p.id)} className="text-muted hover:text-danger"><Trash2 size={14} strokeWidth={1.75} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {open && (
+        <MiniModal title={editando ? "Editar parte" : "Nueva parte"} onClose={cerrar} onSubmit={guardar} submitLabel={saving ? "Guardando…" : editando ? "Guardar" : "Agregar"}>
+          <MiniField label="Nombre *">
+            <MiniInput value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Nombre completo" autoFocus />
+          </MiniField>
+          <MiniField label="Rol">
+            <MiniSelect options={ROLES_PARTE} value={form.rol} onChange={(e) => setForm((f) => ({ ...f, rol: e.target.value }))} />
+          </MiniField>
+          <MiniField label="Contacto (teléfono/email)">
+            <MiniInput value={form.contacto} onChange={(e) => setForm((f) => ({ ...f, contacto: e.target.value }))} placeholder="55 1234 5678" />
+          </MiniField>
+        </MiniModal>
+      )}
+    </>
   );
 }
 
-function Audiencias({ data }: { data: AudienciaData[] }) {
-  if (!data.length) return <p className="text-muted text-[13.5px]">Sin audiencias registradas.</p>;
+const TIPOS_AUDIENCIA = ["inicial", "pruebas", "desahogo", "alegatos", "sentencia", "otra"];
+const ESTADOS_AUDIENCIA = ["programada", "realizada", "diferida"];
+
+function fmtLocalDatetime(d: Date | string): string {
+  const dt = typeof d === "string" ? new Date(d) : d;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+}
+
+function Audiencias({ data: inicial, expedienteId }: { data: AudienciaData[]; expedienteId: string }) {
+  const [data, setData] = useState(inicial);
+  const [form, setForm] = useState({ fechaHora: "", tipo: "", lugar: "", estado: "programada" });
+  const [editando, setEditando] = useState<AudienciaData | null>(null);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  function abrirNueva() { setForm({ fechaHora: "", tipo: "", lugar: "", estado: "programada" }); setEditando(null); setOpen(true); }
+  function abrirEditar(a: AudienciaData) {
+    setForm({ fechaHora: fmtLocalDatetime(a.fechaHoraRaw), tipo: a.tipo ?? "", lugar: a.lugar ?? "", estado: a.estado });
+    setEditando(a); setOpen(true);
+  }
+  function cerrar() { setOpen(false); setEditando(null); }
+
+  async function guardar() {
+    if (!form.fechaHora) return;
+    setSaving(true);
+    if (editando) {
+      await editarAudienciaAction(editando.id, expedienteId, form);
+      setData((prev) => prev.map((a) => a.id === editando.id
+        ? { ...a, fechaHora: new Date(form.fechaHora).toLocaleString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }), fechaHoraRaw: new Date(form.fechaHora), tipo: form.tipo || null, lugar: form.lugar || null, estado: form.estado }
+        : a));
+    } else {
+      await crearAudienciaAction(expedienteId, form);
+      const nueva: AudienciaData = {
+        id: `tmp-${Date.now()}`,
+        fechaHora: new Date(form.fechaHora).toLocaleString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        fechaHoraRaw: new Date(form.fechaHora),
+        tipo: form.tipo || null, lugar: form.lugar || null, estado: form.estado,
+      };
+      setData((prev) => [nueva, ...prev]);
+    }
+    setSaving(false);
+    cerrar();
+  }
+
+  async function borrar(id: string) {
+    if (!confirm("¿Borrar esta audiencia?")) return;
+    await borrarAudienciaAction(id, expedienteId);
+    setData((prev) => prev.filter((a) => a.id !== id));
+  }
+
   return (
-    <table className="w-full text-[13.5px]">
-      <thead>
-        <tr className="border-b border-line text-left">
-          <th className="eyebrow text-muted px-2 py-2.5">Fecha y hora</th>
-          <th className="eyebrow text-muted px-2 py-2.5">Tipo</th>
-          <th className="eyebrow text-muted px-2 py-2.5">Lugar</th>
-          <th className="eyebrow text-muted px-2 py-2.5">Estado</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-line/70">
-        {data.map((a) => (
-          <tr key={a.id}>
-            <td className="px-2 py-3 num">{a.fechaHora}</td>
-            <td className="px-2 py-3">{a.tipo ?? "—"}</td>
-            <td className="px-2 py-3 text-muted">{a.lugar ?? "—"}</td>
-            <td className="px-2 py-3">
-              <span className={`px-2 py-0.5 rounded text-[12px] font-bold ${a.estado === "realizada" ? "bg-success-wash text-success" : "bg-navy/[.08] text-navy"}`}>
-                {capitalize(a.estado)}
-              </span>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <>
+      <div className="flex justify-end mb-3">
+        <button onClick={abrirNueva} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
+          <Plus size={15} strokeWidth={2} /> Agregar audiencia
+        </button>
+      </div>
+
+      {data.length === 0 ? (
+        <p className="text-muted text-[13.5px]">Sin audiencias registradas.</p>
+      ) : (
+        <table className="w-full text-[13.5px]">
+          <thead>
+            <tr className="border-b border-line text-left">
+              <th className="eyebrow text-muted px-2 py-2.5">Fecha y hora</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Tipo</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Lugar</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Estado</th>
+              <th className="px-2 py-2.5 w-16" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/70">
+            {data.map((a) => (
+              <tr key={a.id} className="group">
+                <td className="px-2 py-3 num">{a.fechaHora}</td>
+                <td className="px-2 py-3">{a.tipo ?? "—"}</td>
+                <td className="px-2 py-3 text-muted">{a.lugar ?? "—"}</td>
+                <td className="px-2 py-3">
+                  <span className={`px-2 py-0.5 rounded text-[12px] font-bold ${a.estado === "realizada" ? "bg-success-wash text-success" : a.estado === "diferida" ? "bg-danger-wash/50 text-danger" : "bg-navy/[.08] text-navy"}`}>
+                    {capitalize(a.estado)}
+                  </span>
+                </td>
+                <td className="px-2 py-3">
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                    <button onClick={() => abrirEditar(a)} className="text-muted hover:text-navy"><Pencil size={14} strokeWidth={1.75} /></button>
+                    <button onClick={() => borrar(a.id)} className="text-muted hover:text-danger"><Trash2 size={14} strokeWidth={1.75} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {open && (
+        <MiniModal title={editando ? "Editar audiencia" : "Nueva audiencia"} onClose={cerrar} onSubmit={guardar} submitLabel={saving ? "Guardando…" : editando ? "Guardar" : "Agregar"}>
+          <MiniField label="Fecha y hora *">
+            <MiniInput type="datetime-local" value={form.fechaHora} onChange={(e) => setForm((f) => ({ ...f, fechaHora: e.target.value }))} autoFocus />
+          </MiniField>
+          <MiniField label="Tipo">
+            <MiniSelect options={TIPOS_AUDIENCIA} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))} />
+          </MiniField>
+          <MiniField label="Lugar">
+            <MiniInput value={form.lugar} onChange={(e) => setForm((f) => ({ ...f, lugar: e.target.value }))} placeholder="Juzgado / sala…" />
+          </MiniField>
+          <MiniField label="Estado">
+            <MiniSelect options={ESTADOS_AUDIENCIA} value={form.estado} onChange={(e) => setForm((f) => ({ ...f, estado: e.target.value }))} />
+          </MiniField>
+        </MiniModal>
+      )}
+    </>
   );
 }
 
@@ -360,35 +518,153 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
   );
 }
 
-function Caja({ data }: { data: MovimientoTabData[] }) {
-  if (!data.length) return <p className="text-muted text-[13.5px]">Sin movimientos registrados.</p>;
+function Caja({ data: inicial, expedienteId, usuarioId }: { data: MovimientoTabData[]; expedienteId: string; usuarioId: string }) {
+  const [data, setData] = useState(inicial);
+  const [form, setForm] = useState({ tipo: "ingreso", concepto: "", monto: "", fecha: hoy() });
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  function cerrar() { setOpen(false); setForm({ tipo: "ingreso", concepto: "", monto: "", fecha: hoy() }); }
+
+  async function guardar() {
+    if (!form.monto || isNaN(parseFloat(form.monto))) return;
+    setSaving(true);
+    await crearMovimientoAction(expedienteId, usuarioId, form);
+    setData((prev) => [{
+      id: `tmp-${Date.now()}`,
+      fecha: new Date(form.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+      concepto: form.concepto || null,
+      tipo: form.tipo,
+      monto: parseFloat(form.monto),
+    }, ...prev]);
+    setSaving(false);
+    cerrar();
+  }
+
+  async function borrar(id: string) {
+    if (!confirm("¿Borrar este movimiento?")) return;
+    await borrarMovimientoAction(id, expedienteId);
+    setData((prev) => prev.filter((m) => m.id !== id));
+  }
+
+  const total = data.reduce((acc, m) => acc + (m.tipo === "ingreso" ? m.monto : -m.monto), 0);
+
   return (
-    <table className="w-full text-[13.5px]">
-      <thead>
-        <tr className="border-b border-line text-left">
-          <th className="eyebrow text-muted px-2 py-2.5">Fecha</th>
-          <th className="eyebrow text-muted px-2 py-2.5">Concepto</th>
-          <th className="eyebrow text-muted px-2 py-2.5">Tipo</th>
-          <th className="eyebrow text-muted px-2 py-2.5 text-right">Monto</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-line/70">
-        {data.map((m) => (
-          <tr key={m.id}>
-            <td className="px-2 py-3 num">{m.fecha}</td>
-            <td className="px-2 py-3">{m.concepto ?? "—"}</td>
-            <td className="px-2 py-3">
-              <span className={`font-bold ${m.tipo === "ingreso" ? "text-success" : "text-danger"}`}>
-                {capitalize(m.tipo)}
-              </span>
-            </td>
-            <td className="px-2 py-3 num text-right font-bold">${m.monto.toLocaleString("es-MX")}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <>
+      <div className="flex items-center justify-between mb-3">
+        <p className={`text-[13px] font-bold ${total >= 0 ? "text-success" : "text-danger"}`}>
+          Saldo: ${total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+        </p>
+        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
+          <Plus size={15} strokeWidth={2} /> Registrar movimiento
+        </button>
+      </div>
+
+      {data.length === 0 ? (
+        <p className="text-muted text-[13.5px]">Sin movimientos registrados.</p>
+      ) : (
+        <table className="w-full text-[13.5px]">
+          <thead>
+            <tr className="border-b border-line text-left">
+              <th className="eyebrow text-muted px-2 py-2.5">Fecha</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Concepto</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Tipo</th>
+              <th className="eyebrow text-muted px-2 py-2.5 text-right">Monto</th>
+              <th className="px-2 py-2.5 w-10" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/70">
+            {data.map((m) => (
+              <tr key={m.id} className="group">
+                <td className="px-2 py-3 num">{m.fecha}</td>
+                <td className="px-2 py-3">{m.concepto ?? "—"}</td>
+                <td className="px-2 py-3">
+                  <span className={`font-bold ${m.tipo === "ingreso" ? "text-success" : "text-danger"}`}>
+                    {capitalize(m.tipo)}
+                  </span>
+                </td>
+                <td className="px-2 py-3 num text-right font-bold">${m.monto.toLocaleString("es-MX")}</td>
+                <td className="px-2 py-3">
+                  <button onClick={() => borrar(m.id)} className="text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Trash2 size={14} strokeWidth={1.75} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {open && (
+        <MiniModal title="Nuevo movimiento" onClose={cerrar} onSubmit={guardar} submitLabel={saving ? "Guardando…" : "Registrar"}>
+          <MiniField label="Tipo">
+            <MiniSelect options={["ingreso", "egreso"]} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))} />
+          </MiniField>
+          <MiniField label="Fecha">
+            <MiniInput type="date" value={form.fecha} onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))} />
+          </MiniField>
+          <MiniField label="Concepto" full>
+            <MiniInput value={form.concepto} onChange={(e) => setForm((f) => ({ ...f, concepto: e.target.value }))} placeholder="Honorarios, gastos…" autoFocus />
+          </MiniField>
+          <MiniField label="Monto ($) *" full>
+            <MiniInput type="number" min="0" step="0.01" value={form.monto} onChange={(e) => setForm((f) => ({ ...f, monto: e.target.value }))} placeholder="0.00" />
+          </MiniField>
+        </MiniModal>
+      )}
+    </>
   );
 }
 
+// ── Mini Modal (inline, para los tabs) ───────────────────────────────────────
+
+function MiniModal({ title, children, onClose, onSubmit, submitLabel = "Guardar" }: {
+  title: string; children: React.ReactNode;
+  onClose: () => void; onSubmit: () => void; submitLabel?: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm flex items-start justify-center p-4 pt-[8vh]" onClick={onClose}>
+      <div className="bg-surface rounded-xl border border-line shadow-card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+          <h3 className="font-serif text-[17px] text-ink">{title}</h3>
+          <button type="button" onClick={onClose} className="text-muted hover:text-ink text-[22px] leading-none">×</button>
+        </div>
+        <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
+          <div className="px-5 py-4 grid grid-cols-2 gap-3">{children}</div>
+          <div className="flex justify-end gap-2 px-5 py-3 border-t border-line">
+            <button type="button" onClick={onClose} className="px-4 py-1.5 rounded-lg border border-line text-[13px] hover:border-navy/40 transition-colors">Cancelar</button>
+            <button type="submit" className="px-4 py-1.5 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">{submitLabel}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+const miniFieldCls = "w-full px-3 py-2 rounded-lg bg-white border border-line text-[13px] focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40 transition";
+
+function MiniField({ label, children, full = false }: { label: string; children: React.ReactNode; full?: boolean }) {
+  return (
+    <label className={full ? "col-span-2" : ""}>
+      <span className="eyebrow text-muted block mb-1">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function MiniInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <input {...props} className={miniFieldCls} />;
+}
+
+function MiniSelect({ options, ...props }: { options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select {...props} className={miniFieldCls}>
+      <option value="">Seleccionar…</option>
+      {options.map((o) => <option key={o} value={o}>{capitalize(o.replace(/_/g, " "))}</option>)}
+    </select>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
-function hoy() { return new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }); }
+function hoy() { return new Date().toISOString().split("T")[0]; }

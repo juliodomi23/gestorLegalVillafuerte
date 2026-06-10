@@ -34,6 +34,8 @@ const vacio = {
   etapa: "",
   abogado: "",
   sucursal: "",
+  rolCliente: "",
+  cuantia: "",
 };
 
 // ── ClientePicker ─────────────────────────────────────────────────────────────
@@ -244,6 +246,8 @@ export default function ExpedientesClient({
       etapa: e.etapa === "—" ? "" : e.etapa,
       abogado: e.abogado === "—" ? "" : e.abogado,
       sucursal: e.sucursal === "—" ? "" : e.sucursal,
+      rolCliente: "",
+      cuantia: "",
     });
     setOpen(true);
   }

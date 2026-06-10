@@ -12,7 +12,6 @@ type Props = {
   expedienteId: string;
   usuarioId: string;
   esAdmin: boolean;
-  // valores actuales para pre-llenar el form de edición
   inicial: {
     clienteId: string;
     clienteNombre: string;
@@ -21,6 +20,8 @@ type Props = {
     etapa: string;
     abogado: string;
     sucursal: string;
+    rolCliente?: string;
+    cuantia?: string;
   };
   sucursales: string[];
   abogados: string[];
@@ -29,7 +30,7 @@ type Props = {
 export function ExpedienteAcciones({ expedienteId, usuarioId, esAdmin, inicial, sucursales, abogados }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [actOpen, setActOpen] = useState(false);
-  const [editForm, setEditForm] = useState<FormExpediente>(inicial);
+  const [editForm, setEditForm] = useState<FormExpediente>({ ...inicial, rolCliente: inicial.rolCliente ?? "", cuantia: inicial.cuantia ?? "" });
   const [actForm, setActForm] = useState({ tipo: "", descripcion: "", fecha: hoy() });
   const [saving, setSaving] = useState(false);
   const [docMode, setDocMode] = useState<"ninguno" | "pdf" | "drive">("ninguno");
@@ -119,6 +120,12 @@ export function ExpedienteAcciones({ expedienteId, usuarioId, esAdmin, inicial, 
         )}
         <Field label="Sucursal">
           <Select options={sucursales} value={editForm.sucursal} onChange={(e) => setE("sucursal", e.target.value)} />
+        </Field>
+        <Field label="Rol del cliente">
+          <Select options={["actor", "demandado", "tercero"]} value={editForm.rolCliente ?? ""} onChange={(e) => setE("rolCliente", e.target.value)} />
+        </Field>
+        <Field label="Cuantía ($)">
+          <Input type="number" min="0" step="0.01" value={editForm.cuantia ?? ""} onChange={(e) => setE("cuantia", e.target.value)} placeholder="0.00" />
         </Field>
       </Modal>
 

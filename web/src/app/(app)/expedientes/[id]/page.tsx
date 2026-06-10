@@ -104,6 +104,7 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
   const audienciasData: AudienciaData[] = exp.audiencias.map((a) => ({
     id: a.id,
     fechaHora: fmtDateTime(a.fechaHora),
+    fechaHoraRaw: a.fechaHora,
     tipo: a.tipo,
     lugar: a.lugar,
     estado: a.estado,
@@ -170,6 +171,8 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
                   etapa: exp.etapaProcesal ?? "",
                   abogado: exp.abogadoResponsable?.nombre ?? "",
                   sucursal: exp.sucursal?.nombre ?? "",
+                  rolCliente: exp.rolCliente ?? "",
+                  cuantia: exp.cuantia ? String(exp.cuantia) : "",
                 }}
                 sucursales={sucursales}
                 abogados={abogados}
@@ -207,6 +210,7 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
 
         <ExpedienteTabs
           expedienteId={exp.id}
+          usuarioId={usuarioId}
           actuaciones={actuacionesData}
           partes={partesData}
           audiencias={audienciasData}
