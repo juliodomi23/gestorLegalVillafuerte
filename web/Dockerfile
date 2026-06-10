@@ -37,4 +37,5 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3000
-CMD ["npm", "start"]
+# prisma db push aplica cambios de schema en cada arranque (seguro: falla si hay pérdida de datos)
+CMD ["sh", "-c", "npx prisma db push && npm start"]

@@ -10,6 +10,7 @@ import {
   Users,
   ClipboardList,
   PhoneCall,
+  UserSearch,
   Wallet,
   Settings,
   LogOut,
@@ -32,6 +33,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
     titulo: "Clientes",
     items: [
       { href: "/clientes", label: "Clientes", icon: Users },
+      { href: "/prospectos", label: "Prospectos", icon: UserSearch },
       { href: "/asesorias", label: "Asesorías", icon: ClipboardList },
       { href: "/seguimientos", label: "Seguimientos", icon: PhoneCall },
     ],

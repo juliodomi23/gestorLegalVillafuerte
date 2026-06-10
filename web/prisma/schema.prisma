@@ -327,3 +327,21 @@ model Llamada {
 
   @@map("llamadas")
 }
+
+// Prospectos del embudo de ventas: personas que llamaron y aún no contratan.
+// Vienen del cron 10x10 de llamadas vía API n8n.
+model Prospecto {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre       String
+  telefono     String?
+  ciudad       String?
+  asunto       String?
+  // por_contactar | no_contesto | agendo_cita | llamar_despues | convertido | descartado
+  estado       String    @default("por_contactar")
+  nota         String?
+  fechaLlamada DateTime? @map("fecha_llamada") @db.Date
+  creadoEn     DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  @@map("prospectos")
+}
