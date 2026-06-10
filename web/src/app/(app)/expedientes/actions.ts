@@ -117,6 +117,40 @@ export async function cambiarEstadoAction(id: string, estado: string, nota: stri
   revalidatePath(`/expedientes/${id}`);
 }
 
+// ── Términos ──────────────────────────────────────────────────────────────────
+
+export type FormTermino = {
+  tipo: string;
+  descripcion: string;
+  fechaAcuerdo: string;
+  diasParaContestar: string;
+  vencimientoTermino: string;
+};
+
+export async function crearTerminoAction(expedienteId: string, form: FormTermino) {
+  await prisma.termino.create({
+    data: {
+      expedienteId,
+      tipo: form.tipo || "termino",
+      descripcion: form.descripcion.trim() || null,
+      fechaAcuerdo: form.fechaAcuerdo ? new Date(form.fechaAcuerdo) : null,
+      diasParaContestar: form.diasParaContestar ? parseInt(form.diasParaContestar) : null,
+      vencimientoTermino: form.vencimientoTermino ? new Date(form.vencimientoTermino) : null,
+    },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+export async function marcarCumplidoTerminoAction(terminoId: string, expedienteId: string) {
+  await prisma.termino.update({ where: { id: terminoId }, data: { cumplido: true } });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+export async function borrarTerminoAction(terminoId: string, expedienteId: string) {
+  await prisma.termino.delete({ where: { id: terminoId } });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
 // ── Partes ────────────────────────────────────────────────────────────────────
 
 export async function crearParteAction(expedienteId: string, data: { nombre: string; rol: string; contacto: string }) {
