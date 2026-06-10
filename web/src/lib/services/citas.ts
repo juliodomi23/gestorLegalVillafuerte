@@ -34,12 +34,18 @@ export async function agendarCita(d: DatosCita) {
   const fecha = parseFecha(d.fechaHora);
   if (!fecha) throw new Error("fechaHora inválida");
 
-  // Dedup: si ya existe una cita con este googleEventId, retornar la existente
+  // Dedup: si ya existe una cita con este googleEventId, actualizar con datos frescos
   if (d.googleEventId) {
     const existente = await prisma.cita.findFirst({
       where: { googleEventId: d.googleEventId },
     });
-    if (existente) return existente;
+    if (existente) {
+      const clienteId = await upsertCliente(d.cliente, d.telefono);
+      return prisma.cita.update({
+        where: { id: existente.id },
+        data: { clienteId, asunto: d.asunto, telefono: d.telefono ?? null },
+      });
+    }
   }
 
   const [clienteId, abogadoId, sucursalId] = await Promise.all([
