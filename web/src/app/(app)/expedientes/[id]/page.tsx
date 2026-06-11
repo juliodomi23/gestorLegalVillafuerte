@@ -10,6 +10,8 @@ import { DocumentosBtn } from "@/components/documentos-btn";
 import { ExpedienteAcciones } from "@/components/expediente-acciones";
 import { prisma } from "@/lib/prisma";
 
+const TZ = "America/Mexico_City";
+
 function fmtDate(d: Date | null): string {
   if (!d) return "—";
   const date = d instanceof Date ? d : new Date(d);
@@ -17,7 +19,7 @@ function fmtDate(d: Date | null): string {
 }
 
 function fmtDateTime(d: Date): string {
-  return d.toLocaleString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: TZ });
 }
 
 function diasHasta(d: Date): number {
@@ -99,7 +101,7 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
       nombre: d.nombre,
       tipo: d.tipo,
       linkDrive: d.linkDrive,
-      fecha: d.creadoEn.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+      fecha: d.creadoEn.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: TZ }),
     })),
   }));
 
@@ -124,7 +126,7 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
     nombre: d.nombre,
     tipo: d.tipo,
     linkDrive: d.linkDrive,
-    fecha: d.creadoEn.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+    fecha: d.creadoEn.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: TZ }),
   }));
 
   const movimientosData: MovimientoTabData[] = exp.movimientos.map((m) => ({

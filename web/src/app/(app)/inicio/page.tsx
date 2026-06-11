@@ -73,7 +73,7 @@ export default async function InicioPage() {
     { label: "Citas hoy",              valor: String(citasHoy),          icon: CalendarCheck, nota: "Agendadas para hoy",         notaColor: undefined    },
   ];
 
-  const hoyLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const hoyLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "America/Mexico_City" });
   const hoyCapitalized = hoyLabel.charAt(0).toUpperCase() + hoyLabel.slice(1);
 
   return (
