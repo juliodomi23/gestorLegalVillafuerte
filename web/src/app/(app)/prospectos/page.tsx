@@ -4,18 +4,29 @@ import { listarProspectos } from "@/lib/services/prospectos";
 import ProspectosClient, { type ProspectoView } from "./client";
 
 const TZ = "America/Mexico_City";
+const ANIO = 2026;
+
+function mesActualMX(): number {
+  return parseInt(
+    new Date().toLocaleString("en-US", { month: "numeric", timeZone: TZ })
+  );
+}
 
 export default async function ProspectosPage({
   searchParams,
 }: {
-  searchParams: { ciudad?: string; estado?: string };
+  searchParams: { ciudad?: string; estado?: string; mes?: string };
 }) {
   const session = await getServerSession(authOptions);
   const esAdmin = session?.user?.rol === "admin";
 
+  const mes = searchParams.mes ? parseInt(searchParams.mes) : mesActualMX();
+
   const rows = await listarProspectos({
     ciudad: searchParams.ciudad || undefined,
     estado: searchParams.estado || undefined,
+    mes,
+    anio: ANIO,
   });
 
   const prospectos: ProspectoView[] = rows.map((p) => ({
@@ -44,6 +55,7 @@ export default async function ProspectosPage({
       esAdmin={esAdmin}
       filtroEstado={searchParams.estado ?? ""}
       filtroCiudad={searchParams.ciudad ?? ""}
+      filtroMes={mes}
     />
   );
 }

@@ -4,7 +4,7 @@ import { actualizarEstadoProspecto, borrarProspecto } from "@/lib/services/prosp
 
 export async function actualizarProspectoAction(id: string, estado: string, nota?: string) {
   await actualizarEstadoProspecto(id, estado, nota);
-  revalidatePath("/prospectos");
+  // Sin revalidatePath: la fila queda en su lugar al cambiar estado.
 }
 
 export async function borrarProspectoAction(id: string) {

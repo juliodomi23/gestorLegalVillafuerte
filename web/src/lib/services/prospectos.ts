@@ -65,12 +65,28 @@ export async function borrarProspecto(id: string) {
   return prisma.prospecto.delete({ where: { id } });
 }
 
-export async function listarProspectos(filtros?: { ciudad?: string; estado?: string }) {
+export async function listarProspectos(filtros?: {
+  ciudad?: string;
+  estado?: string;
+  mes?: number;
+  anio?: number;
+}) {
+  const anio = filtros?.anio ?? 2026;
+  const mes = filtros?.mes;
+  const fechaFiltro =
+    mes !== undefined
+      ? {
+          gte: new Date(Date.UTC(anio, mes - 1, 1)),
+          lt: new Date(Date.UTC(anio, mes, 1)),
+        }
+      : undefined;
+
   return prisma.prospecto.findMany({
     where: {
       ...(filtros?.ciudad && { ciudad: filtros.ciudad }),
       ...(filtros?.estado && { estado: filtros.estado }),
+      ...(fechaFiltro && { fechaLlamada: fechaFiltro }),
     },
-    orderBy: { creadoEn: "desc" },
+    orderBy: [{ fechaLlamada: "desc" }, { creadoEn: "desc" }],
   });
 }

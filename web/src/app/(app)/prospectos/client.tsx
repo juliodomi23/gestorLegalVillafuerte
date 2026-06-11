@@ -129,18 +129,35 @@ function FilaProspecto({
   );
 }
 
+const MESES = [
+  { num: 1, label: "Enero" },
+  { num: 2, label: "Febrero" },
+  { num: 3, label: "Marzo" },
+  { num: 4, label: "Abril" },
+  { num: 5, label: "Mayo" },
+  { num: 6, label: "Junio" },
+  { num: 7, label: "Julio" },
+  { num: 8, label: "Agosto" },
+  { num: 9, label: "Septiembre" },
+  { num: 10, label: "Octubre" },
+  { num: 11, label: "Noviembre" },
+  { num: 12, label: "Diciembre" },
+];
+
 export default function ProspectosClient({
   prospectos,
   ciudades,
   esAdmin,
   filtroEstado,
   filtroCiudad,
+  filtroMes,
 }: {
   prospectos: ProspectoView[];
   ciudades: string[];
   esAdmin: boolean;
   filtroEstado: string;
   filtroCiudad: string;
+  filtroMes: number;
 }) {
   const router = useRouter();
 
@@ -148,7 +165,8 @@ export default function ProspectosClient({
     const params = new URLSearchParams();
     if (key !== "estado" && filtroEstado) params.set("estado", filtroEstado);
     if (key !== "ciudad" && filtroCiudad) params.set("ciudad", filtroCiudad);
-    if (value) params.set(key, value);
+    params.set("mes", key !== "mes" ? String(filtroMes) : value);
+    if (value && key !== "mes") params.set(key, value);
     router.push(`/prospectos?${params.toString()}`);
   }
 
@@ -157,13 +175,32 @@ export default function ProspectosClient({
     return acc;
   }, {});
 
+  const mesLabel = MESES.find((m) => m.num === filtroMes)?.label ?? "—";
+
   return (
     <>
       <PageTitle
         eyebrow="Clientes"
         title="Prospectos"
-        subtitle={`${prospectos.length} en pantalla`}
+        subtitle={`${prospectos.length} en ${mesLabel} 2026`}
       />
+
+      {/* Selector de mes */}
+      <div className="flex items-center gap-2 mb-4">
+        {MESES.map((m) => (
+          <button
+            key={m.num}
+            onClick={() => setFiltro("mes", String(m.num))}
+            className={`px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors border ${
+              filtroMes === m.num
+                ? "bg-navy text-white border-navy"
+                : "border-line text-muted hover:bg-paper"
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
 
       {/* Chips de estado rápido */}
       <div className="flex flex-wrap gap-2 mb-4">
