@@ -107,6 +107,7 @@ export async function obtenerExpedientePorNumero(numero: string) {
       terminos: { where: { cumplido: false }, orderBy: { vencimientoTermino: "asc" } },
       actuaciones: { orderBy: { fecha: "desc" }, take: 10 },
       audiencias: { orderBy: { fechaHora: "asc" } },
+      documentos: { orderBy: { creadoEn: "desc" } },
     },
   });
 }
