@@ -8,6 +8,7 @@ import { ExpedienteTabs, type ActuacionData, type AudienciaData, type DocumentoD
 import { EstadoEditor } from "@/components/estado-editor";
 import { DocumentosBtn } from "@/components/documentos-btn";
 import { ExpedienteAcciones } from "@/components/expediente-acciones";
+import { EditarNumeroExpediente } from "@/components/editar-numero-expediente";
 import { prisma } from "@/lib/prisma";
 
 const TZ = "America/Mexico_City";
@@ -148,7 +149,10 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
           <div className="flex items-start justify-between gap-6">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="exp-no text-[26px] font-semibold text-ink">{exp.numeroInterno ?? "S/N"}</h1>
+                <EditarNumeroExpediente
+                  expedienteId={exp.id}
+                  numeroActual={exp.numeroInterno ?? "S/N"}
+                />
                 <EstadoEditor
                   expedienteId={exp.id}
                   estadoInicial={exp.estado}

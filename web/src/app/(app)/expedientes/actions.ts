@@ -108,6 +108,17 @@ export async function borrarExpedienteAction(id: string) {
   revalidatePath("/expedientes");
 }
 
+export async function renombrarExpedienteAction(id: string, nuevoNumero: string) {
+  const limpio = nuevoNumero.trim();
+  if (!limpio) return { error: "El número no puede estar vacío." };
+  const existe = await prisma.expediente.findFirst({ where: { numeroInterno: limpio, NOT: { id } } });
+  if (existe) return { error: "Ya existe un expediente con ese número." };
+  await prisma.expediente.update({ where: { id }, data: { numeroInterno: limpio } });
+  revalidatePath(`/expedientes/${id}`);
+  revalidatePath("/expedientes");
+  return { ok: true };
+}
+
 export async function cambiarEstadoAction(id: string, estado: string, nota: string) {
   await prisma.expediente.update({
     where: { id },
