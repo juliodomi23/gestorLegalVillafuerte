@@ -61,7 +61,7 @@ export function SearchBox({ value, onChange, placeholder }: { value: string; onC
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="pl-9 pr-3 py-2 rounded-lg border border-line bg-surface text-[13px] w-64 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40 transition"
+        className="pl-9 pr-3 py-2 rounded-lg border border-line bg-surface text-[13px] w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40 transition"
       />
     </div>
   );

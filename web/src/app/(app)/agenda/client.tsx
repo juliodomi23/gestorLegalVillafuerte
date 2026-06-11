@@ -213,7 +213,7 @@ export default function AgendaClient({
           >
             <ChevronLeft size={18} />
           </button>
-          <span className="text-[13.5px] font-medium text-ink min-w-[240px] text-center capitalize">
+          <span className="text-[13px] sm:text-[13.5px] font-medium text-ink min-w-[160px] sm:min-w-[240px] text-center capitalize">
             {encabezadoVista(fechaActual, vistaActual)}
           </span>
           <button

@@ -229,7 +229,7 @@ export default function ProspectosClient({
       />
 
       {/* Selector de mes */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-1.5 mb-4">
         {MESES.map((m) => (
           <button
             key={m.num}
