@@ -95,6 +95,24 @@ export async function crearExpediente(d: DatosExpediente) {
   return expediente;
 }
 
+export async function buscarPorCliente(nombre: string) {
+  return prisma.expediente.findFirst({
+    where: {
+      cliente: { nombre: { contains: nombre, mode: "insensitive" } },
+    },
+    include: {
+      cliente: true,
+      abogadoResponsable: true,
+      sucursal: true,
+      terminos: { where: { cumplido: false }, orderBy: { vencimientoTermino: "asc" } },
+      actuaciones: { orderBy: { fecha: "desc" }, take: 10 },
+      audiencias: { orderBy: { fechaHora: "asc" } },
+      documentos: { orderBy: { creadoEn: "desc" } },
+    },
+    orderBy: { creadoEn: "desc" },
+  });
+}
+
 export async function obtenerExpedientePorNumero(numero: string) {
   return prisma.expediente.findFirst({
     where: {

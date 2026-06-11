@@ -1,5 +1,5 @@
 import { autorizado, noAutorizado, ok, fail, leerBody } from "@/lib/api";
-import { crearExpediente, obtenerExpedientePorNumero, type DatosExpediente } from "@/lib/services/expedientes";
+import { crearExpediente, obtenerExpedientePorNumero, buscarPorCliente, type DatosExpediente } from "@/lib/services/expedientes";
 
 export async function POST(req: Request) {
   if (!autorizado(req)) return noAutorizado();
@@ -15,9 +15,21 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   if (!autorizado(req)) return noAutorizado();
-  const numero = new URL(req.url).searchParams.get("numero");
-  if (!numero) return fail("Falta el parámetro ?numero");
-  const exp = await obtenerExpedientePorNumero(numero);
-  if (!exp) return fail("Expediente no encontrado", 404);
-  return ok(exp);
+  const params = new URL(req.url).searchParams;
+  const numero = params.get("numero");
+  const cliente = params.get("cliente");
+
+  if (numero) {
+    const exp = await obtenerExpedientePorNumero(numero);
+    if (!exp) return fail("Expediente no encontrado", 404);
+    return ok(exp);
+  }
+
+  if (cliente) {
+    const exp = await buscarPorCliente(cliente);
+    if (!exp) return fail("No se encontró expediente para ese cliente", 404);
+    return ok(exp);
+  }
+
+  return fail("Falta el parámetro ?numero o ?cliente");
 }
