@@ -2,6 +2,8 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services/resolvers";
+import { unlink } from "fs/promises";
+import { join } from "path";
 
 export type FormExpediente = {
   clienteId: string;
@@ -237,6 +239,24 @@ export async function borrarMovimientoAction(movimientoId: string, expedienteId:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+export async function borrarDocumentoAction(documentoId: string, expedienteId: string) {
+  const doc = await prisma.documento.findUnique({ where: { id: documentoId } });
+  if (!doc) return;
+
+  await prisma.documento.delete({ where: { id: documentoId } });
+
+  if (doc.tipo === "pdf" && doc.linkDrive?.startsWith("/api/uploads/")) {
+    const filename = doc.linkDrive.replace("/api/uploads/", "");
+    try {
+      await unlink(join(process.cwd(), "uploads", filename));
+    } catch {
+      // archivo ya no existe, ignorar
+    }
+  }
+
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
 
 export async function agregarDocumentoDriveAction(
   expedienteId: string,

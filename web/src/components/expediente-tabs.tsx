@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip, Trash2, Pencil, Check } from "lucide-react";
 import {
   agregarDocumentoDriveAction,
+  borrarDocumentoAction,
   borrarActuacionAction,
   crearParteAction, editarParteAction, borrarParteAction,
   crearAudienciaAction, editarAudienciaAction, borrarAudienciaAction,
@@ -524,6 +525,15 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
   const [driveNombre, setDriveNombre] = useState("");
   const [driveUrl, setDriveUrl] = useState("");
   const [driveGuardando, setDriveGuardando] = useState(false);
+  const [borrando, setBorrando] = useState<string | null>(null);
+
+  async function borrar(id: string) {
+    if (!confirm("¿Borrar este documento? Esta acción no se puede deshacer.")) return;
+    setBorrando(id);
+    await borrarDocumentoAction(id, expedienteId);
+    setDocs((prev) => prev.filter((d) => d.id !== id));
+    setBorrando(null);
+  }
 
   async function manejar(files: FileList | null) {
     if (!files) return;
@@ -635,7 +645,7 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
 
       <div className="space-y-2">
         {docs.map((d) => (
-          <div key={d.id} className={`flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${d.subiendo ? "border-navy/30 bg-paper/40" : "border-line hover:border-navy/30"}`}>
+          <div key={d.id} className={`group flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${d.subiendo ? "border-navy/30 bg-paper/40" : "border-line hover:border-navy/30"}`}>
             {d.tipo === "drive" ? (
               <Link2 size={18} strokeWidth={1.75} className="text-amber shrink-0" />
             ) : (
@@ -649,12 +659,24 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
               <span className="inline-flex items-center gap-1.5 text-[12px] text-amber font-bold shrink-0">
                 <Loader size={16} className="animate-spin" /> Subiendo…
               </span>
-            ) : d.linkDrive ? (
-              <a href={d.linkDrive} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[12.5px] text-navy font-bold cursor-pointer shrink-0">
-                <ExternalLink size={16} /> Abrir
-              </a>
-            ) : null}
+            ) : (
+              <div className="flex items-center gap-2 shrink-0">
+                {d.linkDrive && (
+                  <a href={d.linkDrive} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[12.5px] text-navy font-bold cursor-pointer">
+                    <ExternalLink size={16} /> Abrir
+                  </a>
+                )}
+                <button
+                  onClick={() => borrar(d.id)}
+                  disabled={borrando === d.id}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-danger disabled:opacity-40"
+                  title="Borrar documento"
+                >
+                  <Trash2 size={14} strokeWidth={1.75} />
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
