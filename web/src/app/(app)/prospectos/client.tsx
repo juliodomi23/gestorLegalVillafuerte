@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, Trash2, MapPin } from "lucide-react";
+import { Phone, Trash2, MapPin, ArrowUpRight, Download } from "lucide-react";
 import { PageTitle, Card, FilterSelect } from "@/components/ui";
-import { actualizarProspectoAction, borrarProspectoAction } from "./actions";
+import { actualizarProspectoAction, borrarProspectoAction, convertirProspectoAction } from "./actions";
 
 export type ProspectoView = {
   id: string;
@@ -42,6 +42,7 @@ function FilaProspecto({
   p: ProspectoView;
   esAdmin: boolean;
 }) {
+  const router = useRouter();
   const [estado, setEstado] = useState(p.estado);
   const [nota, setNota] = useState(p.nota);
   const [notaGuardada, setNotaGuardada] = useState(p.nota);
@@ -66,6 +67,15 @@ function FilaProspecto({
     if (confirm(`¿Eliminar a ${p.nombre}?`)) {
       await borrarProspectoAction(p.id);
     }
+  }
+
+  const [converting, setConverting] = useState(false);
+
+  async function convertir() {
+    setConverting(true);
+    const { clienteId } = await convertirProspectoAction(p.id, p.nombre, p.telefono);
+    const params = new URLSearchParams({ nuevo: "1", clienteId, nombre: p.nombre });
+    router.push(`/expedientes?${params.toString()}`);
   }
 
   const estiloEstado = ESTADO_ESTILOS[estado] ?? "bg-paper text-muted";
@@ -115,16 +125,26 @@ function FilaProspecto({
           className="w-full px-2 py-1 rounded bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none text-[12.5px] text-ink placeholder:text-muted/60 transition-colors"
         />
       </td>
-      {esAdmin && (
-        <td className="px-3 py-3 text-right">
+      <td className="px-3 py-3 text-right">
+        <div className="flex items-center justify-end gap-1">
           <button
-            onClick={borrar}
-            className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors"
+            onClick={convertir}
+            disabled={converting}
+            title="Crear expediente para este prospecto"
+            className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors disabled:opacity-40"
           >
-            <Trash2 size={15} />
+            <ArrowUpRight size={15} />
           </button>
-        </td>
-      )}
+          {esAdmin && (
+            <button
+              onClick={borrar}
+              className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+        </div>
+      </td>
     </tr>
   );
 }
@@ -176,6 +196,29 @@ export default function ProspectosClient({
   }, {});
 
   const mesLabel = MESES.find((m) => m.num === filtroMes)?.label ?? "—";
+
+  function exportarCSV() {
+    const encabezado = ["Fecha", "Nombre", "Teléfono", "Ciudad", "Asunto", "Estado", "Nota"];
+    const filas = prospectos.map((p) => [
+      p.fechaLlamada,
+      p.nombre,
+      p.telefono,
+      p.ciudad,
+      p.asunto,
+      ESTADOS.find((e) => e.value === p.estado)?.label ?? p.estado,
+      p.nota,
+    ]);
+    const csv = [encabezado, ...filas]
+      .map((fila) => fila.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `prospectos-${mesLabel.toLowerCase()}-2026.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <>
@@ -229,7 +272,7 @@ export default function ProspectosClient({
         ))}
       </div>
 
-      {/* Filtro ciudad */}
+      {/* Filtro ciudad + exportar */}
       <div className="flex items-center gap-2 mb-4">
         <FilterSelect
           label="Ciudad"
@@ -237,6 +280,14 @@ export default function ProspectosClient({
           onChange={(v) => setFiltro("ciudad", v)}
           options={ciudades}
         />
+        <span className="flex-1" />
+        <button
+          onClick={exportarCSV}
+          disabled={prospectos.length === 0}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-surface text-[13px] text-muted hover:border-navy/40 hover:text-navy transition-colors disabled:opacity-40"
+        >
+          <Download size={15} /> Exportar CSV
+        </button>
       </div>
 
       <Card className="overflow-x-auto">
@@ -250,7 +301,7 @@ export default function ProspectosClient({
               <th className="eyebrow text-muted px-3 py-3">Asunto</th>
               <th className="eyebrow text-muted px-3 py-3">Estado</th>
               <th className="eyebrow text-muted px-3 py-3">Nota</th>
-              {esAdmin && <th className="eyebrow text-muted px-3 py-3 text-right">–</th>}
+              <th className="eyebrow text-muted px-3 py-3 text-right">–</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
@@ -260,7 +311,7 @@ export default function ProspectosClient({
             {prospectos.length === 0 && (
               <tr>
                 <td
-                  colSpan={esAdmin ? 8 : 7}
+                  colSpan={8}
                   className="px-4 py-10 text-center text-muted"
                 >
                   No hay prospectos con estos filtros.

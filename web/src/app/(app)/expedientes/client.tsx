@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Plus, Pencil, Trash2, UserPlus } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox, EstadoBadge, MateriaTag, Vencimiento } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
@@ -195,6 +195,8 @@ export default function ExpedientesClient({
   clientes,
   sesionRol,
   sesionNombre,
+  preNombre = "",
+  preClienteId = "",
 }: {
   expedientes: ExpView[];
   sucursales: string[];
@@ -202,9 +204,12 @@ export default function ExpedientesClient({
   clientes: ClienteBasico[];
   sesionRol: string;
   sesionNombre: string;
+  preNombre?: string;
+  preClienteId?: string;
 }) {
   const esAdmin = sesionRol === "admin";
   const router = useRouter();
+  const pathname = usePathname();
   const [busqueda, setBusqueda] = useState("");
   const [fMateria, setFMateria] = useState("");
   const [fEstado, setFEstado] = useState("");
@@ -218,6 +223,21 @@ export default function ExpedientesClient({
   function set(campo: keyof typeof vacio, valor: string) {
     setForm((f) => ({ ...f, [campo]: valor }));
   }
+
+  // Auto-abrir modal si viene desde "convertir prospecto"
+  useEffect(() => {
+    if (!preNombre) return;
+    setEditId(null);
+    setForm({
+      ...vacio,
+      clienteId: preClienteId,
+      clienteNombre: preNombre,
+      abogado: esAdmin ? "" : sesionNombre,
+    });
+    setOpen(true);
+    router.replace(pathname);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();

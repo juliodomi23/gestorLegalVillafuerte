@@ -15,7 +15,11 @@ function textoVence(fecha: Date | null): { texto: string; urgente: boolean } | n
   return { texto: `${dias} días`, urgente: dias <= 3 };
 }
 
-export default async function ExpedientesPage() {
+export default async function ExpedientesPage({
+  searchParams,
+}: {
+  searchParams?: { nuevo?: string; nombre?: string; clienteId?: string };
+}) {
   const session = await getServerSession(authOptions);
 
   const esAdmin = session?.user?.rol === "admin";
@@ -69,6 +73,8 @@ export default async function ExpedientesPage() {
       clientes={clientes}
       sesionRol={session?.user?.rol ?? "abogado"}
       sesionNombre={session?.user?.name ?? ""}
+      preNombre={searchParams?.nuevo === "1" ? (searchParams.nombre ?? "") : ""}
+      preClienteId={searchParams?.nuevo === "1" ? (searchParams.clienteId ?? "") : ""}
     />
   );
 }
