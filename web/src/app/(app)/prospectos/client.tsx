@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Phone, Trash2, MapPin, ArrowUpRight, Download } from "lucide-react";
 import { PageTitle, Card, FilterSelect } from "@/components/ui";
+import { useConfirm } from "@/components/confirm";
 import { actualizarProspectoAction, borrarProspectoAction, convertirProspectoAction } from "./actions";
 
 export type ProspectoView = {
@@ -47,6 +48,7 @@ function FilaProspecto({
   const [nota, setNota] = useState(p.nota);
   const [notaGuardada, setNotaGuardada] = useState(p.nota);
   const [pending, startTransition] = useTransition();
+  const confirmar = useConfirm();
 
   function cambiarEstado(nuevoEstado: string) {
     setEstado(nuevoEstado);
@@ -64,7 +66,7 @@ function FilaProspecto({
   }
 
   async function borrar() {
-    if (confirm(`¿Eliminar a ${p.nombre}?`)) {
+    if (await confirmar({ titulo: `¿Eliminar a ${p.nombre}?`, peligro: true, confirmLabel: "Eliminar" })) {
       await borrarProspectoAction(p.id);
     }
   }

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Plus, ChevronDown, ChevronRight, MessageCircle, FileText, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { PageTitle, Card, SearchBox, FilterSelect } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
+import { useConfirm } from "@/components/confirm";
 import type { StatusAsesoria } from "@/lib/constants";
 import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction } from "./actions";
 
@@ -108,6 +109,7 @@ export default function AsesoriasClient({
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
 
@@ -147,7 +149,9 @@ export default function AsesoriasClient({
     setForm({ nombre: a.nombre, telefono: a.telefono, asunto: a.asunto, sucursal: a.sucursal, abogado: a.abogado, pago: a.pago ? "Sí" : "No", monto: a.pago ? String(a.monto) : "", status: statusInfo[a.status].label });
     setOpen(true);
   }
-  async function borrar(id: string) { if (confirm("¿Eliminar esta asesoría?")) await borrarAsesoriaAction(id); }
+  async function borrar(id: string) {
+    if (await confirmar({ titulo: "¿Eliminar esta asesoría?", peligro: true, confirmLabel: "Eliminar" })) await borrarAsesoriaAction(id);
+  }
   async function guardar() {
     setSaving(true);
     const pago = form.pago === "Sí";

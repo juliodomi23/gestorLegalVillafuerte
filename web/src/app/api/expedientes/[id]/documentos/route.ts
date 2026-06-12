@@ -8,6 +8,9 @@ import { authOptions } from "@/lib/auth";
 const UPLOADS_DIR = join(process.cwd(), "uploads");
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
   const docs = await prisma.documento.findMany({
     where: { expedienteId: params.id },
     orderBy: { creadoEn: "desc" },
@@ -23,6 +26,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
@@ -33,7 +37,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   await mkdir(UPLOADS_DIR, { recursive: true });
   const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const bytes = await file.arrayBuffer();
-  await writeFile(join(UPLOADS_DIR, filename), Buffer.from(bytes));
+  // Verifica los magic bytes del PDF (%PDF), no solo el Content-Type declarado.
+  const buffer = Buffer.from(bytes);
+  if (buffer.subarray(0, 4).toString("ascii") !== "%PDF") {
+    return NextResponse.json({ error: "El archivo no es un PDF válido" }, { status: 400 });
+  }
+  await writeFile(join(UPLOADS_DIR, filename), buffer);
 
   const actuacionId = (formData.get("actuacionId") as string | null) || null;
 

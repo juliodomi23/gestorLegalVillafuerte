@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
+import { useConfirm } from "@/components/confirm";
 import { crearClienteAction, editarClienteAction, borrarClienteAction } from "./actions";
 
 export type ClienteView = {
@@ -25,6 +26,7 @@ export default function ClientesClient({ clientes }: { clientes: ClienteView[] }
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
 
@@ -41,7 +43,9 @@ export default function ClientesClient({ clientes }: { clientes: ClienteView[] }
     setForm({ nombre: c.nombre, tipo: c.tipo === "Moral" ? "Moral" : "Física", telefono: c.telefono === "—" ? "" : c.telefono, email: c.email });
     setOpen(true);
   }
-  async function borrar(id: string) { if (confirm("¿Eliminar este cliente?")) await borrarClienteAction(id); }
+  async function borrar(id: string) {
+    if (await confirmar({ titulo: "¿Eliminar este cliente?", peligro: true, confirmLabel: "Eliminar" })) await borrarClienteAction(id);
+  }
   async function guardar() {
     setSaving(true);
     const data = { nombre: form.nombre, tipo: form.tipo === "Moral" ? "moral" : "fisica", telefono: form.telefono, email: form.email };

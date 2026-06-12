@@ -131,6 +131,7 @@ export function Sidebar({
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           title="Cerrar sesión"
+          aria-label="Cerrar sesión"
           className="text-white/45 hover:text-white transition-colors"
         >
           <LogOut size={18} strokeWidth={1.75} />

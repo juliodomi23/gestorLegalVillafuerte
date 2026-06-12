@@ -36,3 +36,22 @@ export async function leerBody<T extends Record<string, unknown>>(
   }
   return { data: body };
 }
+
+// Variante con validación de tipos via Zod: además de presencia, valida formato
+// (números, enums, rangos). Úsala cuando el body tenga reglas más allá de "existe".
+export async function leerBodyValidado<T>(
+  req: Request,
+  schema: { safeParse: (d: unknown) => { success: true; data: T } | { success: false; error: { issues: { message: string }[] } } }
+): Promise<{ data: T } | { error: Response }> {
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return { error: fail("Body inválido: se esperaba JSON.") };
+  }
+  const r = schema.safeParse(raw);
+  if (!r.success) {
+    return { error: fail(r.error.issues[0]?.message ?? "Datos inválidos") };
+  }
+  return { data: r.data };
+}

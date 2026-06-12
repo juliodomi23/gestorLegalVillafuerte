@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Plus, Pencil, Trash2, Phone, MessageCircle, PhoneCall } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
+import { useConfirm } from "@/components/confirm";
 import { crearSeguimientoAction, editarSeguimientoAction, marcarLlamadoAction, borrarSeguimientoAction } from "./actions";
 
 export type SeguimientoView = {
@@ -42,6 +43,7 @@ export default function SeguimientosClient({
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
 
@@ -64,7 +66,9 @@ export default function SeguimientosClient({
     setForm({ cliente: s.cliente, tipoCaso: s.tipoCaso, abogado: s.abogado, sucursal: s.sucursal, telefono: s.telefono === "—" ? "" : s.telefono, frecuencia: String(s.frecuencia) });
     setOpen(true);
   }
-  async function borrar(id: string) { if (confirm("¿Eliminar este seguimiento?")) await borrarSeguimientoAction(id); }
+  async function borrar(id: string) {
+    if (await confirmar({ titulo: "¿Eliminar este seguimiento?", peligro: true, confirmLabel: "Eliminar" })) await borrarSeguimientoAction(id);
+  }
   async function marcar(id: string) { await marcarLlamadoAction(id); }
   async function guardar() {
     setSaving(true);

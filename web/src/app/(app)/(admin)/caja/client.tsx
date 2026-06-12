@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox, OrigenChip } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
+import { useConfirm } from "@/components/confirm";
 import { crearMovimientoAction, borrarMovimientoAction } from "./actions";
 
 export type MovimientoView = {
@@ -35,6 +36,7 @@ export default function CajaClient({
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
 
@@ -48,7 +50,9 @@ export default function CajaClient({
   const ingresos = movimientos.filter((m) => m.tipo === "Ingreso").reduce((a, m) => a + m.monto, 0);
   const egresos  = movimientos.filter((m) => m.tipo === "Egreso").reduce((a, m)  => a + m.monto, 0);
 
-  async function borrar(id: string) { if (confirm("¿Eliminar este movimiento?")) await borrarMovimientoAction(id); }
+  async function borrar(id: string) {
+    if (await confirmar({ titulo: "¿Eliminar este movimiento?", peligro: true, confirmLabel: "Eliminar" })) await borrarMovimientoAction(id);
+  }
   async function guardar() {
     setSaving(true);
     await crearMovimientoAction({ tipo: form.tipo, monto: Number(form.monto.replace(/[$,]/g, "")) || 0, concepto: form.concepto, sucursal: form.sucursal, expediente: form.expediente });

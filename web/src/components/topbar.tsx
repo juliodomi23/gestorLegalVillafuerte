@@ -158,6 +158,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           onClick={onMenu}
           className="lg:hidden p-2 -ml-2 rounded-lg text-ink hover:bg-line/50 transition-colors"
           title="Menú"
+          aria-label="Abrir menú"
         >
           <Menu size={20} />
         </button>
@@ -176,6 +177,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           {query && (
             <button
               onClick={limpiarQuery}
+              aria-label="Limpiar búsqueda"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors"
             >
               <X size={14} />
@@ -198,13 +200,17 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           onClick={() => setMobileSearchOpen((v) => !v)}
           className="sm:hidden p-2 rounded-lg text-ink hover:bg-line/50 transition-colors"
           title="Buscar"
+          aria-label="Buscar"
         >
           {mobileSearchOpen ? <X size={20} /> : <Search size={20} />}
         </button>
 
-        <button className="flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors">
+        <button
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors"
+          title="Notificaciones"
+          aria-label="Notificaciones"
+        >
           <Bell size={18} strokeWidth={1.75} />
-          <span className="w-1.5 h-1.5 rounded-full bg-danger" />
         </button>
         <Link
           href="/expedientes"

@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services/resolvers";
+import { requireSession } from "@/lib/guard";
 import { sumarDias } from "@/lib/fecha";
 
 export type FormSeguimiento = {
@@ -14,6 +15,7 @@ export type FormSeguimiento = {
 };
 
 export async function crearSeguimientoAction(form: FormSeguimiento) {
+  await requireSession();
   const [clienteId, abogadoId, sucursalId] = await Promise.all([
     upsertCliente(form.cliente, form.telefono || undefined),
     resolverAbogado(form.abogado),
@@ -37,6 +39,7 @@ export async function crearSeguimientoAction(form: FormSeguimiento) {
 }
 
 export async function editarSeguimientoAction(id: string, form: FormSeguimiento) {
+  await requireSession();
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
@@ -54,6 +57,7 @@ export async function editarSeguimientoAction(id: string, form: FormSeguimiento)
 }
 
 export async function marcarLlamadoAction(id: string) {
+  await requireSession();
   const s = await prisma.seguimiento.findUnique({ where: { id } });
   if (!s) return;
   const hoy = new Date();
@@ -68,6 +72,7 @@ export async function marcarLlamadoAction(id: string) {
 }
 
 export async function borrarSeguimientoAction(id: string) {
+  await requireSession();
   await prisma.seguimiento.delete({ where: { id } });
   revalidatePath("/seguimientos");
 }

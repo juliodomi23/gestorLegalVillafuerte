@@ -2,6 +2,8 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { resolverSucursal } from "@/lib/services/resolvers";
+import { requireAdmin } from "@/lib/guard";
+import { parsear, movimientoCajaSchema } from "@/lib/validaciones";
 
 export async function crearMovimientoAction(form: {
   tipo: string;
@@ -10,19 +12,21 @@ export async function crearMovimientoAction(form: {
   sucursal: string;
   expediente: string;
 }) {
-  const sucursalId = await resolverSucursal(form.sucursal);
+  await requireAdmin();
+  const d = parsear(movimientoCajaSchema, form);
+  const sucursalId = await resolverSucursal(d.sucursal ?? "");
   let expedienteId: string | null = null;
-  if (form.expediente) {
+  if (d.expediente) {
     const e = await prisma.expediente.findFirst({
-      where: { OR: [{ numeroInterno: form.expediente }, { numeroJudicial: form.expediente }] },
+      where: { OR: [{ numeroInterno: d.expediente }, { numeroJudicial: d.expediente }] },
     });
     expedienteId = e?.id ?? null;
   }
   await prisma.movimientoCaja.create({
     data: {
-      tipo: form.tipo.toLowerCase(),
-      monto: form.monto,
-      concepto: form.concepto || null,
+      tipo: d.tipo.toLowerCase(),
+      monto: d.monto,
+      concepto: d.concepto || null,
       sucursalId,
       expedienteId,
       origen: "web",
@@ -32,6 +36,7 @@ export async function crearMovimientoAction(form: {
 }
 
 export async function borrarMovimientoAction(id: string) {
+  await requireAdmin();
   await prisma.movimientoCaja.delete({ where: { id } });
   revalidatePath("/caja");
 }

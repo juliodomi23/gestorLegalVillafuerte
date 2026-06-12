@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { resolverAbogado, resolverSucursal } from "@/lib/services/resolvers";
+import { requireSession } from "@/lib/guard";
 import type { StatusAsesoria } from "@/lib/constants";
 
 export type FormAsesoria = {
@@ -16,6 +17,7 @@ export type FormAsesoria = {
 };
 
 export async function crearAsesoriaAction(form: FormAsesoria) {
+  await requireSession();
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
@@ -37,6 +39,7 @@ export async function crearAsesoriaAction(form: FormAsesoria) {
 }
 
 export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
+  await requireSession();
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
@@ -58,6 +61,7 @@ export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
 }
 
 export async function borrarAsesoriaAction(id: string) {
+  await requireSession();
   await prisma.asesoria.delete({ where: { id } });
   revalidatePath("/asesorias");
 }

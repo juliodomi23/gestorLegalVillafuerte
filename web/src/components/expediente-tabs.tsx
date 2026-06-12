@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip, Trash2, Pencil, Check } from "lucide-react";
+import { useConfirm } from "@/components/confirm";
 import {
   agregarDocumentoDriveAction,
   borrarDocumentoAction,
@@ -78,7 +79,6 @@ export type TerminoTabData = {
 
 export function ExpedienteTabs({
   expedienteId,
-  usuarioId,
   actuaciones,
   partes,
   audiencias,
@@ -87,7 +87,6 @@ export function ExpedienteTabs({
   movimientos,
 }: {
   expedienteId: string;
-  usuarioId: string;
   actuaciones: ActuacionData[];
   partes: ParteData[];
   audiencias: AudienciaData[];
@@ -119,7 +118,7 @@ export function ExpedienteTabs({
         {tab === "audiencias"  && <Audiencias data={audiencias} expedienteId={expedienteId} />}
         {tab === "terminos"    && <Terminos data={terminos} expedienteId={expedienteId} />}
         {tab === "documentos"  && <Documentos expedienteId={expedienteId} inicial={documentosIniciales} />}
-        {tab === "caja"        && <Caja data={movimientos} expedienteId={expedienteId} usuarioId={usuarioId} />}
+        {tab === "caja"        && <Caja data={movimientos} expedienteId={expedienteId} />}
       </div>
     </>
   );
@@ -127,9 +126,10 @@ export function ExpedienteTabs({
 
 function Actuaciones({ data, expedienteId }: { data: ActuacionData[]; expedienteId: string }) {
   const [borrando, setBorrando] = useState<string | null>(null);
+  const confirmar = useConfirm();
 
   async function borrar(id: string) {
-    if (!confirm("¿Borrar esta actuación? Esta acción no se puede deshacer.")) return;
+    if (!(await confirmar({ titulo: "¿Borrar esta actuación?", mensaje: "Esta acción no se puede deshacer.", peligro: true, confirmLabel: "Borrar" }))) return;
     setBorrando(id);
     await borrarActuacionAction(id, expedienteId);
     setBorrando(null);
@@ -194,6 +194,7 @@ function Partes({ data: inicial, expedienteId }: { data: ParteData[]; expediente
   const [editando, setEditando] = useState<ParteData | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function abrirNueva() { setForm({ nombre: "", rol: "", contacto: "" }); setEditando(null); setOpen(true); }
   function abrirEditar(p: ParteData) { setForm({ nombre: p.nombre, rol: p.rol ?? "", contacto: p.contacto ?? "" }); setEditando(p); setOpen(true); }
@@ -214,7 +215,7 @@ function Partes({ data: inicial, expedienteId }: { data: ParteData[]; expediente
   }
 
   async function borrar(id: string) {
-    if (!confirm("¿Borrar esta parte?")) return;
+    if (!(await confirmar({ titulo: "¿Borrar esta parte?", peligro: true, confirmLabel: "Borrar" }))) return;
     await borrarParteAction(id, expedienteId);
     setData((prev) => prev.filter((p) => p.id !== id));
   }
@@ -289,6 +290,7 @@ function Audiencias({ data: inicial, expedienteId }: { data: AudienciaData[]; ex
   const [editando, setEditando] = useState<AudienciaData | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function abrirNueva() { setForm({ fechaHora: "", tipo: "", lugar: "", estado: "programada" }); setEditando(null); setOpen(true); }
   function abrirEditar(a: AudienciaData) {
@@ -320,7 +322,7 @@ function Audiencias({ data: inicial, expedienteId }: { data: AudienciaData[]; ex
   }
 
   async function borrar(id: string) {
-    if (!confirm("¿Borrar esta audiencia?")) return;
+    if (!(await confirmar({ titulo: "¿Borrar esta audiencia?", peligro: true, confirmLabel: "Borrar" }))) return;
     await borrarAudienciaAction(id, expedienteId);
     setData((prev) => prev.filter((a) => a.id !== id));
   }
@@ -401,6 +403,7 @@ function Terminos({ data: inicial, expedienteId }: { data: TerminoTabData[]; exp
   const [form, setForm] = useState({ tipo: "", descripcion: "", fechaAcuerdo: "", diasParaContestar: "", vencimientoTermino: "" });
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function cerrar() { setOpen(false); setForm({ tipo: "", descripcion: "", fechaAcuerdo: "", diasParaContestar: "", vencimientoTermino: "" }); }
 
@@ -431,7 +434,7 @@ function Terminos({ data: inicial, expedienteId }: { data: TerminoTabData[]; exp
   }
 
   async function borrar(id: string) {
-    if (!confirm("¿Borrar este término?")) return;
+    if (!(await confirmar({ titulo: "¿Borrar este término?", peligro: true, confirmLabel: "Borrar" }))) return;
     await borrarTerminoAction(id, expedienteId);
     setData((prev) => prev.filter((t) => t.id !== id));
   }
@@ -526,9 +529,10 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
   const [driveUrl, setDriveUrl] = useState("");
   const [driveGuardando, setDriveGuardando] = useState(false);
   const [borrando, setBorrando] = useState<string | null>(null);
+  const confirmar = useConfirm();
 
   async function borrar(id: string) {
-    if (!confirm("¿Borrar este documento? Esta acción no se puede deshacer.")) return;
+    if (!(await confirmar({ titulo: "¿Borrar este documento?", mensaje: "Esta acción no se puede deshacer.", peligro: true, confirmLabel: "Borrar" }))) return;
     setBorrando(id);
     await borrarDocumentoAction(id, expedienteId);
     setDocs((prev) => prev.filter((d) => d.id !== id));
@@ -684,18 +688,19 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
   );
 }
 
-function Caja({ data: inicial, expedienteId, usuarioId }: { data: MovimientoTabData[]; expedienteId: string; usuarioId: string }) {
+function Caja({ data: inicial, expedienteId }: { data: MovimientoTabData[]; expedienteId: string }) {
   const [data, setData] = useState(inicial);
   const [form, setForm] = useState({ tipo: "ingreso", concepto: "", monto: "", fecha: hoy() });
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function cerrar() { setOpen(false); setForm({ tipo: "ingreso", concepto: "", monto: "", fecha: hoy() }); }
 
   async function guardar() {
     if (!form.monto || isNaN(parseFloat(form.monto))) return;
     setSaving(true);
-    await crearMovimientoAction(expedienteId, usuarioId, form);
+    await crearMovimientoAction(expedienteId, form);
     setData((prev) => [{
       id: `tmp-${Date.now()}`,
       fecha: new Date(form.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
@@ -708,7 +713,7 @@ function Caja({ data: inicial, expedienteId, usuarioId }: { data: MovimientoTabD
   }
 
   async function borrar(id: string) {
-    if (!confirm("¿Borrar este movimiento?")) return;
+    if (!(await confirmar({ titulo: "¿Borrar este movimiento?", peligro: true, confirmLabel: "Borrar" }))) return;
     await borrarMovimientoAction(id, expedienteId);
     setData((prev) => prev.filter((m) => m.id !== id));
   }

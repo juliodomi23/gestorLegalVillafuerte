@@ -10,7 +10,6 @@ const TIPOS_ACTUACION = ["promocion", "acuerdo", "notificacion", "audiencia", "n
 
 type Props = {
   expedienteId: string;
-  usuarioId: string;
   esAdmin: boolean;
   inicial: {
     clienteId: string;
@@ -27,7 +26,7 @@ type Props = {
   abogados: string[];
 };
 
-export function ExpedienteAcciones({ expedienteId, usuarioId, esAdmin, inicial, sucursales, abogados }: Props) {
+export function ExpedienteAcciones({ expedienteId, esAdmin, inicial, sucursales, abogados }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [actOpen, setActOpen] = useState(false);
   const [editForm, setEditForm] = useState<FormExpediente>({ ...inicial, rolCliente: inicial.rolCliente ?? "", cuantia: inicial.cuantia ?? "" });
@@ -52,7 +51,7 @@ export function ExpedienteAcciones({ expedienteId, usuarioId, esAdmin, inicial, 
 
   async function guardarActuacion() {
     setSaving(true);
-    const { id: actuacionId } = await crearActuacionAction(expedienteId, usuarioId, actForm);
+    const { id: actuacionId } = await crearActuacionAction(expedienteId, actForm);
 
     if (docMode === "drive" && driveUrl.trim()) {
       await agregarDocumentoDriveAction(

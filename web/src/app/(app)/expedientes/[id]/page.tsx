@@ -31,7 +31,6 @@ function diasHasta(d: Date): number {
 export default async function ExpedienteDetallePage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   const esAdmin = session?.user?.rol === "admin";
-  const usuarioId = session?.user?.id ?? "";
 
   const [exp, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.expediente.findUnique({
@@ -176,7 +175,6 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
               />
               <ExpedienteAcciones
                 expedienteId={exp.id}
-                usuarioId={usuarioId}
                 esAdmin={esAdmin}
                 inicial={{
                   clienteId: exp.clienteId ?? "",
@@ -225,7 +223,6 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
 
         <ExpedienteTabs
           expedienteId={exp.id}
-          usuarioId={usuarioId}
           actuaciones={actuacionesData}
           partes={partesData}
           audiencias={audienciasData}

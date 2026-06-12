@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
+import { useConfirm } from "@/components/confirm";
 import { crearUsuarioAction, editarUsuarioAction, borrarUsuarioAction } from "./actions";
 
 export type UsuarioView = {
@@ -33,6 +34,7 @@ export default function ConfiguracionClient({
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
 
@@ -57,7 +59,7 @@ export default function ConfiguracionClient({
   }
 
   async function borrar(id: string) {
-    if (confirm("¿Desactivar este usuario?")) await borrarUsuarioAction(id);
+    if (await confirmar({ titulo: "¿Desactivar este usuario?", mensaje: "Dejará de tener acceso a la app.", peligro: true, confirmLabel: "Desactivar" })) await borrarUsuarioAction(id);
   }
 
   async function guardar() {

@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Plus, Pencil, Trash2, UserPlus } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox, EstadoBadge, MateriaTag, Vencimiento } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
+import { useConfirm } from "@/components/confirm";
 import { MATERIAS, ETAPAS, ESTADOS_EXP } from "@/lib/constants";
 import { crearExpedienteAction, editarExpedienteAction, borrarExpedienteAction, crearClienteRapidoAction } from "./actions";
 
@@ -219,6 +220,7 @@ export default function ExpedientesClient({
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function set(campo: keyof typeof vacio, valor: string) {
     setForm((f) => ({ ...f, [campo]: valor }));
@@ -273,7 +275,7 @@ export default function ExpedientesClient({
   }
 
   async function borrar(id: string) {
-    if (confirm("¿Eliminar este expediente?")) await borrarExpedienteAction(id);
+    if (await confirmar({ titulo: "¿Eliminar este expediente?", mensaje: "Se borrarán también sus actuaciones, partes y documentos.", peligro: true, confirmLabel: "Eliminar" })) await borrarExpedienteAction(id);
   }
 
   async function guardar() {

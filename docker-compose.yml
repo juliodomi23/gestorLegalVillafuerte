@@ -35,6 +35,10 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       N8N_API_KEY: ${N8N_API_KEY}
+      # Admin inicial: el seed lo crea en el primer arranque (idempotente).
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Administrador}
     expose:
       - "3000"
     volumes:

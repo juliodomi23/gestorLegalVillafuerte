@@ -38,5 +38,6 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/public ./public
 
 EXPOSE 3000
-# prisma db push aplica cambios de schema en cada arranque (seguro: falla si hay pérdida de datos)
-CMD ["sh", "-c", "npx prisma db push && npm start"]
+# 1. prisma db push aplica cambios de schema (seguro: falla si hay pérdida de datos)
+# 2. seed.mjs crea el admin inicial desde ADMIN_EMAIL/ADMIN_PASSWORD (idempotente)
+CMD ["sh", "-c", "npx prisma db push && node prisma/seed.mjs && npm start"]

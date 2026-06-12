@@ -2,6 +2,8 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services/resolvers";
+import { requireSession } from "@/lib/guard";
+import { parsear, urlHttpSchema, montoSchema } from "@/lib/validaciones";
 import { unlink } from "fs/promises";
 import { join } from "path";
 
@@ -18,11 +20,13 @@ export type FormExpediente = {
 };
 
 export async function crearClienteRapidoAction(nombre: string, telefono?: string) {
+  await requireSession();
   const id = await upsertCliente(nombre, telefono);
   return { id, nombre };
 }
 
 export async function crearExpedienteAction(form: FormExpediente) {
+  await requireSession();
   let clienteId: string | null = form.clienteId || null;
   if (!clienteId && form.clienteNombre) {
     clienteId = await upsertCliente(form.clienteNombre);
@@ -50,6 +54,7 @@ export async function crearExpedienteAction(form: FormExpediente) {
 }
 
 export async function editarExpedienteAction(id: string, form: FormExpediente) {
+  await requireSession();
   let clienteId: string | null = form.clienteId || null;
   if (!clienteId && form.clienteNombre) {
     clienteId = await upsertCliente(form.clienteNombre);
@@ -83,11 +88,12 @@ export type FormActuacion = {
   fecha: string;
 };
 
-export async function crearActuacionAction(expedienteId: string, usuarioId: string, form: FormActuacion) {
+export async function crearActuacionAction(expedienteId: string, form: FormActuacion) {
+  const sesion = await requireSession();
   const actuacion = await prisma.actuacion.create({
     data: {
       expedienteId,
-      registradoPor: usuarioId || null,
+      registradoPor: sesion.id,
       tipo: form.tipo || null,
       descripcion: form.descripcion.trim() || null,
       fecha: form.fecha ? new Date(form.fecha) : new Date(),
@@ -99,16 +105,19 @@ export async function crearActuacionAction(expedienteId: string, usuarioId: stri
 }
 
 export async function borrarActuacionAction(actuacionId: string, expedienteId: string) {
+  await requireSession();
   await prisma.actuacion.delete({ where: { id: actuacionId } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
 
 export async function borrarExpedienteAction(id: string) {
+  await requireSession();
   await prisma.expediente.delete({ where: { id } });
   revalidatePath("/expedientes");
 }
 
 export async function renombrarExpedienteAction(id: string, nuevoNumero: string) {
+  await requireSession();
   const limpio = nuevoNumero.trim();
   if (!limpio) return { error: "El número no puede estar vacío." };
   const existe = await prisma.expediente.findFirst({ where: { numeroInterno: limpio, NOT: { id } } });
@@ -120,6 +129,7 @@ export async function renombrarExpedienteAction(id: string, nuevoNumero: string)
 }
 
 export async function cambiarEstadoAction(id: string, estado: string, nota: string) {
+  await requireSession();
   await prisma.expediente.update({
     where: { id },
     data: {
@@ -141,6 +151,7 @@ export type FormTermino = {
 };
 
 export async function crearTerminoAction(expedienteId: string, form: FormTermino) {
+  await requireSession();
   await prisma.termino.create({
     data: {
       expedienteId,
@@ -155,11 +166,13 @@ export async function crearTerminoAction(expedienteId: string, form: FormTermino
 }
 
 export async function marcarCumplidoTerminoAction(terminoId: string, expedienteId: string) {
+  await requireSession();
   await prisma.termino.update({ where: { id: terminoId }, data: { cumplido: true } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
 
 export async function borrarTerminoAction(terminoId: string, expedienteId: string) {
+  await requireSession();
   await prisma.termino.delete({ where: { id: terminoId } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
@@ -167,6 +180,7 @@ export async function borrarTerminoAction(terminoId: string, expedienteId: strin
 // ── Partes ────────────────────────────────────────────────────────────────────
 
 export async function crearParteAction(expedienteId: string, data: { nombre: string; rol: string; contacto: string }) {
+  await requireSession();
   await prisma.parte.create({
     data: {
       expedienteId,
@@ -179,6 +193,7 @@ export async function crearParteAction(expedienteId: string, data: { nombre: str
 }
 
 export async function editarParteAction(parteId: string, expedienteId: string, data: { nombre: string; rol: string; contacto: string }) {
+  await requireSession();
   await prisma.parte.update({
     where: { id: parteId },
     data: {
@@ -191,6 +206,7 @@ export async function editarParteAction(parteId: string, expedienteId: string, d
 }
 
 export async function borrarParteAction(parteId: string, expedienteId: string) {
+  await requireSession();
   await prisma.parte.delete({ where: { id: parteId } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
@@ -198,6 +214,7 @@ export async function borrarParteAction(parteId: string, expedienteId: string) {
 // ── Audiencias ────────────────────────────────────────────────────────────────
 
 export async function crearAudienciaAction(expedienteId: string, data: { fechaHora: string; tipo: string; lugar: string; estado: string }) {
+  await requireSession();
   await prisma.audiencia.create({
     data: {
       expedienteId,
@@ -211,6 +228,7 @@ export async function crearAudienciaAction(expedienteId: string, data: { fechaHo
 }
 
 export async function editarAudienciaAction(audienciaId: string, expedienteId: string, data: { fechaHora: string; tipo: string; lugar: string; estado: string }) {
+  await requireSession();
   await prisma.audiencia.update({
     where: { id: audienciaId },
     data: {
@@ -224,20 +242,23 @@ export async function editarAudienciaAction(audienciaId: string, expedienteId: s
 }
 
 export async function borrarAudienciaAction(audienciaId: string, expedienteId: string) {
+  await requireSession();
   await prisma.audiencia.delete({ where: { id: audienciaId } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
 
 // ── Caja ──────────────────────────────────────────────────────────────────────
 
-export async function crearMovimientoAction(expedienteId: string, usuarioId: string, data: { tipo: string; concepto: string; monto: string; fecha: string }) {
+export async function crearMovimientoAction(expedienteId: string, data: { tipo: string; concepto: string; monto: string; fecha: string }) {
+  const sesion = await requireSession();
+  const monto = parsear(montoSchema, data.monto);
   await prisma.movimientoCaja.create({
     data: {
       expedienteId,
-      registradoPor: usuarioId || null,
+      registradoPor: sesion.id,
       tipo: data.tipo,
       concepto: data.concepto.trim() || null,
-      monto: parseFloat(data.monto),
+      monto,
       fecha: data.fecha ? new Date(data.fecha) : new Date(),
     },
   });
@@ -245,6 +266,7 @@ export async function crearMovimientoAction(expedienteId: string, usuarioId: str
 }
 
 export async function borrarMovimientoAction(movimientoId: string, expedienteId: string) {
+  await requireSession();
   await prisma.movimientoCaja.delete({ where: { id: movimientoId } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
@@ -252,6 +274,7 @@ export async function borrarMovimientoAction(movimientoId: string, expedienteId:
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function borrarDocumentoAction(documentoId: string, expedienteId: string) {
+  await requireSession();
   const doc = await prisma.documento.findUnique({ where: { id: documentoId } });
   if (!doc) return;
 
@@ -275,13 +298,16 @@ export async function agregarDocumentoDriveAction(
   url: string,
   actuacionId?: string,
 ) {
+  await requireSession();
+  // Solo http(s): evita XSS por `javascript:` en el <a href> que renderiza el link.
+  const urlSegura = parsear(urlHttpSchema, url);
   const doc = await prisma.documento.create({
     data: {
       expedienteId,
       actuacionId: actuacionId ?? null,
       nombre: nombre.trim() || "Documento",
       tipo: "drive",
-      linkDrive: url.trim(),
+      linkDrive: urlSegura,
     },
   });
   revalidatePath(`/expedientes/${expedienteId}`);

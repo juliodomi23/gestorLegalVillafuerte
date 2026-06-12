@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services/resolvers";
+import { requireSession } from "@/lib/guard";
 
 export async function crearCitaAction(form: {
   cliente: string;
@@ -11,6 +12,7 @@ export async function crearCitaAction(form: {
   sucursal: string;
   abogado: string;
 }) {
+  await requireSession();
   const [clienteId, abogadoId, sucursalId] = await Promise.all([
     upsertCliente(form.cliente, form.telefono || undefined),
     resolverAbogado(form.abogado),
@@ -36,6 +38,7 @@ export async function crearCitaAction(form: {
 }
 
 export async function borrarCitaAction(id: string) {
+  await requireSession();
   await prisma.cita.delete({ where: { id } });
   revalidatePath("/agenda");
 }

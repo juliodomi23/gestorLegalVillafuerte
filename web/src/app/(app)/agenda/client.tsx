@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarPlus, Phone, Trash2, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
+import { useConfirm } from "@/components/confirm";
 import { crearCitaAction, borrarCitaAction } from "./actions";
 
 export type CitaView = {
@@ -137,6 +138,7 @@ export default function AgendaClient({
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
 
   function set(campo: keyof typeof vacio, valor: string) {
     setForm((f) => ({ ...f, [campo]: valor }));
@@ -152,7 +154,7 @@ export default function AgendaClient({
   }
 
   async function borrar(id: string) {
-    if (confirm("¿Cancelar esta cita?")) await borrarCitaAction(id);
+    if (await confirmar({ titulo: "¿Cancelar esta cita?", peligro: true, confirmLabel: "Cancelar cita", cancelLabel: "Volver" })) await borrarCitaAction(id);
   }
 
   async function guardar() {

@@ -33,7 +33,7 @@ export function Modal({
       <div className="bg-surface rounded-xl border border-line shadow-card w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-line">
           <h3 className="font-serif text-[19px] text-ink">{title}</h3>
-          <button onClick={onClose} className="text-muted hover:text-ink transition-colors">
+          <button onClick={onClose} aria-label="Cerrar" className="text-muted hover:text-ink transition-colors">
             <X size={20} />
           </button>
         </div>
