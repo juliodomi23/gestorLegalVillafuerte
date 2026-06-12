@@ -18,6 +18,7 @@ export type SeguimientoView = {
   proximoLlamado: string;
   frecuencia: number;
   alerta: "hoy" | "atrasado" | null;
+  llamoEstaSemana: boolean;
 };
 
 const alertaInfo = {
@@ -114,6 +115,7 @@ export default function SeguimientosClient({
               <th className="eyebrow text-muted px-3 py-3">Tipo de caso</th>
               <th className="eyebrow text-muted px-3 py-3">Abogado</th>
               <th className="eyebrow text-muted px-3 py-3">Teléfono</th>
+              <th className="eyebrow text-muted px-3 py-3">Última llamada</th>
               <th className="eyebrow text-muted px-3 py-3">Próximo llamado</th>
               <th className="eyebrow text-muted px-3 py-3">Cada</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Acciones</th>
@@ -121,11 +123,14 @@ export default function SeguimientosClient({
           </thead>
           <tbody className="divide-y divide-line/70">
             {visibles.map((s) => (
-              <tr key={s.id} className={`transition-colors ${s.alerta ? "bg-paper/40" : "hover:bg-paper/60"}`}>
+              <tr key={s.id} className={`transition-colors ${s.llamoEstaSemana ? "bg-success-wash/30" : "bg-danger-wash/20"}`}>
                 <td className="px-5 py-3.5 font-bold">{s.cliente}</td>
                 <td className="px-3 py-3.5">{s.tipoCaso}</td>
                 <td className="px-3 py-3.5">{s.abogado}</td>
                 <td className="px-3 py-3.5 num text-muted whitespace-nowrap"><Phone size={13} className="inline mr-1" />{s.telefono}</td>
+                <td className="px-3 py-3.5">
+                  <span className={`num text-[13px] font-bold ${s.llamoEstaSemana ? "text-success" : "text-danger"}`}>{s.ultimoContacto}</span>
+                </td>
                 <td className="px-3 py-3.5">
                   <span className="num">{s.proximoLlamado}</span>
                   {s.alerta && <span className={`ml-2 px-2 py-0.5 rounded text-[11px] font-bold ${alertaInfo[s.alerta].cls}`}>{alertaInfo[s.alerta].label}</span>}
@@ -140,7 +145,7 @@ export default function SeguimientosClient({
                 </td>
               </tr>
             ))}
-            {visibles.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-muted">Sin resultados.</td></tr>}
+            {visibles.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-muted">Sin resultados.</td></tr>}
           </tbody>
         </table>
         <p className="text-[12px] text-muted px-5 py-3 flex items-center gap-1.5">
@@ -149,7 +154,7 @@ export default function SeguimientosClient({
       </Card>
 
       <Modal open={open} onClose={() => setOpen(false)} title={editId ? "Editar seguimiento" : "Nuevo seguimiento"} onSubmit={guardar} submitLabel={saving ? "Guardando…" : editId ? "Guardar cambios" : "Crear seguimiento"}>
-        <Field label="Cliente" full><Input value={form.cliente} onChange={(e) => set("cliente", e.target.value)} placeholder="Nombre del cliente" required /></Field>
+        <Field label="Cliente" full><Input value={form.cliente} onChange={(e) => set("cliente", e.target.value)} placeholder="Nombre completo del cliente" required /></Field>
         <Field label="Tipo de caso"><Input value={form.tipoCaso} onChange={(e) => set("tipoCaso", e.target.value)} placeholder="Divorcio, pagaré…" /></Field>
         <Field label="Teléfono"><Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} placeholder="961 123 4567" /></Field>
         <Field label="Abogado"><Select options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} /></Field>

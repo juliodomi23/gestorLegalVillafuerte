@@ -144,7 +144,7 @@ function ClientePicker({
             <p className="font-serif text-[17px] text-ink font-bold mb-4">Nuevo cliente</p>
             <div className="space-y-3">
               <label className="block">
-                <span className="eyebrow text-muted block mb-1">Nombre</span>
+                <span className="eyebrow text-muted block mb-1">Nombre completo</span>
                 <input
                   value={nuevoNombre}
                   onChange={(e) => setNuevoNombre(e.target.value)}

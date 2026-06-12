@@ -6,7 +6,7 @@ import { PageTitle, Card, SearchBox, FilterSelect } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
 import type { StatusAsesoria } from "@/lib/constants";
-import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction } from "./actions";
+import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction, cambiarStatusAsesoriaAction } from "./actions";
 
 export type AsesoriaView = {
   id: string;
@@ -69,7 +69,24 @@ function DaySection({ fecha, rows, onEdit, onDelete }: { fecha: string; rows: As
                   <td className="px-3 py-3 text-ink">{a.asunto}</td>
                   <td className="px-3 py-3 text-muted">{a.abogado}</td>
                   <td className="px-3 py-3">{a.pago ? <span className="text-success font-bold num">${a.monto.toLocaleString("es-MX")}</span> : <span className="text-muted">No</span>}</td>
-                  <td className="px-3 py-3"><span className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${statusInfo[a.status].cls}`}>{statusInfo[a.status].label}</span></td>
+                  <td className="px-3 py-3">
+                    <div className="relative group inline-block">
+                      <button className={`px-2 py-0.5 rounded text-[11.5px] font-bold cursor-pointer hover:opacity-80 transition-opacity ${statusInfo[a.status].cls}`}>
+                        {statusInfo[a.status].label}
+                      </button>
+                      <div className="absolute left-0 top-full mt-1 z-20 hidden group-hover:block bg-white border border-line rounded-lg shadow-lg py-1 min-w-[160px]">
+                        {(Object.entries(statusInfo) as [StatusAsesoria, { label: string; cls: string }][]).map(([key, info]) => (
+                          <button
+                            key={key}
+                            onMouseDown={() => cambiarStatusAsesoriaAction(a.id, key)}
+                            className={`w-full text-left px-3 py-1.5 text-[12px] font-bold hover:bg-paper transition-colors ${key === a.status ? "opacity-50 cursor-default" : ""}`}
+                          >
+                            <span className={`px-1.5 py-0.5 rounded ${info.cls}`}>{info.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center justify-end gap-1">
                       {a.urlDocumento ? <a href={a.urlDocumento} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"><ExternalLink size={14} /></a> : <span className="p-1.5 w-[30px]" />}
@@ -215,7 +232,7 @@ export default function AsesoriasClient({
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title={editId ? "Editar asesoría" : "Nueva asesoría"} onSubmit={guardar} submitLabel={saving ? "Guardando…" : editId ? "Guardar cambios" : "Registrar asesoría"}>
-        <Field label="Nombre del prospecto" full><Input value={form.nombre} onChange={(e) => set("nombre", e.target.value)} placeholder="Nombre completo" required /></Field>
+        <Field label="Nombre completo del prospecto" full><Input value={form.nombre} onChange={(e) => set("nombre", e.target.value)} placeholder="Nombre completo" required /></Field>
         <Field label="Teléfono"><Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} placeholder="961 123 4567" /></Field>
         <Field label="Asunto"><Input value={form.asunto} onChange={(e) => set("asunto", e.target.value)} placeholder="Divorcio, pagaré…" /></Field>
         <Field label="Sucursal"><Select options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} /></Field>

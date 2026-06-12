@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ArrowLeft, AlarmClock } from "lucide-react";
 import { Card } from "@/components/ui";
-import { ExpedienteTabs, type ActuacionData, type AudienciaData, type DocumentoData, type MovimientoTabData, type ParteData, type TerminoTabData } from "@/components/expediente-tabs";
+import { ExpedienteTabs, type ActuacionData, type AudienciaData, type DocumentoData, type MovimientoTabData, type ParteData, type TerminoTabData, type GastoTabData, type PlanPagoData } from "@/components/expediente-tabs";
 import { EstadoEditor } from "@/components/estado-editor";
 import { DocumentosBtn } from "@/components/documentos-btn";
 import { ExpedienteAcciones } from "@/components/expediente-acciones";
@@ -53,6 +53,8 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
         audiencias: { orderBy: { fechaHora: "desc" } },
         documentos: { orderBy: { creadoEn: "desc" } },
         movimientos: { orderBy: { fecha: "desc" } },
+        gastos: { orderBy: { fecha: "desc" } },
+        planPago: true,
       },
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
@@ -139,6 +141,25 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
     tipo: m.tipo,
     monto: Number(m.monto),
   }));
+
+  const gastosData: GastoTabData[] = exp.gastos.map((g) => ({
+    id: g.id,
+    fecha: fmtDate(g.fecha),
+    concepto: g.concepto,
+    beneficiario: g.beneficiario,
+    monto: Number(g.monto),
+  }));
+
+  const planPagoData: PlanPagoData = exp.planPago ? {
+    id: exp.planPago.id,
+    tipo: exp.planPago.tipo,
+    montoTotal: Number(exp.planPago.montoTotal),
+    montoInicial: exp.planPago.montoInicial ? Number(exp.planPago.montoInicial) : null,
+    montoFinal: exp.planPago.montoFinal ? Number(exp.planPago.montoFinal) : null,
+    montoPeriodico: exp.planPago.montoPeriodico ? Number(exp.planPago.montoPeriodico) : null,
+    fechaProxPago: exp.planPago.fechaProxPago ? fmtDate(exp.planPago.fechaProxPago) : null,
+    notas: exp.planPago.notas,
+  } : null;
 
   return (
     <>
@@ -232,6 +253,9 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
           terminos={terminosData}
           documentos={documentosData}
           movimientos={movimientosData}
+          gastos={gastosData}
+          planPago={planPagoData}
+          esAdmin={esAdmin}
         />
       </Card>
     </>

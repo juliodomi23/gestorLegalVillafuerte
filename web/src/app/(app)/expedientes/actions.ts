@@ -274,6 +274,69 @@ export async function borrarMovimientoAction(movimientoId: string, expedienteId:
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Gastos (Otros tipos de pago) ──────────────────────────────────────────────
+
+export async function crearGastoAction(expedienteId: string, data: { fecha: string; concepto: string; beneficiario: string; monto: string }) {
+  const sesion = await requireSession();
+  const monto = parsear(montoSchema, data.monto);
+  await prisma.gastoExpediente.create({
+    data: {
+      expedienteId,
+      registradoPor: sesion.id,
+      concepto: data.concepto.trim(),
+      beneficiario: data.beneficiario.trim() || null,
+      monto,
+      fecha: data.fecha ? new Date(data.fecha) : new Date(),
+    },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+export async function borrarGastoAction(gastoId: string, expedienteId: string) {
+  await requireSession();
+  await prisma.gastoExpediente.delete({ where: { id: gastoId } });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+// ── Plan de pago ──────────────────────────────────────────────────────────────
+
+export type FormPlanPago = {
+  tipo: string;
+  montoTotal: string;
+  montoInicial: string;
+  montoFinal: string;
+  montoPeriodico: string;
+  fechaProxPago: string;
+  notas: string;
+};
+
+export async function upsertPlanPagoAction(expedienteId: string, form: FormPlanPago) {
+  await requireSession();
+  const data = {
+    tipo: form.tipo,
+    montoTotal: parseFloat(form.montoTotal.replace(/[$,]/g, "")) || 0,
+    montoInicial: form.montoInicial ? parseFloat(form.montoInicial.replace(/[$,]/g, "")) : null,
+    montoFinal: form.montoFinal ? parseFloat(form.montoFinal.replace(/[$,]/g, "")) : null,
+    montoPeriodico: form.montoPeriodico ? parseFloat(form.montoPeriodico.replace(/[$,]/g, "")) : null,
+    fechaProxPago: form.fechaProxPago ? new Date(form.fechaProxPago) : null,
+    notas: form.notas.trim() || null,
+  };
+  await prisma.planPago.upsert({
+    where: { expedienteId },
+    update: data,
+    create: { expedienteId, ...data },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+export async function borrarPlanPagoAction(expedienteId: string) {
+  await requireSession();
+  await prisma.planPago.deleteMany({ where: { expedienteId } });
+  revalidatePath(`/expedientes/${expedienteId}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function borrarDocumentoAction(documentoId: string, expedienteId: string) {
   await requireSession();
   const doc = await prisma.documento.findUnique({ where: { id: documentoId } });

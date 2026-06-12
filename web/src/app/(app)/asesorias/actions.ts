@@ -60,6 +60,12 @@ export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
   revalidatePath("/asesorias");
 }
 
+export async function cambiarStatusAsesoriaAction(id: string, status: StatusAsesoria) {
+  await requireSession();
+  await prisma.asesoria.update({ where: { id }, data: { status } });
+  revalidatePath("/asesorias");
+}
+
 export async function borrarAsesoriaAction(id: string) {
   await requireSession();
   await prisma.asesoria.delete({ where: { id } });

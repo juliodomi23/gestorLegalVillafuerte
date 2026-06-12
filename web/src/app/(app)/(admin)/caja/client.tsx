@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Bell } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox, OrigenChip } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
@@ -18,6 +18,22 @@ export type MovimientoView = {
   origen: "WhatsApp" | "Web";
 };
 
+export type ProximoPagoView = {
+  expediente: string;
+  cliente: string;
+  tipo: string;
+  monto: number;
+  fechaProxPago: string;
+  diasRestantes: number;
+};
+
+const PLAN_LABELS: Record<string, string> = {
+  todo_inicio:  "Todo al inicio",
+  inicio_final: "Inicial + Final",
+  quincenal:    "Quincenal",
+  mensual:      "Mensual",
+};
+
 const vacio = { tipo: "Ingreso", concepto: "", monto: "", sucursal: "", expediente: "" };
 
 function fmt(n: number) {
@@ -27,9 +43,11 @@ function fmt(n: number) {
 export default function CajaClient({
   movimientos,
   sucursales,
+  proximosPagos,
 }: {
   movimientos: MovimientoView[];
   sucursales: string[];
+  proximosPagos: ProximoPagoView[];
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [fSucursal, setFSucursal] = useState("");
@@ -131,6 +149,50 @@ export default function CajaClient({
         <Field label="Sucursal"><Select options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} /></Field>
         <Field label="Expediente (opcional)"><Input value={form.expediente} onChange={(e) => set("expediente", e.target.value)} placeholder="EXP-2026-0142" /></Field>
       </Modal>
+
+      {proximosPagos.length > 0 && (
+        <div className="mt-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Bell size={16} className="text-amber" />
+            <h2 className="font-serif text-[17px] text-ink">Próximos pagos de clientes</h2>
+          </div>
+          <Card className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-[13.5px]">
+              <thead>
+                <tr className="border-b border-line text-left">
+                  <th className="eyebrow text-muted px-5 py-3">Expediente</th>
+                  <th className="eyebrow text-muted px-3 py-3">Cliente</th>
+                  <th className="eyebrow text-muted px-3 py-3">Plan</th>
+                  <th className="eyebrow text-muted px-3 py-3 text-right">Monto</th>
+                  <th className="eyebrow text-muted px-3 py-3">Fecha</th>
+                  <th className="eyebrow text-muted px-3 py-3">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/70">
+                {proximosPagos.map((p, i) => (
+                  <tr key={i} className={`transition-colors ${p.diasRestantes < 0 ? "bg-danger-wash/20" : p.diasRestantes <= 3 ? "bg-amber-wash/30" : "hover:bg-paper/60"}`}>
+                    <td className="px-5 py-3.5 exp-no font-bold">{p.expediente}</td>
+                    <td className="px-3 py-3.5">{p.cliente}</td>
+                    <td className="px-3 py-3.5 text-muted">{PLAN_LABELS[p.tipo] ?? p.tipo}</td>
+                    <td className="px-3 py-3.5 num text-right font-bold">{fmt(p.monto)}</td>
+                    <td className="px-3 py-3.5 num">{p.fechaProxPago}</td>
+                    <td className="px-3 py-3.5">
+                      {p.diasRestantes < 0
+                        ? <span className="text-[11.5px] font-bold px-2 py-0.5 rounded bg-danger-wash text-danger">Vencido</span>
+                        : p.diasRestantes === 0
+                        ? <span className="text-[11.5px] font-bold px-2 py-0.5 rounded bg-amber-wash text-amber">Hoy</span>
+                        : p.diasRestantes <= 3
+                        ? <span className="text-[11.5px] font-bold px-2 py-0.5 rounded bg-amber-wash text-amber">En {p.diasRestantes} días</span>
+                        : <span className="text-[11.5px] text-muted">En {p.diasRestantes} días</span>
+                      }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      )}
     </>
   );
 }

@@ -1,4 +1,4 @@
-export const MATERIAS = ["Civil", "Mercantil", "Penal", "Familiar", "Laboral", "Amparo", "Administrativo"];
+export const MATERIAS = ["Civil", "Mercantil", "Penal", "Familiar", "Laboral", "Amparo", "Administrativo", "Otros"];
 export const ETAPAS   = ["Demanda", "Contestación", "Pruebas", "Alegatos", "Sentencia", "Ejecución"];
 export const ESTADOS_EXP = ["Activo", "Suspendido", "Concluido", "Archivado"];
 export const STATUS_ASESORIA = ["pendiente", "contrato_firmado", "no_regreso", "descartado"] as const;

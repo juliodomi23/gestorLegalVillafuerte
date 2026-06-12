@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip, Trash2, Pencil, Check } from "lucide-react";
+import { MessageCircle, FileText, ExternalLink, UploadCloud, Loader, Link2, Plus, Paperclip, Trash2, Pencil, Check, Receipt, CreditCard } from "lucide-react";
 import { useConfirm } from "@/components/confirm";
 import {
   agregarDocumentoDriveAction,
@@ -11,15 +11,18 @@ import {
   crearAudienciaAction, editarAudienciaAction, borrarAudienciaAction,
   crearMovimientoAction, borrarMovimientoAction,
   crearTerminoAction, marcarCumplidoTerminoAction, borrarTerminoAction,
+  crearGastoAction, borrarGastoAction,
+  upsertPlanPagoAction, borrarPlanPagoAction, type FormPlanPago,
 } from "@/app/(app)/expedientes/actions";
 
 const TABS = [
-  { id: "actuaciones", label: "Actuaciones" },
-  { id: "partes", label: "Partes" },
-  { id: "audiencias", label: "Audiencias" },
-  { id: "terminos", label: "Términos" },
-  { id: "documentos", label: "Documentos" },
-  { id: "caja", label: "Caja" },
+  { id: "actuaciones",     label: "Actuaciones"           },
+  { id: "partes",          label: "Partes"                },
+  { id: "audiencias",      label: "Audiencias"            },
+  { id: "terminos",        label: "Términos / Prevenciones" },
+  { id: "documentos",      label: "Documentos"            },
+  { id: "caja",            label: "Caja"                  },
+  { id: "otros_pagos",     label: "Otros tipos de pago"   },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -77,6 +80,25 @@ export type TerminoTabData = {
   diasRestantes: number | null;
 };
 
+export type GastoTabData = {
+  id: string;
+  fecha: string;
+  concepto: string;
+  beneficiario: string | null;
+  monto: number;
+};
+
+export type PlanPagoData = {
+  id: string;
+  tipo: string;
+  montoTotal: number;
+  montoInicial: number | null;
+  montoFinal: number | null;
+  montoPeriodico: number | null;
+  fechaProxPago: string | null;
+  notas: string | null;
+} | null;
+
 export function ExpedienteTabs({
   expedienteId,
   actuaciones,
@@ -85,6 +107,9 @@ export function ExpedienteTabs({
   terminos,
   documentos: documentosIniciales,
   movimientos,
+  gastos,
+  planPago,
+  esAdmin = false,
 }: {
   expedienteId: string;
   actuaciones: ActuacionData[];
@@ -93,13 +118,17 @@ export function ExpedienteTabs({
   terminos: TerminoTabData[];
   documentos: DocumentoData[];
   movimientos: MovimientoTabData[];
+  gastos: GastoTabData[];
+  planPago: PlanPagoData;
+  esAdmin?: boolean;
 }) {
   const [tab, setTab] = useState<TabId>("actuaciones");
+  const tabsVisibles = TABS.filter((t) => (t.id !== "caja" && t.id !== "otros_pagos") || esAdmin);
 
   return (
     <>
       <div className="px-6 flex gap-1 border-b border-line">
-        {TABS.map((t) => (
+        {tabsVisibles.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -118,7 +147,8 @@ export function ExpedienteTabs({
         {tab === "audiencias"  && <Audiencias data={audiencias} expedienteId={expedienteId} />}
         {tab === "terminos"    && <Terminos data={terminos} expedienteId={expedienteId} />}
         {tab === "documentos"  && <Documentos expedienteId={expedienteId} inicial={documentosIniciales} />}
-        {tab === "caja"        && <Caja data={movimientos} expedienteId={expedienteId} />}
+        {tab === "caja"        && <Caja data={movimientos} planPago={planPago} expedienteId={expedienteId} />}
+        {tab === "otros_pagos" && <OtrosTiposPago data={gastos} expedienteId={expedienteId} />}
       </div>
     </>
   );
@@ -593,7 +623,7 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
         <p className="text-[14px] font-bold text-ink mt-3">
           Arrastra un PDF aquí o <span className="text-navy underline decoration-amber/60 underline-offset-2">haz clic para seleccionar</span>
         </p>
-        <p className="text-[12px] text-muted mt-1">Solo archivos PDF · máximo 20 MB</p>
+        <p className="text-[12px] text-muted mt-1">Solo archivos PDF · máximo 500 MB</p>
         <input ref={inputRef} type="file" accept="application/pdf" multiple className="hidden"
           onChange={(e) => { manejar(e.target.files); e.target.value = ""; }} />
       </div>
@@ -688,7 +718,105 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
   );
 }
 
-function Caja({ data: inicial, expedienteId }: { data: MovimientoTabData[]; expedienteId: string }) {
+const PLAN_LABELS: Record<string, string> = {
+  todo_inicio:    "Pagó todo al inicio",
+  inicio_final:   "Pago inicial + pago final",
+  quincenal:      "Pago inicial + pagos quincenales",
+  mensual:        "Pago inicial + pagos mensuales",
+};
+
+function PlanPagoSection({ planPago, expedienteId }: { planPago: PlanPagoData; expedienteId: string }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<FormPlanPago>({
+    tipo: planPago?.tipo ?? "todo_inicio",
+    montoTotal: planPago?.montoTotal ? String(planPago.montoTotal) : "",
+    montoInicial: planPago?.montoInicial ? String(planPago.montoInicial) : "",
+    montoFinal: planPago?.montoFinal ? String(planPago.montoFinal) : "",
+    montoPeriodico: planPago?.montoPeriodico ? String(planPago.montoPeriodico) : "",
+    fechaProxPago: planPago?.fechaProxPago ?? "",
+    notas: planPago?.notas ?? "",
+  });
+  const confirmar = useConfirm();
+  const mostrarFinal = form.tipo === "inicio_final";
+  const mostrarPeriodico = form.tipo === "quincenal" || form.tipo === "mensual";
+
+  async function guardar() {
+    setSaving(true);
+    await upsertPlanPagoAction(expedienteId, form);
+    setSaving(false);
+    setOpen(false);
+  }
+  async function borrar() {
+    if (await confirmar({ titulo: "¿Quitar el plan de pago?", peligro: true, confirmLabel: "Quitar" })) {
+      await borrarPlanPagoAction(expedienteId);
+    }
+  }
+
+  return (
+    <div className="mt-6 pt-5 border-t border-line">
+      <div className="flex items-center justify-between mb-3">
+        <p className="flex items-center gap-2 text-[13px] font-bold text-ink"><CreditCard size={15} /> Plan de pago del cliente</p>
+        <div className="flex gap-2">
+          {planPago && <button onClick={borrar} className="text-[12px] text-muted hover:text-danger transition-colors">Quitar</button>}
+          <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-line text-[12px] font-bold hover:border-navy/40 transition-colors">
+            <Pencil size={12} /> {planPago ? "Editar" : "Configurar"}
+          </button>
+        </div>
+      </div>
+
+      {planPago ? (
+        <div className="rounded-lg border border-line bg-paper/40 p-4 text-[13px] space-y-2">
+          <p className="font-bold text-ink">{PLAN_LABELS[planPago.tipo] ?? planPago.tipo}</p>
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div><p className="eyebrow text-muted">Monto total</p><p className="num font-bold">${planPago.montoTotal.toLocaleString("es-MX")}</p></div>
+            {planPago.montoInicial && <div><p className="eyebrow text-muted">Pago inicial</p><p className="num font-bold">${planPago.montoInicial.toLocaleString("es-MX")}</p></div>}
+            {planPago.montoFinal && <div><p className="eyebrow text-muted">Pago final</p><p className="num font-bold">${planPago.montoFinal.toLocaleString("es-MX")}</p></div>}
+            {planPago.montoPeriodico && <div><p className="eyebrow text-muted">Pago periódico</p><p className="num font-bold">${planPago.montoPeriodico.toLocaleString("es-MX")}</p></div>}
+            {planPago.fechaProxPago && <div><p className="eyebrow text-muted">Próximo pago</p><p className="num font-bold text-amber">{planPago.fechaProxPago}</p></div>}
+          </div>
+          {planPago.notas && <p className="text-muted mt-2">{planPago.notas}</p>}
+        </div>
+      ) : (
+        <p className="text-muted text-[13px]">Sin plan de pago configurado.</p>
+      )}
+
+      {open && (
+        <MiniModal title="Plan de pago" onClose={() => setOpen(false)} onSubmit={guardar} submitLabel={saving ? "Guardando…" : "Guardar plan"}>
+          <MiniField label="Tipo de plan" full>
+            <MiniSelect options={["todo_inicio", "inicio_final", "quincenal", "mensual"]} labels={PLAN_LABELS} value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))} />
+          </MiniField>
+          <MiniField label="Monto total ($) *">
+            <MiniInput type="number" min="0" step="0.01" value={form.montoTotal} onChange={(e) => setForm((f) => ({ ...f, montoTotal: e.target.value }))} placeholder="0.00" />
+          </MiniField>
+          <MiniField label="Pago inicial ($)">
+            <MiniInput type="number" min="0" step="0.01" value={form.montoInicial} onChange={(e) => setForm((f) => ({ ...f, montoInicial: e.target.value }))} placeholder="0.00" />
+          </MiniField>
+          {mostrarFinal && (
+            <MiniField label="Pago final ($)">
+              <MiniInput type="number" min="0" step="0.01" value={form.montoFinal} onChange={(e) => setForm((f) => ({ ...f, montoFinal: e.target.value }))} placeholder="0.00" />
+            </MiniField>
+          )}
+          {mostrarPeriodico && (
+            <MiniField label={`Monto por pago ${form.tipo === "quincenal" ? "quincenal" : "mensual"} ($)`}>
+              <MiniInput type="number" min="0" step="0.01" value={form.montoPeriodico} onChange={(e) => setForm((f) => ({ ...f, montoPeriodico: e.target.value }))} placeholder="0.00" />
+            </MiniField>
+          )}
+          {(mostrarFinal || mostrarPeriodico) && (
+            <MiniField label="Fecha próximo pago">
+              <MiniInput type="date" value={form.fechaProxPago} onChange={(e) => setForm((f) => ({ ...f, fechaProxPago: e.target.value }))} />
+            </MiniField>
+          )}
+          <MiniField label="Notas" full>
+            <MiniInput value={form.notas} onChange={(e) => setForm((f) => ({ ...f, notas: e.target.value }))} placeholder="Observaciones del acuerdo…" />
+          </MiniField>
+        </MiniModal>
+      )}
+    </div>
+  );
+}
+
+function Caja({ data: inicial, planPago, expedienteId }: { data: MovimientoTabData[]; planPago: PlanPagoData; expedienteId: string }) {
   const [data, setData] = useState(inicial);
   const [form, setForm] = useState({ tipo: "ingreso", concepto: "", monto: "", fecha: hoy() });
   const [open, setOpen] = useState(false);
@@ -782,6 +910,106 @@ function Caja({ data: inicial, expedienteId }: { data: MovimientoTabData[]; expe
           </MiniField>
         </MiniModal>
       )}
+
+      <PlanPagoSection planPago={planPago} expedienteId={expedienteId} />
+    </>
+  );
+}
+
+function OtrosTiposPago({ data: inicial, expedienteId }: { data: GastoTabData[]; expedienteId: string }) {
+  const [data, setData] = useState(inicial);
+  const [form, setForm] = useState({ fecha: hoy(), concepto: "", beneficiario: "", monto: "" });
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const confirmar = useConfirm();
+
+  function cerrar() { setOpen(false); setForm({ fecha: hoy(), concepto: "", beneficiario: "", monto: "" }); }
+
+  async function guardar() {
+    if (!form.concepto.trim() || !form.monto) return;
+    setSaving(true);
+    await crearGastoAction(expedienteId, form);
+    setData((prev) => [{
+      id: `tmp-${Date.now()}`,
+      fecha: new Date(form.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+      concepto: form.concepto,
+      beneficiario: form.beneficiario || null,
+      monto: parseFloat(form.monto),
+    }, ...prev]);
+    setSaving(false);
+    cerrar();
+  }
+
+  async function borrar(id: string) {
+    if (!(await confirmar({ titulo: "¿Borrar este gasto?", peligro: true, confirmLabel: "Borrar" }))) return;
+    await borrarGastoAction(id, expedienteId);
+    setData((prev) => prev.filter((g) => g.id !== id));
+  }
+
+  const total = data.reduce((acc, g) => acc + g.monto, 0);
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Receipt size={15} className="text-muted" />
+          <p className="text-[13px] font-bold text-ink">Gastos externos del expediente</p>
+          {data.length > 0 && (
+            <span className="text-[12px] text-danger font-bold num">Total: ${total.toLocaleString("es-MX")}</span>
+          )}
+        </div>
+        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
+          <Plus size={15} strokeWidth={2} /> Registrar gasto
+        </button>
+      </div>
+
+      {data.length === 0 ? (
+        <p className="text-muted text-[13.5px]">Sin gastos registrados (peritos, notarios, servicios externos, etc.).</p>
+      ) : (
+        <table className="w-full text-[13.5px]">
+          <thead>
+            <tr className="border-b border-line text-left">
+              <th className="eyebrow text-muted px-2 py-2.5">Fecha</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Concepto</th>
+              <th className="eyebrow text-muted px-2 py-2.5">Pagado a</th>
+              <th className="eyebrow text-muted px-2 py-2.5 text-right">Monto</th>
+              <th className="px-2 py-2.5 w-10" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/70">
+            {data.map((g) => (
+              <tr key={g.id} className="group">
+                <td className="px-2 py-3 num">{g.fecha}</td>
+                <td className="px-2 py-3 font-medium">{g.concepto}</td>
+                <td className="px-2 py-3 text-muted">{g.beneficiario ?? "—"}</td>
+                <td className="px-2 py-3 num text-right font-bold text-danger">${g.monto.toLocaleString("es-MX")}</td>
+                <td className="px-2 py-3">
+                  <button onClick={() => borrar(g.id)} className="text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Trash2 size={14} strokeWidth={1.75} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {open && (
+        <MiniModal title="Registrar gasto" onClose={cerrar} onSubmit={guardar} submitLabel={saving ? "Guardando…" : "Registrar"}>
+          <MiniField label="Fecha">
+            <MiniInput type="date" value={form.fecha} onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))} />
+          </MiniField>
+          <MiniField label="Concepto *" full>
+            <MiniInput value={form.concepto} onChange={(e) => setForm((f) => ({ ...f, concepto: e.target.value }))} placeholder="Perito informático, notaría…" autoFocus required />
+          </MiniField>
+          <MiniField label="Pagado a (persona/empresa)" full>
+            <MiniInput value={form.beneficiario} onChange={(e) => setForm((f) => ({ ...f, beneficiario: e.target.value }))} placeholder="Nombre del perito, empresa…" />
+          </MiniField>
+          <MiniField label="Monto ($) *" full>
+            <MiniInput type="number" min="0" step="0.01" value={form.monto} onChange={(e) => setForm((f) => ({ ...f, monto: e.target.value }))} placeholder="0.00" />
+          </MiniField>
+        </MiniModal>
+      )}
     </>
   );
 }
@@ -826,11 +1054,11 @@ function MiniInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={miniFieldCls} />;
 }
 
-function MiniSelect({ options, ...props }: { options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) {
+function MiniSelect({ options, labels, ...props }: { options: string[]; labels?: Record<string, string> } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select {...props} className={miniFieldCls}>
       <option value="">Seleccionar…</option>
-      {options.map((o) => <option key={o} value={o}>{capitalize(o.replace(/_/g, " "))}</option>)}
+      {options.map((o) => <option key={o} value={o}>{labels?.[o] ?? capitalize(o.replace(/_/g, " "))}</option>)}
     </select>
   );
 }

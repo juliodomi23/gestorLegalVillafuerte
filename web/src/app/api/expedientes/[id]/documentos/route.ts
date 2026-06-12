@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "Sin archivo" }, { status: 400 });
   if (file.type !== "application/pdf") return NextResponse.json({ error: "Solo PDF" }, { status: 400 });
-  if (file.size > 20 * 1024 * 1024) return NextResponse.json({ error: "Máximo 20 MB" }, { status: 400 });
+  if (file.size > 500 * 1024 * 1024) return NextResponse.json({ error: "Máximo 500 MB" }, { status: 400 });
 
   await mkdir(UPLOADS_DIR, { recursive: true });
   const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;

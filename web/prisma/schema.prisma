@@ -88,6 +88,7 @@ model Usuario {
   movimientos  MovimientoCaja[]
   seguimientos Seguimiento[]
   clientes     Cliente[]
+  gastos       GastoExpediente[]
 
   @@map("usuarios")
 }
@@ -142,6 +143,8 @@ model Expediente {
   asesorias          Asesoria[]
   documentos         Documento[]
   movimientos        MovimientoCaja[]
+  gastos             GastoExpediente[]
+  planPago           PlanPago?
 
   @@map("expedientes")
 }
@@ -333,6 +336,42 @@ model Llamada {
   cliente  Cliente?  @relation(fields: [clienteId], references: [id])
 
   @@map("llamadas")
+}
+
+// Gastos del despacho por expediente (peritos, notarios, servicios externos, etc.)
+model GastoExpediente {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expedienteId  String   @map("expediente_id") @db.Uuid
+  fecha         DateTime @default(now()) @db.Date
+  concepto      String
+  beneficiario  String?
+  monto         Decimal  @db.Decimal(14, 2)
+  registradoPor String?  @map("registrado_por") @db.Uuid
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  usuario    Usuario?   @relation(fields: [registradoPor], references: [id])
+
+  @@map("gastos_expediente")
+}
+
+// Plan de pago acordado con el cliente para el expediente.
+model PlanPago {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expedienteId   String    @unique @map("expediente_id") @db.Uuid
+  tipo           String    // todo_inicio | inicio_final | quincenal | mensual
+  montoTotal     Decimal   @map("monto_total") @db.Decimal(14, 2)
+  montoInicial   Decimal?  @map("monto_inicial") @db.Decimal(14, 2)
+  montoFinal     Decimal?  @map("monto_final") @db.Decimal(14, 2)
+  montoPeriodico Decimal?  @map("monto_periodico") @db.Decimal(14, 2)
+  fechaProxPago  DateTime? @map("fecha_prox_pago") @db.Date
+  notas          String?
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn  DateTime  @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+
+  @@map("planes_pago")
 }
 
 // Prospectos del embudo de ventas: personas que llamaron y aún no contratan.

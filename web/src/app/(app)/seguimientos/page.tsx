@@ -19,6 +19,13 @@ function calcAlerta(proximo: Date | null): "hoy" | "atrasado" | null {
   return null;
 }
 
+function calcLlamoEstaSemana(ultimoContacto: Date | null): boolean {
+  if (!ultimoContacto) return false;
+  const hoy = new Date();
+  const diasPasados = (hoy.getTime() - ultimoContacto.getTime()) / (1000 * 60 * 60 * 24);
+  return diasPasados <= 7;
+}
+
 export default async function SeguimientosPage() {
   const session = await getServerSession(authOptions);
   const esAdmin = session?.user?.rol === "admin";
@@ -45,6 +52,7 @@ export default async function SeguimientosPage() {
     proximoLlamado: fmtDate(s.proximoLlamado),
     frecuencia: s.frecuenciaDias ?? 7,
     alerta: calcAlerta(s.proximoLlamado),
+    llamoEstaSemana: calcLlamoEstaSemana(s.ultimoContacto),
   }));
 
   const sucursales = sucursalesDb.map((s) => s.nombre);
