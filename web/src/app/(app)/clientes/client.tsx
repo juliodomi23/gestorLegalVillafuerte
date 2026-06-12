@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
@@ -82,7 +83,11 @@ export default function ClientesClient({ clientes }: { clientes: ClienteView[] }
           <tbody className="divide-y divide-line/70">
             {visibles.map((c) => (
               <tr key={c.id} className="hover:bg-paper/60 transition-colors">
-                <td className="px-5 py-3.5 font-bold">{c.nombre}</td>
+                <td className="px-5 py-3.5">
+                  <Link href={`/clientes/${c.id}`} className="font-bold text-navy hover:underline">
+                    {c.nombre}
+                  </Link>
+                </td>
                 <td className="px-3 py-3.5">
                   <span className={`px-2 py-0.5 rounded text-[12px] font-bold ${c.tipo === "Moral" ? "bg-navy/[.08] text-navy" : "bg-line/60 text-muted"}`}>{c.tipo}</span>
                 </td>
