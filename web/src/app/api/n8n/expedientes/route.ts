@@ -1,5 +1,6 @@
 import { autorizado, noAutorizado, ok, fail, leerBody } from "@/lib/api";
 import { crearExpediente, obtenerExpedientePorNumero, buscarPorCliente, type DatosExpediente } from "@/lib/services/expedientes";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   if (!autorizado(req)) return noAutorizado();
@@ -7,6 +8,14 @@ export async function POST(req: Request) {
   if ("error" in r) return r.error;
   try {
     const exp = await crearExpediente(r.data);
+    await prisma.actuacion.create({
+      data: {
+        expedienteId: exp.id,
+        tipo: "nota",
+        descripcion: "Expediente creado",
+        origen: "whatsapp",
+      },
+    });
     return ok(exp, 201);
   } catch (e) {
     return fail((e as Error).message, 500);
