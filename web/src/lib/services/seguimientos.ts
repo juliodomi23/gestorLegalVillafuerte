@@ -12,11 +12,12 @@ export type DatosSeguimiento = {
 };
 
 export async function registrarSeguimiento(d: DatosSeguimiento) {
-  const [clienteId, abogadoId, sucursalId] = await Promise.all([
-    upsertCliente(d.cliente, d.telefono),
+  const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(d.abogado),
     resolverSucursal(d.sucursal),
   ]);
+  // El cliente nuevo pertenece al abogado del seguimiento.
+  const clienteId = await upsertCliente(d.cliente, d.telefono, abogadoId);
 
   const hoy = new Date();
   return prisma.seguimiento.create({

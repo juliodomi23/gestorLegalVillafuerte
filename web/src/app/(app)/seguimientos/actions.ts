@@ -15,12 +15,13 @@ export type FormSeguimiento = {
 };
 
 export async function crearSeguimientoAction(form: FormSeguimiento) {
-  await requireSession();
-  const [clienteId, abogadoId, sucursalId] = await Promise.all([
-    upsertCliente(form.cliente, form.telefono || undefined),
+  const sesion = await requireSession();
+  const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
   ]);
+  // El cliente nuevo pertenece al abogado del seguimiento; si no se eligió, a quien lo crea.
+  const clienteId = await upsertCliente(form.cliente, form.telefono || undefined, abogadoId ?? sesion.id);
   const hoy = new Date();
   await prisma.seguimiento.create({
     data: {

@@ -38,7 +38,11 @@ export default async function ExpedientesPage({
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
-    prisma.cliente.findMany({ orderBy: { nombre: "asc" }, select: { id: true, nombre: true, telefono: true } }),
+    prisma.cliente.findMany({
+      where: esAdmin ? undefined : { abogadoId: userId },
+      orderBy: { nombre: "asc" },
+      select: { id: true, nombre: true, telefono: true },
+    }),
   ]);
 
   const expedientes: ExpView[] = rows.map((e) => {

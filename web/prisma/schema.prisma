@@ -87,6 +87,7 @@ model Usuario {
   documentos   Documento[]
   movimientos  MovimientoCaja[]
   seguimientos Seguimiento[]
+  clientes     Cliente[]
 
   @@map("usuarios")
 }
@@ -98,8 +99,10 @@ model Cliente {
   telefono  String?
   email     String?
   notas     String?
+  abogadoId String?  @map("abogado_id") @db.Uuid // dueño: cada abogado solo ve sus clientes
   creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
+  abogado      Usuario?     @relation(fields: [abogadoId], references: [id])
   expedientes  Expediente[]
   citas        Cita[]
   asesorias    Asesoria[]

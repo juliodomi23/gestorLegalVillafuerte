@@ -61,6 +61,9 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
 
   if (!exp) notFound();
 
+  // Un abogado solo puede abrir sus propios expedientes, aunque pegue la URL directa.
+  if (!esAdmin && exp.abogadoResponsableId !== session?.user?.id) notFound();
+
   const sucursales = sucursalesDb.map((s) => s.nombre);
   const abogados = abogadosDb.map((u) => u.nombre);
 

@@ -17,9 +17,10 @@ export async function borrarProspectoAction(id: string) {
 }
 
 // Crea o encuentra el cliente en DB, marca el prospecto como convertido, retorna el clienteId.
+// El cliente convertido pertenece al abogado que hace la conversión.
 export async function convertirProspectoAction(id: string, nombre: string, telefono: string) {
-  await requireSession();
-  const clienteId = await upsertCliente(nombre, telefono || undefined);
+  const sesion = await requireSession();
+  const clienteId = await upsertCliente(nombre, telefono || undefined, sesion.id);
   await actualizarEstadoProspecto(id, "convertido");
   return { clienteId };
 }

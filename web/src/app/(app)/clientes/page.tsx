@@ -1,8 +1,15 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ClientesClient, { type ClienteView } from "./client";
 
 export default async function ClientesPage() {
+  const session = await getServerSession(authOptions);
+  const esAdmin = session?.user?.rol === "admin";
+  const userId = session?.user?.id;
+
   const rows = await prisma.cliente.findMany({
+    where: esAdmin ? undefined : { abogadoId: userId },
     include: {
       _count: { select: { expedientes: true } },
       asesorias: { orderBy: { creadoEn: "desc" }, take: 1, select: { fecha: true } },

@@ -51,12 +51,24 @@ export default async function AgendaPage({
 
   const { inicio, fin } = rangoFecha(fechaStr, vista);
 
+  // Agenda compartida por sucursal: cada abogado ve todas las citas de su
+  // sucursal (más las propias, por si alguna quedó sin sucursal). Admin ve todo.
+  const usuario =
+    !esAdmin && userId
+      ? await prisma.usuario.findUnique({ where: { id: userId }, select: { sucursalId: true } })
+      : null;
+  const filtroCitas = esAdmin
+    ? {}
+    : usuario?.sucursalId
+      ? { OR: [{ sucursalId: usuario.sucursalId }, { abogadoId: userId }] }
+      : { abogadoId: userId };
+
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.cita.findMany({
       where: {
         fechaHora: { gte: inicio, lte: fin },
         estado: { not: "cancelada" },
-        ...(esAdmin ? {} : { abogadoId: userId }),
+        ...filtroCitas,
       },
       include: { cliente: true, abogado: true, sucursal: true },
       orderBy: { fechaHora: "asc" },

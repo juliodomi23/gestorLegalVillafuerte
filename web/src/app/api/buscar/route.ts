@@ -10,9 +10,12 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) return NextResponse.json([]);
 
+  const esAdmin = session.user?.rol === "admin";
+
   const [expedientes, prospectos] = await Promise.all([
     prisma.expediente.findMany({
       where: {
+        ...(esAdmin ? {} : { abogadoResponsableId: session.user?.id }),
         OR: [
           { cliente: { nombre: { contains: q, mode: "insensitive" } } },
           { numeroInterno: { contains: q, mode: "insensitive" } },

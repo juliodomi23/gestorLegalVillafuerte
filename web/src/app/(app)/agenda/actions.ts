@@ -12,12 +12,13 @@ export async function crearCitaAction(form: {
   sucursal: string;
   abogado: string;
 }) {
-  await requireSession();
-  const [clienteId, abogadoId, sucursalId] = await Promise.all([
-    upsertCliente(form.cliente, form.telefono || undefined),
+  const sesion = await requireSession();
+  const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
   ]);
+  // El cliente nuevo pertenece al abogado de la cita; si no se eligió, a quien la crea.
+  const clienteId = await upsertCliente(form.cliente, form.telefono || undefined, abogadoId ?? sesion.id);
   // hora: "10:30" → combinar con la fecha de hoy
   const hoy = new Date();
   const [h, m] = (form.hora || "09:00").split(":").map(Number);

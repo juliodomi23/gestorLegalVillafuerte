@@ -98,10 +98,12 @@ CREATE TABLE clientes (
   telefono  text,                            -- el que usa con el bot externo
   email     text,
   notas     text,
+  abogado_id uuid REFERENCES usuarios(id) ON DELETE SET NULL, -- dueño: cada abogado solo ve sus clientes
   creado_en timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_clientes_telefono ON clientes(telefono);
+CREATE INDEX idx_clientes_abogado ON clientes(abogado_id);
 
 
 -- =====================================================================

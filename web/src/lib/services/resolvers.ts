@@ -24,7 +24,13 @@ export async function resolverAbogado(nombreOTelefono?: string): Promise<string 
 }
 
 // Busca un cliente por teléfono (o nombre); si no existe, lo crea.
-export async function upsertCliente(nombre: string, telefono?: string): Promise<string> {
+// abogadoId define el dueño del cliente nuevo (los clientes son privados por abogado);
+// si el cliente ya existe NO se le cambia el dueño.
+export async function upsertCliente(
+  nombre: string,
+  telefono?: string,
+  abogadoId?: string | null,
+): Promise<string> {
   if (telefono) {
     const existente = await prisma.cliente.findFirst({ where: { telefono } });
     if (existente) return existente.id;
@@ -34,6 +40,8 @@ export async function upsertCliente(nombre: string, telefono?: string): Promise<
   });
   if (porNombre) return porNombre.id;
 
-  const nuevo = await prisma.cliente.create({ data: { nombre, telefono } });
+  const nuevo = await prisma.cliente.create({
+    data: { nombre, telefono, abogadoId: abogadoId ?? null },
+  });
   return nuevo.id;
 }

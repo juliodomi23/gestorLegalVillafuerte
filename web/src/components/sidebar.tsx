@@ -29,7 +29,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
       { href: "/inicio", label: "Inicio", icon: LayoutDashboard },
       { href: "/expedientes", label: "Expedientes", icon: FolderOpen },
       { href: "/agenda", label: "Agenda", icon: CalendarDays },
-      { href: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
+      { href: "/estadisticas", label: "Estadísticas", icon: BarChart3, soloAdmin: true },
     ],
   },
   {

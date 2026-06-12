@@ -20,22 +20,23 @@ export type FormExpediente = {
 };
 
 export async function crearClienteRapidoAction(nombre: string, telefono?: string) {
-  await requireSession();
-  const id = await upsertCliente(nombre, telefono);
+  const sesion = await requireSession();
+  const id = await upsertCliente(nombre, telefono, sesion.id);
   return { id, nombre };
 }
 
 export async function crearExpedienteAction(form: FormExpediente) {
-  await requireSession();
-  let clienteId: string | null = form.clienteId || null;
-  if (!clienteId && form.clienteNombre) {
-    clienteId = await upsertCliente(form.clienteNombre);
-  }
-
+  const sesion = await requireSession();
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
   ]);
+
+  let clienteId: string | null = form.clienteId || null;
+  if (!clienteId && form.clienteNombre) {
+    // El cliente nuevo pertenece al abogado del expediente; si no se eligió, a quien lo crea.
+    clienteId = await upsertCliente(form.clienteNombre, undefined, abogadoId ?? sesion.id);
+  }
 
   const año = new Date().getFullYear();
   const total = await prisma.expediente.count();
@@ -54,16 +55,16 @@ export async function crearExpedienteAction(form: FormExpediente) {
 }
 
 export async function editarExpedienteAction(id: string, form: FormExpediente) {
-  await requireSession();
-  let clienteId: string | null = form.clienteId || null;
-  if (!clienteId && form.clienteNombre) {
-    clienteId = await upsertCliente(form.clienteNombre);
-  }
-
+  const sesion = await requireSession();
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
   ]);
+
+  let clienteId: string | null = form.clienteId || null;
+  if (!clienteId && form.clienteNombre) {
+    clienteId = await upsertCliente(form.clienteNombre, undefined, abogadoId ?? sesion.id);
+  }
 
   await prisma.expediente.update({
     where: { id },

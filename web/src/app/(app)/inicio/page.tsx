@@ -26,6 +26,17 @@ export default async function InicioPage() {
   const expWhere = esAdmin ? { estado: "activo" as const } : { estado: "activo" as const, abogadoResponsableId: userId };
   const expFilter = esAdmin ? {} : { expediente: { abogadoResponsableId: userId } };
 
+  // Mismo criterio que /agenda: la agenda se comparte por sucursal.
+  const usuario =
+    !esAdmin && userId
+      ? await prisma.usuario.findUnique({ where: { id: userId }, select: { sucursalId: true } })
+      : null;
+  const citaFilter = esAdmin
+    ? {}
+    : usuario?.sucursalId
+      ? { OR: [{ sucursalId: usuario.sucursalId }, { abogadoId: userId }] }
+      : { abogadoId: userId };
+
   const [expActivos, terminosSemana, audienciasHoy, citasHoy, actividadRows] = await Promise.all([
     prisma.expediente.count({ where: expWhere }),
     prisma.termino.findMany({
@@ -49,7 +60,7 @@ export default async function InicioPage() {
       where: {
         fechaHora: { gte: hoyInicio, lte: hoyFin },
         estado: { not: "cancelada" },
-        ...(esAdmin ? {} : { abogadoId: userId }),
+        ...citaFilter,
       },
     }),
     prisma.actuacion.findMany({

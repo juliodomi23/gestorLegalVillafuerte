@@ -40,11 +40,12 @@ async function siguienteNumeroInterno(): Promise<string> {
 }
 
 export async function crearExpediente(d: DatosExpediente) {
-  const [clienteId, abogadoId, sucursalId] = await Promise.all([
-    upsertCliente(d.cliente, d.telefonoCliente),
+  const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(d.abogado),
     resolverSucursal(d.sucursal),
   ]);
+  // El cliente nuevo pertenece al abogado responsable del expediente.
+  const clienteId = await upsertCliente(d.cliente, d.telefonoCliente, abogadoId);
 
   const expediente = await prisma.expediente.create({
     data: {

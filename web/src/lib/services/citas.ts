@@ -56,10 +56,16 @@ export async function agendarCita(d: DatosCita) {
 
   const esCalendar = !!d.googleEventId;
 
-  // Para citas del Calendar: solo vincular cliente si ya existe en el sistema
+  const [abogadoId, sucursalId] = await Promise.all([
+    resolverAbogado(d.abogado),
+    resolverSucursal(d.sucursal),
+  ]);
+
+  // Para citas del Calendar: solo vincular cliente si ya existe en el sistema.
+  // Si se crea uno nuevo, pertenece al abogado de la cita.
   const clienteId = esCalendar
     ? await buscarClienteExistente(d.telefono, d.cliente)
-    : await upsertCliente(d.cliente, d.telefono);
+    : await upsertCliente(d.cliente, d.telefono, abogadoId);
 
   // Dedup: si ya existe una cita con este googleEventId, actualizar con datos frescos
   if (d.googleEventId) {
@@ -78,11 +84,6 @@ export async function agendarCita(d: DatosCita) {
       });
     }
   }
-
-  const [abogadoId, sucursalId] = await Promise.all([
-    resolverAbogado(d.abogado),
-    resolverSucursal(d.sucursal),
-  ]);
 
   let expedienteId: string | null = null;
   if (d.numeroExpediente) {
