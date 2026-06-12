@@ -34,6 +34,15 @@ export async function POST(req: Request) {
     },
   });
 
+  await prisma.actuacion.create({
+    data: {
+      expedienteId,
+      tipo: "nota",
+      descripcion: `Documento anexado: ${nombre.trim()}`,
+      origen: "whatsapp",
+    },
+  });
+
   return ok({
     id: doc.id,
     nombre: doc.nombre,
