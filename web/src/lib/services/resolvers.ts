@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 export async function resolverSucursal(nombre?: string): Promise<string | null> {
   if (!nombre) return null;
   const s = await prisma.sucursal.findFirst({
-    where: { nombre: { equals: nombre, mode: "insensitive" } },
+    where: { nombre: { contains: nombre, mode: "insensitive" } },
   });
   return s?.id ?? null;
 }
