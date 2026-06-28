@@ -5,6 +5,7 @@ import {
   FolderOpen, AlarmClock, Gavel, CalendarCheck, TrendingUp, MessageCircle,
   FilePlus, MessagesSquare, Banknote,
 } from "lucide-react";
+import Link from "next/link";
 
 function fmtDias(dias: number) {
   if (dias < 0) return "Vencido";
@@ -65,7 +66,7 @@ export default async function InicioPage() {
     }),
     prisma.actuacion.findMany({
       where: esAdmin ? undefined : expFilter,
-      include: { expediente: { select: { numeroInterno: true } } },
+      include: { expediente: { select: { id: true, numeroInterno: true } } },
       orderBy: { creadoEn: "desc" },
       take: 5,
     }),
@@ -78,20 +79,23 @@ export default async function InicioPage() {
   }).length;
 
   const kpis = [
-    { label: "Expedientes activos",    valor: String(expActivos),        icon: FolderOpen,    nota: "Total activos",              notaColor: undefined    },
-    { label: "Vencimientos / semana",  valor: String(terminosSemana.length), icon: AlarmClock, valorColor: terminosSemana.length > 0 ? "text-danger" : undefined, nota: urgentes > 0 ? `${urgentes} vencen en 48 h` : "Sin urgentes", notaColor: urgentes > 0 ? "text-danger" : undefined },
-    { label: "Audiencias hoy",         valor: String(audienciasHoy),     icon: Gavel,         nota: "Programadas hoy",            notaColor: undefined    },
-    { label: "Citas hoy",              valor: String(citasHoy),          icon: CalendarCheck, nota: "Agendadas para hoy",         notaColor: undefined    },
+    { label: "Expedientes activos",    valor: String(expActivos),        icon: FolderOpen,    nota: "Total activos",              notaColor: undefined,    href: "/expedientes" },
+    { label: "Vencimientos / semana",  valor: String(terminosSemana.length), icon: AlarmClock, valorColor: terminosSemana.length > 0 ? "text-danger" : undefined, nota: urgentes > 0 ? `${urgentes} vencen en 48 h` : "Sin urgentes", notaColor: urgentes > 0 ? "text-danger" : undefined, href: "/expedientes" },
+    { label: "Audiencias hoy",         valor: String(audienciasHoy),     icon: Gavel,         nota: "Programadas hoy",            notaColor: undefined,    href: "/agenda" },
+    { label: "Citas hoy",              valor: String(citasHoy),          icon: CalendarCheck, nota: "Agendadas para hoy",         notaColor: undefined,    href: "/agenda" },
   ];
 
   const hoyLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "America/Mexico_City" });
   const hoyCapitalized = hoyLabel.charAt(0).toUpperCase() + hoyLabel.slice(1);
 
+  const horaMx = Number(new Date().toLocaleString("en-US", { hour: "2-digit", hour12: false, timeZone: "America/Mexico_City" }));
+  const saludo = horaMx < 12 ? "Buenos días" : horaMx < 19 ? "Buenas tardes" : "Buenas noches";
+
   return (
     <>
       <div className="mb-6">
         <p className="eyebrow text-amber">{hoyCapitalized}</p>
-        <h1 className="font-serif text-[30px] text-ink leading-tight mt-1">Buenos días, {nombre}</h1>
+        <h1 className="font-serif text-[30px] text-ink leading-tight mt-1">{saludo}, {nombre}</h1>
         <p className="text-muted text-[14px] mt-0.5">Esto es lo que necesita atención hoy.</p>
       </div>
 
@@ -99,7 +103,7 @@ export default async function InicioPage() {
         {kpis.map((k) => {
           const Icon = k.icon;
           return (
-            <div key={k.label} className="bg-surface rounded-xl border border-line shadow-card p-5">
+            <Link key={k.label} href={k.href} className="block bg-surface rounded-xl border border-line shadow-card p-5 cursor-pointer hover:border-navy/30 hover:shadow-md transition-all">
               <div className="flex items-center justify-between">
                 <p className="eyebrow text-muted">{k.label}</p>
                 <Icon size={18} strokeWidth={1.75} className="text-navy/50" />
@@ -108,7 +112,7 @@ export default async function InicioPage() {
               <p className={`text-[12px] mt-1.5 flex items-center gap-1 ${k.notaColor ?? "text-muted"}`}>
                 {k.notaColor && <TrendingUp size={14} />} {k.nota}
               </p>
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -125,7 +129,7 @@ export default async function InicioPage() {
             const dias = Math.round((t.vencimientoTermino!.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
             const urg = dias <= 2;
             return (
-              <div key={t.id} className="flex items-center gap-4 px-5 py-3.5 border-b border-line/70 last:border-0 hover:bg-paper/60 transition-colors">
+              <Link key={t.id} href={`/expedientes/${t.expediente.id}`} className="flex items-center gap-4 px-5 py-3.5 border-b border-line/70 last:border-0 hover:bg-paper/60 transition-colors cursor-pointer">
                 <span className={`w-1.5 h-9 rounded-full ${urg ? "bg-danger" : "bg-amber-soft"}`} />
                 <div className="flex-1">
                   <p className="text-[14px] font-bold text-ink">{t.descripcion ?? "Término"}</p>
@@ -137,7 +141,7 @@ export default async function InicioPage() {
                 <span className={`px-2.5 py-1 rounded-md text-[11.5px] font-bold ${urg ? "bg-danger-wash text-danger" : "bg-amber-wash text-amber"}`}>
                   {fmtDias(dias)}
                 </span>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -149,7 +153,7 @@ export default async function InicioPage() {
           <div className="divide-y divide-line/70">
             {actividadRows.length === 0 && <p className="px-5 py-6 text-muted text-[13.5px]">Sin actividad reciente.</p>}
             {actividadRows.map((a) => (
-              <div key={a.id} className="flex items-center gap-4 px-5 py-3">
+              <Link key={a.id} href={`/expedientes/${a.expediente.id}`} className="flex items-center gap-4 px-5 py-3 hover:bg-paper/60 transition-colors cursor-pointer">
                 <span className="w-8 h-8 rounded-lg bg-navy/[.08] text-navy flex items-center justify-center">
                   {a.origen === "whatsapp" ? <MessagesSquare size={18} strokeWidth={1.75} /> : <FilePlus size={18} strokeWidth={1.75} />}
                 </span>
@@ -164,7 +168,7 @@ export default async function InicioPage() {
                 ) : (
                   <span className="px-2.5 py-1 rounded-md bg-line/60 text-muted text-[11.5px] font-bold">Web</span>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
           {actividadRows.some((a) => a.origen === "whatsapp") && (
