@@ -1,7 +1,8 @@
 export { default } from "next-auth/middleware";
 
-// Protege todas las rutas excepto login, la API de auth y los estáticos.
+// Protege todas las rutas excepto login, la API de auth y los estáticos
+// (incluye archivos públicos como Logo.jpg, cualquier ruta con extensión).
 // Sin sesión, NextAuth redirige a /login automáticamente.
 export const config = {
-  matcher: ["/((?!login|api/auth|api/n8n|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!login|api/auth|api/n8n|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

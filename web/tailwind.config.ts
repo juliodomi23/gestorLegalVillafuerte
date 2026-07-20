@@ -16,7 +16,7 @@ const config: Config = {
         muted: "#6B6259",
         line: "#E7E0D4",
         navy: { DEFAULT: "#1E3A5F", deep: "#162A41" },
-        amber: { DEFAULT: "#B45309", soft: "#C8881E", wash: "#F4E9D7" },
+        amber: { DEFAULT: "#96700F", soft: "#D4AF37", wash: "#F4E9D7" },
         success: { DEFAULT: "#3F6B4F", wash: "#E6EEE7" },
         danger: { DEFAULT: "#9B2C2C", wash: "#F3E2E0" },
       },

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Scale, Loader } from "lucide-react";
+import { Loader } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,8 +31,8 @@ export default function LoginPage() {
       {/* Panel de marca */}
       <div className="hidden lg:flex flex-col justify-between bg-navy-deep text-white p-12">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-amber/90 flex items-center justify-center">
-            <span className="font-serif text-xl font-bold text-navy-deep leading-none">V</span>
+          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-white/10">
+            <img src="/Logo.jpg" alt="Bufete Jurídico Villafuerte & Asociados" className="w-full h-full object-cover" />
           </div>
           <div>
             <div className="font-serif text-[19px] leading-tight">Villafuerte y Asociados</div>
@@ -40,11 +40,12 @@ export default function LoginPage() {
           </div>
         </div>
         <div>
-          <Scale size={40} className="text-amber/80 mb-5" strokeWidth={1.5} />
+          <img src="/Logo.jpg" alt="" className="w-24 h-24 object-contain rounded-lg mb-5" />
           <h1 className="font-serif text-[34px] leading-tight">Todo el despacho,<br />en un solo lugar.</h1>
           <p className="text-white/55 mt-3 max-w-sm text-[15px]">
             Expedientes, términos, audiencias y clientes — alimentados por WhatsApp, ordenados como un buen expediente.
           </p>
+          <p className="text-amber/80 mt-4 text-[13px] italic">"Nada por la fuerza, todo por el derecho y la razón"</p>
         </div>
         <p className="text-white/30 text-[12px]">Ámbar Rojo Studios</p>
       </div>
@@ -52,6 +53,9 @@ export default function LoginPage() {
       {/* Formulario */}
       <div className="flex items-center justify-center p-8">
         <div className="w-full max-w-sm">
+          <div className="lg:hidden w-14 h-14 rounded-lg overflow-hidden mb-5 mx-auto">
+            <img src="/Logo.jpg" alt="Bufete Jurídico Villafuerte & Asociados" className="w-full h-full object-cover" />
+          </div>
           <p className="eyebrow text-amber">Acceso</p>
           <h2 className="font-serif text-[28px] text-ink leading-tight mt-1 mb-1">Iniciar sesión</h2>
           <p className="text-muted text-[14px] mb-6">Entra con tu cuenta del despacho.</p>

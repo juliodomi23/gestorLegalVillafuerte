@@ -18,6 +18,7 @@ const sans = Lato({
 export const metadata: Metadata = {
   title: "GestorLegal — Villafuerte y Asociados",
   description: "Gestor de expedientes",
+  icons: { icon: "/Logo.jpg" },
 };
 
 export default function RootLayout({
