@@ -3,6 +3,9 @@
 .env.local
 .env*.local
 
+# Backups de base de datos — contienen datos de clientes
+deploy/backups/
+
 # OS
 .DS_Store
 Thumbs.db

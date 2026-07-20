@@ -11,7 +11,8 @@ export default async function AppLayout({
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  const { name, rol } = session.user;
+  const { name, rol, debeCambiarPassword } = session.user;
+  if (debeCambiarPassword) redirect("/cambiar-password");
 
   return (
     <AppShell nombre={name ?? "Usuario"} rol={rol}>

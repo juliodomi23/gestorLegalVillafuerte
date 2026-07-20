@@ -7,6 +7,7 @@ declare module "next-auth" {
     id: string;
     rol: Rol;
     sucursal: string;
+    debeCambiarPassword: boolean;
   }
   interface Session {
     user: {
@@ -15,6 +16,7 @@ declare module "next-auth" {
       email?: string | null;
       rol: Rol;
       sucursal: string;
+      debeCambiarPassword: boolean;
     };
   }
 }
@@ -23,5 +25,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     rol?: Rol;
     sucursal?: string;
+    debeCambiarPassword?: boolean;
   }
 }

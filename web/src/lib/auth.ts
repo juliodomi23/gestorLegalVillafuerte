@@ -30,6 +30,7 @@ export const authOptions: NextAuthOptions = {
             email: u.email,
             rol: u.rol as Rol,
             sucursal: u.sucursal?.nombre ?? "",
+            debeCambiarPassword: u.debeCambiarPassword,
           };
         } catch {
           return null;
@@ -38,10 +39,14 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.rol = user.rol;
         token.sucursal = user.sucursal;
+        token.debeCambiarPassword = user.debeCambiarPassword;
+      }
+      if (trigger === "update" && session?.debeCambiarPassword === false) {
+        token.debeCambiarPassword = false;
       }
       return token;
     },
@@ -50,6 +55,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub!;
         session.user.rol = token.rol as Rol;
         session.user.sucursal = token.sucursal as string;
+        session.user.debeCambiarPassword = token.debeCambiarPassword as boolean;
       }
       return session;
     },

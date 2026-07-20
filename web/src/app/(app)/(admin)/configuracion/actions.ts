@@ -24,6 +24,7 @@ export async function crearUsuarioAction(data: {
       nombre: d.nombre,
       email: d.email ? d.email.toLowerCase() : null,
       passwordHash,
+      debeCambiarPassword: true,
       rol: d.rol,
       sucursalId: d.sucursalId || null,
       sucursalEncargadaId: d.sucursalEncargadaId || null,
@@ -57,6 +58,7 @@ export async function editarUsuarioAction(
   };
   if (d.password) {
     update.passwordHash = await bcrypt.hash(d.password, 10);
+    update.debeCambiarPassword = true;
   }
   await prisma.usuario.update({ where: { id }, data: update });
   revalidatePath("/configuracion");

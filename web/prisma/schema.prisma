@@ -76,6 +76,7 @@ model Usuario {
   rol                  String   @default("abogado") // admin | abogado | asistente
   sucursalEncargadaId  String?  @map("sucursal_encargada_id") @db.Uuid
   activo               Boolean  @default(true)
+  debeCambiarPassword  Boolean  @default(false) @map("debe_cambiar_password")
   creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   sucursal          Sucursal?        @relation("UsuarioSucursal", fields: [sucursalId], references: [id])
