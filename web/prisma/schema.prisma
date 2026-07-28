@@ -27,6 +27,7 @@ model Sucursal {
   nombre     String
   direccion  String?
   telefono   String?
+  ultimoFolio Int     @default(0) @map("ultimo_folio")
   creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   usuarios     Usuario[] @relation("UsuarioSucursal")
@@ -243,14 +244,26 @@ model Asesoria {
   expedienteId String?  @map("expediente_id") @db.Uuid
   sucursalId   String?  @map("sucursal_id") @db.Uuid
   fecha        DateTime @default(now()) @db.Date
+  folio        String?
   nombre       String?
   telefono     String?
   edad         String?
-  domicilio    String?
+  sexo               String?
+  estadoCivil        String?  @map("estado_civil")
+  escolaridad        String?
+  domicilio          String?
+  nacionalidad       String?
+  ocupacion          String?
+  correo             String?
+  domicilioLaboral   String?  @map("domicilio_laboral")
+  hijos              String?
+  nombreHijos        String?  @map("nombre_hijos")
   tema         String?
   resumen      String?
   pagoAsesoria Boolean  @default(false) @map("pago_asesoria")
   monto        Decimal? @db.Decimal(14, 2)
+  presupuestoOpcion     String?  @map("presupuesto_opcion")
+  presupuestoPorcentaje Decimal? @db.Decimal(5, 2) @map("presupuesto_porcentaje")
   seguimiento  String?
   status        String   @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
   urlDocumento  String?  @map("url_documento")

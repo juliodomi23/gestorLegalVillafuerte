@@ -27,6 +27,7 @@ export default async function AsesoriasPage() {
     return {
       id: a.id,
       fecha: `${dd}/${mm}/${yyyy}`,
+      folio: a.folio ?? null,
       nombre: a.nombre ?? "Sin nombre",
       telefono: a.telefono ?? "—",
       asunto: a.tema ?? a.resumen ?? "—",
@@ -36,6 +37,19 @@ export default async function AsesoriasPage() {
       monto: Number(a.monto ?? 0),
       status: (a.status as StatusAsesoria) ?? "pendiente",
       urlDocumento: a.urlDocumento ?? null,
+      edad: a.edad ?? "",
+      sexo: a.sexo ?? "",
+      estadoCivil: a.estadoCivil ?? "",
+      escolaridad: a.escolaridad ?? "",
+      domicilio: a.domicilio ?? "",
+      nacionalidad: a.nacionalidad ?? "",
+      ocupacion: a.ocupacion ?? "",
+      correo: a.correo ?? "",
+      domicilioLaboral: a.domicilioLaboral ?? "",
+      hijos: a.hijos ?? "",
+      nombreHijos: a.nombreHijos ?? "",
+      presupuestoOpcion: a.presupuestoOpcion ?? "",
+      presupuestoPorcentaje: a.presupuestoPorcentaje != null ? String(a.presupuestoPorcentaje) : "",
     };
   });
 

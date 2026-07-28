@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, ChevronRight, MessageCircle, FileText, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { PageTitle, Card, SearchBox, FilterSelect } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
@@ -11,6 +12,7 @@ import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction, cambia
 export type AsesoriaView = {
   id: string;
   fecha: string;       // dd/mm/yyyy
+  folio: string | null;
   nombre: string;
   telefono: string;
   asunto: string;
@@ -20,6 +22,19 @@ export type AsesoriaView = {
   monto: number;
   status: StatusAsesoria;
   urlDocumento: string | null;
+  edad: string;
+  sexo: string;
+  estadoCivil: string;
+  escolaridad: string;
+  domicilio: string;
+  nacionalidad: string;
+  ocupacion: string;
+  correo: string;
+  domicilioLaboral: string;
+  hijos: string;
+  nombreHijos: string;
+  presupuestoOpcion: string;
+  presupuestoPorcentaje: string;
 };
 
 const statusInfo: Record<StatusAsesoria, { label: string; cls: string }> = {
@@ -54,6 +69,7 @@ function DaySection({ fecha, rows, onEdit, onDelete }: { fecha: string; rows: As
           <table className="w-full min-w-[640px] text-[13px]">
             <thead>
               <tr className="border-t border-b border-line text-left bg-surface">
+                <th className="eyebrow text-muted px-3 py-2.5">Folio</th>
                 <th className="eyebrow text-muted px-5 py-2.5">Prospecto</th>
                 <th className="eyebrow text-muted px-3 py-2.5">Asunto</th>
                 <th className="eyebrow text-muted px-3 py-2.5">Abogado</th>
@@ -65,6 +81,7 @@ function DaySection({ fecha, rows, onEdit, onDelete }: { fecha: string; rows: As
             <tbody className="divide-y divide-line/60 bg-surface">
               {rows.map((a) => (
                 <tr key={a.id} className="hover:bg-paper/40 transition-colors">
+                  <td className="px-3 py-3 num text-muted">{a.folio ?? "—"}</td>
                   <td className="px-5 py-3"><p className="font-bold text-ink">{a.nombre}</p><p className="text-[11.5px] num text-muted">{a.telefono}</p></td>
                   <td className="px-3 py-3 text-ink">{a.asunto}</td>
                   <td className="px-3 py-3 text-muted">{a.abogado}</td>
@@ -105,7 +122,11 @@ function DaySection({ fecha, rows, onEdit, onDelete }: { fecha: string; rows: As
 }
 
 const TABS_FIJAS = ["Todas"];
-const vacio = { nombre: "", telefono: "", asunto: "", sucursal: "", abogado: "", pago: "No", monto: "", status: "Pendiente" };
+const vacio = {
+  nombre: "", telefono: "", asunto: "", sucursal: "", abogado: "", pago: "No", monto: "", status: "Pendiente",
+  edad: "", sexo: "", estadoCivil: "", escolaridad: "", domicilio: "", nacionalidad: "Mexicana", ocupacion: "",
+  correo: "", domicilioLaboral: "", hijos: "", nombreHijos: "", presupuestoOpcion: "", presupuestoPorcentaje: "",
+};
 
 export default function AsesoriasClient({
   asesorias,
@@ -126,7 +147,9 @@ export default function AsesoriasClient({
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const confirmar = useConfirm();
+  const router = useRouter();
 
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
 
@@ -160,10 +183,18 @@ export default function AsesoriasClient({
     return Object.fromEntries(TABS.map((t) => [t, t === "Todas" ? base.length : base.filter((a) => a.sucursal === t).length]));
   }, [asesorias, busqueda, TABS]);
 
-  function abrirNuevo() { setEditId(null); setForm({ ...vacio, sucursal: tabActiva !== "Todas" ? tabActiva : "" }); setOpen(true); }
+  function abrirNuevo() { setError(null); setEditId(null); setForm({ ...vacio, sucursal: tabActiva !== "Todas" ? tabActiva : "" }); setOpen(true); }
   function abrirEditar(a: AsesoriaView) {
+    setError(null);
     setEditId(a.id);
-    setForm({ nombre: a.nombre, telefono: a.telefono, asunto: a.asunto, sucursal: a.sucursal, abogado: a.abogado, pago: a.pago ? "Sí" : "No", monto: a.pago ? String(a.monto) : "", status: statusInfo[a.status].label });
+    setForm({
+      nombre: a.nombre, telefono: a.telefono, asunto: a.asunto, sucursal: a.sucursal, abogado: a.abogado,
+      pago: a.pago ? "Sí" : "No", monto: a.pago ? String(a.monto) : "", status: statusInfo[a.status].label,
+      edad: a.edad, sexo: a.sexo, estadoCivil: a.estadoCivil, escolaridad: a.escolaridad, domicilio: a.domicilio,
+      nacionalidad: a.nacionalidad, ocupacion: a.ocupacion, correo: a.correo, domicilioLaboral: a.domicilioLaboral,
+      hijos: a.hijos, nombreHijos: a.nombreHijos, presupuestoOpcion: a.presupuestoOpcion,
+      presupuestoPorcentaje: a.presupuestoPorcentaje,
+    });
     setOpen(true);
   }
   async function borrar(id: string) {
@@ -171,11 +202,27 @@ export default function AsesoriasClient({
   }
   async function guardar() {
     setSaving(true);
-    const pago = form.pago === "Sí";
-    const data = { nombre: form.nombre, telefono: form.telefono, asunto: form.asunto, sucursal: form.sucursal, abogado: form.abogado, pago, monto: pago ? Number(form.monto.replace(/\D/g, "")) || null : null, status: (labelToStatus[form.status] ?? "pendiente") as StatusAsesoria };
-    if (editId) { await editarAsesoriaAction(editId, data); } else { await crearAsesoriaAction(data); }
-    setSaving(false);
-    setOpen(false);
+    setError(null);
+    try {
+      const pago = form.pago === "Sí";
+      const data = {
+        nombre: form.nombre, telefono: form.telefono, asunto: form.asunto, sucursal: form.sucursal, abogado: form.abogado,
+        pago, monto: pago ? Number(form.monto.replace(/\D/g, "")) || null : null,
+        status: (labelToStatus[form.status] ?? "pendiente") as StatusAsesoria,
+        edad: form.edad, sexo: form.sexo, estadoCivil: form.estadoCivil, escolaridad: form.escolaridad,
+        domicilio: form.domicilio, nacionalidad: form.nacionalidad, ocupacion: form.ocupacion, correo: form.correo,
+        domicilioLaboral: form.domicilioLaboral, hijos: form.hijos, nombreHijos: form.nombreHijos,
+        presupuestoOpcion: form.presupuestoOpcion,
+        presupuestoPorcentaje: form.presupuestoPorcentaje ? Number(form.presupuestoPorcentaje) : null,
+      };
+      if (editId) { await editarAsesoriaAction(editId, data); } else { await crearAsesoriaAction(data); }
+      setOpen(false);
+      router.refresh();
+    } catch (e) {
+      setError((e as Error).message ?? "Error al guardar");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -231,15 +278,33 @@ export default function AsesoriasClient({
         </p>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title={editId ? "Editar asesoría" : "Nueva asesoría"} onSubmit={guardar} submitLabel={saving ? "Guardando…" : editId ? "Guardar cambios" : "Registrar asesoría"}>
+      <Modal wide open={open} onClose={() => setOpen(false)} title={editId ? "Editar asesoría" : "Nueva asesoría"} onSubmit={guardar} submitLabel={saving ? "Guardando…" : editId ? "Guardar cambios" : "Registrar asesoría"}>
+        {error && <p className="col-span-full text-[12.5px] text-danger bg-danger-wash rounded-lg px-3 py-2">{error}</p>}
+
+        <p className="col-span-full eyebrow text-navy -mb-2">Datos del cliente</p>
         <Field label="Nombre completo del prospecto" full><Input value={form.nombre} onChange={(e) => set("nombre", e.target.value)} placeholder="Nombre completo" required /></Field>
+        <Field label="Edad"><Input value={form.edad} onChange={(e) => set("edad", e.target.value)} placeholder="28 años" /></Field>
+        <Field label="Sexo"><Select options={["Masculino", "Femenino"]} value={form.sexo} onChange={(e) => set("sexo", e.target.value)} /></Field>
+        <Field label="Estado civil"><Select options={["Soltero(a)", "Casado(a)", "Unión libre", "Divorciado(a)", "Viudo(a)"]} value={form.estadoCivil} onChange={(e) => set("estadoCivil", e.target.value)} /></Field>
+        <Field label="Escolaridad"><Select options={["Ninguna", "Primaria", "Secundaria", "Preparatoria", "Licenciatura", "Posgrado"]} value={form.escolaridad} onChange={(e) => set("escolaridad", e.target.value)} /></Field>
+        <Field label="Domicilio" full><Input value={form.domicilio} onChange={(e) => set("domicilio", e.target.value)} placeholder="Calle, número, localidad" /></Field>
+        <Field label="Nacionalidad"><Input value={form.nacionalidad} onChange={(e) => set("nacionalidad", e.target.value)} /></Field>
+        <Field label="Ocupación"><Input value={form.ocupacion} onChange={(e) => set("ocupacion", e.target.value)} /></Field>
         <Field label="Teléfono"><Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} placeholder="961 123 4567" /></Field>
+        <Field label="Correo electrónico"><Input type="email" value={form.correo} onChange={(e) => set("correo", e.target.value)} /></Field>
+        <Field label="Domicilio laboral" full><Input value={form.domicilioLaboral} onChange={(e) => set("domicilioLaboral", e.target.value)} /></Field>
+        <Field label="Hijos"><Input value={form.hijos} onChange={(e) => set("hijos", e.target.value)} placeholder="Sin hijos / 2" /></Field>
+        <Field label="Nombre de los hijos"><Input value={form.nombreHijos} onChange={(e) => set("nombreHijos", e.target.value)} /></Field>
+
+        <p className="col-span-full eyebrow text-navy -mb-2 mt-2">Asunto y presupuesto</p>
         <Field label="Asunto"><Input value={form.asunto} onChange={(e) => set("asunto", e.target.value)} placeholder="Divorcio, pagaré…" /></Field>
         <Field label="Sucursal"><Select options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} /></Field>
-        <Field label="Abogado"><Select options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} /></Field>
+        <Field label="Abogado que atendió"><Select options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} /></Field>
         <Field label="¿Pagó asesoría?"><Select options={["Sí", "No"]} value={form.pago} onChange={(e) => set("pago", e.target.value)} /></Field>
-        <Field label="Monto"><Input value={form.monto} onChange={(e) => set("monto", e.target.value)} placeholder="500" /></Field>
-        <Field label="Status" full><Select options={STATUS_LABELS} value={form.status} onChange={(e) => set("status", e.target.value)} /></Field>
+        <Field label="Monto"><Input value={form.monto} onChange={(e) => set("monto", e.target.value)} placeholder="15000" /></Field>
+        <Field label="Opción de presupuesto"><Input value={form.presupuestoOpcion} onChange={(e) => set("presupuestoOpcion", e.target.value)} placeholder="A" /></Field>
+        <Field label="% acordado"><Input value={form.presupuestoPorcentaje} onChange={(e) => set("presupuestoPorcentaje", e.target.value)} placeholder="10" /></Field>
+        <Field label="Status"><Select options={STATUS_LABELS} value={form.status} onChange={(e) => set("status", e.target.value)} /></Field>
       </Modal>
     </>
   );

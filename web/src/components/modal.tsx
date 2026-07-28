@@ -10,6 +10,7 @@ export function Modal({
   children,
   onSubmit,
   submitLabel = "Guardar",
+  wide = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -17,6 +18,7 @@ export function Modal({
   children: React.ReactNode;
   onSubmit: () => void;
   submitLabel?: string;
+  wide?: boolean;
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -30,7 +32,7 @@ export function Modal({
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm flex items-start justify-center p-4 pt-[8vh] overflow-y-auto" onClick={onClose}>
-      <div className="bg-surface rounded-xl border border-line shadow-card w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+      <div className={`bg-surface rounded-xl border border-line shadow-card w-full ${wide ? "max-w-2xl" : "max-w-lg"}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-line">
           <h3 className="font-serif text-[19px] text-ink">{title}</h3>
           <button onClick={onClose} aria-label="Cerrar" className="text-muted hover:text-ink transition-colors">
@@ -43,7 +45,7 @@ export function Modal({
             onSubmit();
           }}
         >
-          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>
+          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto">{children}</div>
           <div className="flex justify-end gap-2 px-6 py-4 border-t border-line">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-line text-[13px] hover:border-navy/40 transition-colors">
               Cancelar

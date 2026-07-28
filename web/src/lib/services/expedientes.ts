@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { parseFecha } from "@/lib/fecha";
 import { resolverSucursal, resolverAbogado, upsertCliente } from "./resolvers";
 
@@ -33,10 +34,32 @@ export type DatosTermino = {
   vencimientoTermino?: string;
 };
 
+// Calcula el siguiente folio a partir del MÁXIMO existente del año (no de un
+// count(): contar reusa números al borrar expedientes y genera colisiones).
 async function siguienteNumeroInterno(): Promise<string> {
   const año = new Date().getFullYear();
-  const total = await prisma.expediente.count();
-  return `EXP-${año}-${String(total + 1).padStart(4, "0")}`;
+  const prefijo = `EXP-${año}-`;
+  // Como el secuencial va con padding a 4 dígitos, el orden alfabético desc
+  // coincide con el numérico y nos da el último folio usado del año.
+  const ultimo = await prisma.expediente.findFirst({
+    where: { numeroInterno: { startsWith: prefijo } },
+    orderBy: { numeroInterno: "desc" },
+    select: { numeroInterno: true },
+  });
+  const ultimoSec = ultimo?.numeroInterno
+    ? parseInt(ultimo.numeroInterno.slice(prefijo.length), 10)
+    : 0;
+  const siguiente = (Number.isFinite(ultimoSec) ? ultimoSec : 0) + 1;
+  return `${prefijo}${String(siguiente).padStart(4, "0")}`;
+}
+
+// ¿El error es una colisión de la constraint UNIQUE de numero_interno?
+function esColisionNumeroInterno(e: unknown): boolean {
+  return (
+    e instanceof Prisma.PrismaClientKnownRequestError &&
+    e.code === "P2002" &&
+    (e.meta?.target as string[] | undefined)?.includes("numero_interno") === true
+  );
 }
 
 export async function crearExpediente(d: DatosExpediente) {
@@ -47,23 +70,36 @@ export async function crearExpediente(d: DatosExpediente) {
   // El cliente nuevo pertenece al abogado responsable del expediente.
   const clienteId = await upsertCliente(d.cliente, d.telefonoCliente, abogadoId);
 
-  const expediente = await prisma.expediente.create({
-    data: {
-      numeroInterno: await siguienteNumeroInterno(),
-      numeroJudicial: d.numeroJudicial,
-      clienteId,
-      rolCliente: d.rolCliente,
-      materia: d.materia,
-      tipoJuicio: d.tipoJuicio,
-      juzgado: d.juzgado,
-      etapaProcesal: d.etapa,
-      cuantia: d.cuantia,
-      abogadoResponsableId: abogadoId,
-      sucursalId,
-      resumen: d.resumen,
-      fechaInicio: parseFecha(d.fechaInicio),
-    },
-  });
+  // El número se calcula y se inserta dentro del mismo intento. Si dos
+  // expedientes se crean a la vez (bot + web) ambos pueden calcular el mismo
+  // folio; la constraint UNIQUE rechaza al segundo y aquí reintentamos con el
+  // siguiente número disponible en vez de fallar con un 500.
+  let expediente;
+  for (let intento = 0; ; intento++) {
+    try {
+      expediente = await prisma.expediente.create({
+        data: {
+          numeroInterno: await siguienteNumeroInterno(),
+          numeroJudicial: d.numeroJudicial,
+          clienteId,
+          rolCliente: d.rolCliente,
+          materia: d.materia,
+          tipoJuicio: d.tipoJuicio,
+          juzgado: d.juzgado,
+          etapaProcesal: d.etapa,
+          cuantia: d.cuantia,
+          abogadoResponsableId: abogadoId,
+          sucursalId,
+          resumen: d.resumen,
+          fechaInicio: parseFecha(d.fechaInicio),
+        },
+      });
+      break;
+    } catch (e) {
+      if (esColisionNumeroInterno(e) && intento < 5) continue;
+      throw e;
+    }
+  }
 
   if (d.termino) {
     const t = d.termino;

@@ -10,6 +10,17 @@ export async function resolverSucursal(nombre?: string): Promise<string | null> 
   return s?.id ?? null;
 }
 
+// Folio consecutivo por sucursal (00001, 00002...). UPDATE...RETURNING es atómico
+// bajo el row lock de Postgres, así que dos abogados registrando a la vez en la
+// misma sucursal nunca chocan folio, sin necesitar una transacción aparte.
+export async function asignarFolio(sucursalId?: string | null): Promise<string | null> {
+  if (!sucursalId) return null;
+  const rows = await prisma.$queryRaw<{ ultimo_folio: number }[]>`
+    UPDATE sucursales SET ultimo_folio = ultimo_folio + 1 WHERE id = ${sucursalId}::uuid RETURNING ultimo_folio
+  `;
+  return rows[0] ? String(rows[0].ultimo_folio).padStart(5, "0") : null;
+}
+
 export async function resolverAbogado(nombreOTelefono?: string): Promise<string | null> {
   if (!nombreOTelefono) return null;
   const u = await prisma.usuario.findFirst({

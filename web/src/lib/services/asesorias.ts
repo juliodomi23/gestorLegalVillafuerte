@@ -1,16 +1,27 @@
 import { prisma } from "@/lib/prisma";
-import { resolverSucursal, resolverAbogado } from "./resolvers";
+import { resolverSucursal, resolverAbogado, asignarFolio } from "./resolvers";
 import type { Prisma } from "@prisma/client";
 
 export type DatosAsesoria = {
   nombre: string;
   telefono?: string;
   edad?: string;
+  sexo?: string;
+  estadoCivil?: string;
+  escolaridad?: string;
   domicilio?: string;
+  nacionalidad?: string;
+  ocupacion?: string;
+  correo?: string;
+  domicilioLaboral?: string;
+  hijos?: string;
+  nombreHijos?: string;
   tema?: string;
   resumen?: string;
   pagoAsesoria?: boolean;
   monto?: number;
+  presupuestoOpcion?: string;
+  presupuestoPorcentaje?: number;
   seguimiento?: string;
   status?: "pendiente" | "contrato_firmado" | "no_regreso" | "descartado";
   abogado?: string;
@@ -98,17 +109,30 @@ export async function registrarAsesoria(d: DatosAsesoria) {
     resolverAbogado(d.abogado),
     resolverSucursal(d.sucursal),
   ]);
+  const folio = await asignarFolio(sucursalId);
 
   return prisma.asesoria.create({
     data: {
+      folio,
       nombre: d.nombre,
       telefono: d.telefono,
       edad: d.edad,
+      sexo: d.sexo,
+      estadoCivil: d.estadoCivil,
+      escolaridad: d.escolaridad,
       domicilio: d.domicilio,
+      nacionalidad: d.nacionalidad,
+      ocupacion: d.ocupacion,
+      correo: d.correo,
+      domicilioLaboral: d.domicilioLaboral,
+      hijos: d.hijos,
+      nombreHijos: d.nombreHijos,
       tema: d.tema,
       resumen: d.resumen,
       pagoAsesoria: d.pagoAsesoria ?? false,
       monto: d.monto,
+      presupuestoOpcion: d.presupuestoOpcion,
+      presupuestoPorcentaje: d.presupuestoPorcentaje,
       seguimiento: d.seguimiento,
       status: d.status ?? "pendiente",
       urlDocumento: d.urlDocumento || null,
