@@ -262,8 +262,7 @@ model Asesoria {
   resumen      String?
   pagoAsesoria Boolean  @default(false) @map("pago_asesoria")
   monto        Decimal? @db.Decimal(14, 2)
-  presupuestoOpcion     String?  @map("presupuesto_opcion")
-  presupuestoPorcentaje Decimal? @db.Decimal(5, 2) @map("presupuesto_porcentaje")
+  presupuestoTexto      String?  @map("presupuesto_texto")
   seguimiento  String?
   status        String   @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
   urlDocumento  String?  @map("url_documento")

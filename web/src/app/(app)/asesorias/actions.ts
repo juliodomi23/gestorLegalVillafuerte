@@ -25,14 +25,16 @@ export type FormAsesoria = {
   domicilioLaboral?: string;
   hijos?: string;
   nombreHijos?: string;
-  presupuestoOpcion?: string;
-  presupuestoPorcentaje?: number | null;
+  presupuestoTexto?: string;
 };
 
 export async function crearAsesoriaAction(form: FormAsesoria) {
-  await requireSession();
+  const sesion = await requireSession();
+  // El "abogado que atendió" es quien está en sesión, salvo que un admin
+  // registre a nombre de otro (necesitan poder capturar por otros abogados).
+  const abogado = sesion.rol === "admin" ? form.abogado : sesion.nombre;
   const [abogadoId, sucursalId] = await Promise.all([
-    resolverAbogado(form.abogado),
+    resolverAbogado(abogado),
     resolverSucursal(form.sucursal),
   ]);
   const folio = await asignarFolio(sucursalId);
@@ -59,17 +61,17 @@ export async function crearAsesoriaAction(form: FormAsesoria) {
       domicilioLaboral: form.domicilioLaboral || null,
       hijos: form.hijos || null,
       nombreHijos: form.nombreHijos || null,
-      presupuestoOpcion: form.presupuestoOpcion || null,
-      presupuestoPorcentaje: form.presupuestoPorcentaje ?? null,
+      presupuestoTexto: form.presupuestoTexto || null,
     },
   });
   revalidatePath("/asesorias");
 }
 
 export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
-  await requireSession();
+  const sesion = await requireSession();
+  const abogado = sesion.rol === "admin" ? form.abogado : sesion.nombre;
   const [abogadoId, sucursalId] = await Promise.all([
-    resolverAbogado(form.abogado),
+    resolverAbogado(abogado),
     resolverSucursal(form.sucursal),
   ]);
   await prisma.asesoria.update({
@@ -94,8 +96,7 @@ export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
       domicilioLaboral: form.domicilioLaboral || null,
       hijos: form.hijos || null,
       nombreHijos: form.nombreHijos || null,
-      presupuestoOpcion: form.presupuestoOpcion || null,
-      presupuestoPorcentaje: form.presupuestoPorcentaje ?? null,
+      presupuestoTexto: form.presupuestoTexto || null,
     },
   });
   revalidatePath("/asesorias");

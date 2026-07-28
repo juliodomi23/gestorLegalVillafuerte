@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, ChevronRight, MessageCircle, FileText, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { PageTitle, Card, SearchBox, FilterSelect } from "@/components/ui";
-import { Modal, Field, Input, Select } from "@/components/modal";
+import { Modal, Field, Input, Select, Textarea } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
 import type { StatusAsesoria } from "@/lib/constants";
 import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction, cambiarStatusAsesoriaAction } from "./actions";
@@ -33,8 +33,7 @@ export type AsesoriaView = {
   domicilioLaboral: string;
   hijos: string;
   nombreHijos: string;
-  presupuestoOpcion: string;
-  presupuestoPorcentaje: string;
+  presupuestoTexto: string;
 };
 
 const statusInfo: Record<StatusAsesoria, { label: string; cls: string }> = {
@@ -125,18 +124,23 @@ const TABS_FIJAS = ["Todas"];
 const vacio = {
   nombre: "", telefono: "", asunto: "", sucursal: "", abogado: "", pago: "No", monto: "", status: "Pendiente",
   edad: "", sexo: "", estadoCivil: "", escolaridad: "", domicilio: "", nacionalidad: "Mexicana", ocupacion: "",
-  correo: "", domicilioLaboral: "", hijos: "", nombreHijos: "", presupuestoOpcion: "", presupuestoPorcentaje: "",
+  correo: "", domicilioLaboral: "", hijos: "", nombreHijos: "", presupuestoTexto: "",
 };
 
 export default function AsesoriasClient({
   asesorias,
   sucursales,
   abogados,
+  sesionNombre,
+  sesionRol,
 }: {
   asesorias: AsesoriaView[];
   sucursales: string[];
   abogados: string[];
+  sesionNombre: string;
+  sesionRol: string;
 }) {
+  const esAdmin = sesionRol === "admin";
   const TABS = [...TABS_FIJAS, ...sucursales];
   const [tabActiva, setTabActiva] = useState("Todas");
   const [busqueda, setBusqueda] = useState("");
@@ -183,17 +187,21 @@ export default function AsesoriasClient({
     return Object.fromEntries(TABS.map((t) => [t, t === "Todas" ? base.length : base.filter((a) => a.sucursal === t).length]));
   }, [asesorias, busqueda, TABS]);
 
-  function abrirNuevo() { setError(null); setEditId(null); setForm({ ...vacio, sucursal: tabActiva !== "Todas" ? tabActiva : "" }); setOpen(true); }
+  function abrirNuevo() {
+    setError(null);
+    setEditId(null);
+    setForm({ ...vacio, sucursal: tabActiva !== "Todas" ? tabActiva : "", abogado: esAdmin ? "" : sesionNombre });
+    setOpen(true);
+  }
   function abrirEditar(a: AsesoriaView) {
     setError(null);
     setEditId(a.id);
     setForm({
-      nombre: a.nombre, telefono: a.telefono, asunto: a.asunto, sucursal: a.sucursal, abogado: a.abogado,
+      nombre: a.nombre, telefono: a.telefono, asunto: a.asunto, sucursal: a.sucursal, abogado: esAdmin ? a.abogado : sesionNombre,
       pago: a.pago ? "Sí" : "No", monto: a.pago ? String(a.monto) : "", status: statusInfo[a.status].label,
       edad: a.edad, sexo: a.sexo, estadoCivil: a.estadoCivil, escolaridad: a.escolaridad, domicilio: a.domicilio,
       nacionalidad: a.nacionalidad, ocupacion: a.ocupacion, correo: a.correo, domicilioLaboral: a.domicilioLaboral,
-      hijos: a.hijos, nombreHijos: a.nombreHijos, presupuestoOpcion: a.presupuestoOpcion,
-      presupuestoPorcentaje: a.presupuestoPorcentaje,
+      hijos: a.hijos, nombreHijos: a.nombreHijos, presupuestoTexto: a.presupuestoTexto,
     });
     setOpen(true);
   }
@@ -212,8 +220,7 @@ export default function AsesoriasClient({
         edad: form.edad, sexo: form.sexo, estadoCivil: form.estadoCivil, escolaridad: form.escolaridad,
         domicilio: form.domicilio, nacionalidad: form.nacionalidad, ocupacion: form.ocupacion, correo: form.correo,
         domicilioLaboral: form.domicilioLaboral, hijos: form.hijos, nombreHijos: form.nombreHijos,
-        presupuestoOpcion: form.presupuestoOpcion,
-        presupuestoPorcentaje: form.presupuestoPorcentaje ? Number(form.presupuestoPorcentaje) : null,
+        presupuestoTexto: form.presupuestoTexto,
       };
       if (editId) { await editarAsesoriaAction(editId, data); } else { await crearAsesoriaAction(data); }
       setOpen(false);
@@ -299,11 +306,12 @@ export default function AsesoriasClient({
         <p className="col-span-full eyebrow text-navy -mb-2 mt-2">Asunto y presupuesto</p>
         <Field label="Asunto"><Input value={form.asunto} onChange={(e) => set("asunto", e.target.value)} placeholder="Divorcio, pagaré…" /></Field>
         <Field label="Sucursal"><Select options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} /></Field>
-        <Field label="Abogado que atendió"><Select options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} /></Field>
+        {esAdmin
+          ? <Field label="Abogado que atendió"><Select options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} /></Field>
+          : <Field label="Abogado que atendió"><Input value={sesionNombre} disabled className="opacity-70 cursor-not-allowed" /></Field>}
         <Field label="¿Pagó asesoría?"><Select options={["Sí", "No"]} value={form.pago} onChange={(e) => set("pago", e.target.value)} /></Field>
         <Field label="Monto"><Input value={form.monto} onChange={(e) => set("monto", e.target.value)} placeholder="15000" /></Field>
-        <Field label="Opción de presupuesto"><Input value={form.presupuestoOpcion} onChange={(e) => set("presupuestoOpcion", e.target.value)} placeholder="A" /></Field>
-        <Field label="% acordado"><Input value={form.presupuestoPorcentaje} onChange={(e) => set("presupuestoPorcentaje", e.target.value)} placeholder="10" /></Field>
+        <Field label="Presupuesto" full><Textarea rows={3} value={form.presupuestoTexto} onChange={(e) => set("presupuestoTexto", e.target.value)} placeholder={"Opción A) $15,000 y 10%\nOpción B) …"} /></Field>
         <Field label="Status"><Select options={STATUS_LABELS} value={form.status} onChange={(e) => set("status", e.target.value)} /></Field>
       </Modal>
     </>

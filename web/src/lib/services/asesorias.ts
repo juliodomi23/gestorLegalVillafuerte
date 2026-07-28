@@ -20,8 +20,7 @@ export type DatosAsesoria = {
   resumen?: string;
   pagoAsesoria?: boolean;
   monto?: number;
-  presupuestoOpcion?: string;
-  presupuestoPorcentaje?: number;
+  presupuestoTexto?: string;
   seguimiento?: string;
   status?: "pendiente" | "contrato_firmado" | "no_regreso" | "descartado";
   abogado?: string;
@@ -131,8 +130,7 @@ export async function registrarAsesoria(d: DatosAsesoria) {
       resumen: d.resumen,
       pagoAsesoria: d.pagoAsesoria ?? false,
       monto: d.monto,
-      presupuestoOpcion: d.presupuestoOpcion,
-      presupuestoPorcentaje: d.presupuestoPorcentaje,
+      presupuestoTexto: d.presupuestoTexto,
       seguimiento: d.seguimiento,
       status: d.status ?? "pendiente",
       urlDocumento: d.urlDocumento || null,

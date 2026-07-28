@@ -48,8 +48,7 @@ export default async function AsesoriasPage() {
       domicilioLaboral: a.domicilioLaboral ?? "",
       hijos: a.hijos ?? "",
       nombreHijos: a.nombreHijos ?? "",
-      presupuestoOpcion: a.presupuestoOpcion ?? "",
-      presupuestoPorcentaje: a.presupuestoPorcentaje != null ? String(a.presupuestoPorcentaje) : "",
+      presupuestoTexto: a.presupuestoTexto ?? "",
     };
   });
 
@@ -61,6 +60,8 @@ export default async function AsesoriasPage() {
       asesorias={asesorias}
       sucursales={sucursales}
       abogados={abogados}
+      sesionNombre={session?.user?.name ?? ""}
+      sesionRol={session?.user?.rol ?? ""}
     />
   );
 }
