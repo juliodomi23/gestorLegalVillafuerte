@@ -259,7 +259,7 @@ export default function AsesoriasClient({
           className={`px-3 py-2 rounded-lg border text-[13px] cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-navy/20 ${fFecha ? "border-navy/40 bg-navy/[.04] text-navy font-bold" : "border-line bg-surface text-ink hover:border-navy/40"}`}
         />
         <span className="flex-1" />
-        <button onClick={abrirNuevo} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors"><Plus size={18} strokeWidth={1.75} /> Nueva asesoría</button>
+        <button onClick={abrirNuevo} data-tour="asesorias-nueva" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors"><Plus size={18} strokeWidth={1.75} /> Nueva asesoría</button>
       </div>
 
       <div className="flex gap-1 mb-5 border-b border-line overflow-x-auto">

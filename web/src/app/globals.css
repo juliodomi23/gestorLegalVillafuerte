@@ -30,7 +30,7 @@
 @keyframes tour-in {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.97);
+    transform: translateY(6px) scale(0.985);
   }
 }
 @keyframes tour-fade {
@@ -42,29 +42,29 @@
 @keyframes tour-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 9999px rgba(26, 23, 20, 0.62), 0 0 0 0 rgba(212, 175, 55, 0.5);
+    box-shadow: 0 0 0 9999px rgba(26, 23, 20, 0.62), 0 0 0 0 rgba(212, 175, 55, 0.45);
   }
   50% {
-    box-shadow: 0 0 0 9999px rgba(26, 23, 20, 0.62), 0 0 0 9px rgba(212, 175, 55, 0);
+    box-shadow: 0 0 0 9999px rgba(26, 23, 20, 0.62), 0 0 0 11px rgba(212, 175, 55, 0);
   }
 }
 
+/* El desplazamiento lo interpola el componente frame a frame (ver acercar()),
+   aquí solo vive el latido del anillo ámbar. */
 .tour-spot {
-  animation: tour-pulse 2s ease-out infinite;
-  transition: left 0.42s cubic-bezier(0.4, 0, 0.2, 1), top 0.42s cubic-bezier(0.4, 0, 0.2, 1),
-    width 0.42s cubic-bezier(0.4, 0, 0.2, 1), height 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: tour-pulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
+/* Entra un poco después para que el spotlight ya vaya en camino al objetivo. */
 .tour-card {
-  animation: tour-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: tour-in 0.55s cubic-bezier(0.32, 0.72, 0, 1) 0.14s both;
 }
 .tour-fade {
-  animation: tour-fade 0.35s ease both;
+  animation: tour-fade 0.55s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .tour-spot {
     animation: none;
-    transition: none;
     box-shadow: 0 0 0 9999px rgba(26, 23, 20, 0.62);
   }
   .tour-card,
