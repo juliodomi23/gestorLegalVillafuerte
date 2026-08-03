@@ -26,6 +26,49 @@
   }
 }
 
+/* Hoja imprimible (components/hoja.tsx): al imprimir solo sale la hoja. */
+@media print {
+  @page {
+    size: letter;
+    margin: 14mm;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .hoja,
+  .hoja * {
+    visibility: visible;
+  }
+  .hoja-fondo {
+    position: static;
+    background: none;
+    backdrop-filter: none;
+    padding: 0;
+    overflow: visible;
+  }
+  .hoja {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    box-shadow: none;
+    padding: 0;
+  }
+  .no-imprimir {
+    display: none !important;
+  }
+  /* Los campos deben leerse como texto en papel, no como controles. */
+  .hoja input,
+  .hoja select,
+  .hoja textarea {
+    border-bottom: 1px solid #999 !important;
+    color: #000 !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
 /* Recorrido guiado (components/tour.tsx) */
 @keyframes tour-in {
   from {
