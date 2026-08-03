@@ -116,6 +116,33 @@ function rectVisible(sel?: string): DOMRect | null {
   return r;
 }
 
+type Zona = { left: number; top: number; width: number; height: number };
+
+/**
+ * Oscurece una zona de la pantalla recortando un hueco. El hueco lo hace el
+ * box-shadow gigante de .tour-spot; el overflow del panel evita que la sombra
+ * invada las zonas vecinas, que es lo que permite tener varios huecos.
+ */
+function Panel({ zona, hueco }: { zona: Zona; hueco: DOMRect | null }) {
+  return (
+    <div className="fixed overflow-hidden pointer-events-none" style={zona}>
+      {hueco ? (
+        <div
+          className="tour-spot absolute rounded-xl"
+          style={{
+            left: hueco.left - zona.left - 6,
+            top: hueco.top - zona.top - 6,
+            width: hueco.width + 12,
+            height: hueco.height + 12,
+          }}
+        />
+      ) : (
+        <div className="absolute inset-0 bg-ink/60 tour-fade" />
+      )}
+    </div>
+  );
+}
+
 export function Tour({ rol }: { rol: Rol }) {
   const pasos = PASOS.filter((p) => !p.soloAdmin || rol === "admin");
   const router = useRouter();
@@ -123,6 +150,8 @@ export function Tour({ rol }: { rol: Rol }) {
   const [abierto, setAbierto] = useState(false);
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  // Sidebar: el ítem del menú de la pantalla actual + el ancho de la barra.
+  const [nav, setNav] = useState<{ item: DOMRect; ancho: number } | null>(null);
 
   const paso = pasos[i];
 
@@ -148,7 +177,16 @@ export function Tour({ rol }: { rol: Rol }) {
     if (!abierto) return;
     setRect(null);
 
-    const medir = () => setRect(rectVisible(paso?.sel));
+    const medirNav = () => {
+      const aside = document.querySelector("aside")?.getBoundingClientRect();
+      const item = rectVisible(`[data-tour="nav-${pathname.split("/")[1]}"]`);
+      // En móvil la barra está fuera de pantalla: sin hueco lateral.
+      setNav(item && aside && aside.right > 0 ? { item, ancho: aside.right } : null);
+    };
+    const medir = () => {
+      setRect(rectVisible(paso?.sel));
+      medirNav();
+    };
     let intentos = 0;
     // ponytail: sondeo simple en vez de MutationObserver; la navegación tarda <1s.
     const id = setInterval(() => {
@@ -160,6 +198,7 @@ export function Tour({ rol }: { rol: Rol }) {
           setTimeout(medir, 350);
         }
         setRect(r);
+        medirNav();
       }
     }, 100);
 
@@ -170,7 +209,7 @@ export function Tour({ rol }: { rol: Rol }) {
       window.removeEventListener("resize", medir);
       window.removeEventListener("scroll", medir, true);
     };
-  }, [abierto, i, paso?.sel]);
+  }, [abierto, i, paso?.sel, pathname]);
 
   const cerrar = useCallback(() => {
     localStorage.setItem(KEY, "1");
@@ -224,20 +263,20 @@ export function Tour({ rol }: { rol: Rol }) {
 
   return (
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Recorrido guiado">
-      {/* Capa oscura: o bien el hueco del spotlight, o bien pantalla completa */}
-      {rect ? (
-        <div
-          className="tour-spot fixed rounded-xl pointer-events-none"
-          style={{
-            left: rect.left - 6,
-            top: rect.top - 6,
-            width: rect.width + 12,
-            height: rect.height + 12,
-          }}
-        />
-      ) : (
-        <div className="fixed inset-0 bg-ink/60 tour-fade" />
+      {/* Dos zonas independientes para poder abrir dos huecos a la vez:
+          la barra lateral (ítem del menú actual) y el resto de la pantalla. */}
+      {nav && (
+        <Panel zona={{ left: 0, top: 0, width: nav.ancho, height: window.innerHeight }} hueco={nav.item} />
       )}
+      <Panel
+        zona={{
+          left: nav?.ancho ?? 0,
+          top: 0,
+          width: window.innerWidth - (nav?.ancho ?? 0),
+          height: window.innerHeight,
+        }}
+        hueco={rect}
+      />
 
       {/* Clics fuera del tooltip no hacen nada (evita perderse a media guía) */}
       <div className="absolute inset-0" onClick={(e) => e.stopPropagation()} />
