@@ -99,7 +99,7 @@ export default async function InicioPage() {
         <p className="text-muted text-[14px] mt-0.5">Esto es lo que necesita atención hoy.</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div data-tour="kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {kpis.map((k) => {
           const Icon = k.icon;
           return (

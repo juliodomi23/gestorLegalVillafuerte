@@ -15,6 +15,7 @@ import {
   Wallet,
   Settings,
   LogOut,
+  HelpCircle,
   BarChart3,
   type LucideIcon,
 } from "lucide-react";
@@ -107,6 +108,7 @@ export function Sidebar({
                   <Link
                     key={href}
                     href={href}
+                    data-tour={`nav-${href.slice(1)}`}
                     onClick={onClose}
                     className={`flex items-center gap-3 px-5 py-2.5 border-l-[3px] transition-colors ${
                       activo ? "text-white bg-white/[.06] border-amber" : "border-transparent hover:bg-white/[.04]"
@@ -128,6 +130,14 @@ export function Sidebar({
           <div className="text-[13px] text-white truncate">{nombre}</div>
           <div className="text-[11px] text-white/45">{rolLabel[rol]}</div>
         </div>
+        <button
+          onClick={() => window.dispatchEvent(new Event("gl:tour"))}
+          title="Ver recorrido"
+          aria-label="Ver recorrido"
+          className="text-white/45 hover:text-white transition-colors"
+        >
+          <HelpCircle size={18} strokeWidth={1.75} />
+        </button>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           title="Cerrar sesión"

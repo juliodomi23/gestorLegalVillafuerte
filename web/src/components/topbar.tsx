@@ -164,7 +164,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
         </button>
 
         {/* Búsqueda desktop */}
-        <div ref={containerRef} className="relative flex-1 max-w-md hidden sm:block">
+        <div ref={containerRef} data-tour="buscar" className="relative flex-1 max-w-md hidden sm:block">
           <Search size={18} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
           <input
             ref={inputRef}
@@ -214,6 +214,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
         </button>
         <Link
           href="/expedientes"
+          data-tour="nuevo"
           className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors shadow-sm"
         >
           <Plus size={18} strokeWidth={1.75} /> <span className="hidden sm:inline">Nuevo expediente</span>

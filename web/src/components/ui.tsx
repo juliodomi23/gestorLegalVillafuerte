@@ -2,7 +2,7 @@ import { ChevronDown, MessageCircle, Search } from "lucide-react";
 
 export function PageTitle({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle?: string }) {
   return (
-    <div className="mb-5">
+    <div className="mb-5" data-tour="titulo">
       <p className="eyebrow text-amber">{eyebrow}</p>
       <h1 className="font-serif text-[28px] text-ink leading-tight mt-1">{title}</h1>
       {subtitle && <p className="text-muted text-[14px] mt-0.5">{subtitle}</p>}

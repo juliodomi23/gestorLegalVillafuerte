@@ -279,7 +279,7 @@ export default function AsesoriasClient({
       {porDia.map(([fecha, rows]) => <DaySection key={fecha} fecha={fecha} rows={rows} onEdit={abrirEditar} onDelete={borrar} />)}
 
       {porDia.length > 0 && (
-        <p className="text-[12px] text-muted mt-2 flex items-center gap-1.5">
+        <p data-tour="asesorias-digital" className="text-[12px] text-muted mt-2 flex items-center gap-1.5">
           <MessageCircle size={13} className="text-success" />Las asesorías entran automáticamente cuando el bot registra un prospecto nuevo.
           <FileText size={13} className="text-muted ml-2" />Los PDFs generados por el bot se abren con el botón de Drive en cada fila.
         </p>

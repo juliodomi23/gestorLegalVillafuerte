@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
+import { Tour } from "@/components/tour";
 import type { Rol } from "@/lib/usuarios";
 
 export function AppShell({
@@ -28,6 +29,8 @@ export function AppShell({
         <Topbar onMenu={() => setDrawer(true)} />
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-7">{children}</main>
       </div>
+
+      <Tour rol={rol} />
     </div>
   );
 }
