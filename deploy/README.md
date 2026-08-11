@@ -38,7 +38,29 @@ postgresql://gestorlegal:TU_PASSWORD@127.0.0.1:5432/gestorlegal
 
 ---
 
-## 2. Respaldo automático (pg_dump diario)
+## 2. Respaldo automático
+
+### En EasyPanel (Compose) — es lo que corre hoy
+
+El `docker-compose.yml` incluye un servicio `backup` que hace `pg_dump` diario al volumen
+`gestorlegal_backups` (`/backups` dentro del contenedor) y borra los de más de 14 días.
+No hay que configurar nada en el host: se levanta con el resto del stack.
+
+Verificar que está generando respaldos (consola de EasyPanel, contenedor `backup`):
+```sh
+ls -lh /backups
+```
+
+Bajar un respaldo o restaurarlo:
+```sh
+# restaurar (¡ojo, sobrescribe!) — desde el contenedor db
+gunzip -c /backups/gestorlegal_FECHA.sql.gz | psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+```
+
+> **Pendiente:** el volumen vive en el mismo VPS. Si el servidor muere, se pierden los
+> respaldos junto con la base. Falta copiarlos fuera (S3, Drive, otro servidor).
+
+### Con Docker plano (pg_dump diario por cron del host)
 
 Crear `/opt/gestorlegal/backup.sh`:
 ```bash

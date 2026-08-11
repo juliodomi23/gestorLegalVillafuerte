@@ -20,6 +20,29 @@ services:
       timeout: 5s
       retries: 5
 
+  # Respaldo diario de la BD al volumen gestorlegal_backups, conserva 14 días.
+  # ponytail: bucle sh en vez de cron; si el contenedor reinicia se reinicia el ciclo.
+  # Suficiente para un respaldo diario — cambiar a cron real si se necesita hora exacta.
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - gestorlegal_backups:/backups
+    command: >
+      sh -c 'while true; do
+      pg_dump | gzip > /backups/gestorlegal_$$(date +%F_%H%M).sql.gz &&
+      find /backups -name "*.sql.gz" -mtime +14 -delete;
+      sleep 86400;
+      done'
+
   app:
     build:
       context: ./web
@@ -47,3 +70,4 @@ services:
 volumes:
   gestorlegal_data:
   gestorlegal_uploads:
+  gestorlegal_backups:
