@@ -35,6 +35,7 @@ export default async function ExpedientesPage({
         terminos: { orderBy: { vencimientoTermino: "asc" }, take: 1 },
       },
       orderBy: { creadoEn: "desc" },
+      take: 300, // ponytail: tope simple en vez de paginación; subir o paginar de verdad si el despacho pasa de esto
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),

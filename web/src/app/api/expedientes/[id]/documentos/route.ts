@@ -6,10 +6,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 const UPLOADS_DIR = join(process.cwd(), "uploads");
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // un PDF legal no debería pasar de esto
+
+// Un expediente es privado: solo su abogado responsable (o un admin) puede ver/subir documentos.
+async function tieneAccesoExpediente(expedienteId: string, session: { user: { id: string; rol: string } }) {
+  if (session.user.rol === "admin") return true;
+  const e = await prisma.expediente.findUnique({ where: { id: expedienteId }, select: { abogadoResponsableId: true } });
+  return !!e && e.abogadoResponsableId === session.user.id;
+}
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!(await tieneAccesoExpediente(params.id, session))) {
+    return NextResponse.json({ error: "Sin permiso sobre este expediente" }, { status: 403 });
+  }
 
   const docs = await prisma.documento.findMany({
     where: { expedienteId: params.id },
@@ -27,12 +38,15 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!(await tieneAccesoExpediente(params.id, session))) {
+    return NextResponse.json({ error: "Sin permiso sobre este expediente" }, { status: 403 });
+  }
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "Sin archivo" }, { status: 400 });
   if (file.type !== "application/pdf") return NextResponse.json({ error: "Solo PDF" }, { status: 400 });
-  if (file.size > 500 * 1024 * 1024) return NextResponse.json({ error: "Máximo 500 MB" }, { status: 400 });
+  if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: "Máximo 25 MB" }, { status: 400 });
 
   await mkdir(UPLOADS_DIR, { recursive: true });
   const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;

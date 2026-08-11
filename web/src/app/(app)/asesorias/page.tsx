@@ -14,6 +14,7 @@ export default async function AsesoriasPage() {
       where: esAdmin ? undefined : { abogadoId: userId },
       include: { sucursal: true, abogado: true },
       orderBy: { fecha: "desc" },
+      take: 300, // ponytail: tope simple en vez de paginación; subir o paginar de verdad si el despacho pasa de esto
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),

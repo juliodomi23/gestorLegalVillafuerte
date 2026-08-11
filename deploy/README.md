@@ -62,6 +62,18 @@ crontab -e
 > En datos legales el respaldo no es opcional. Verificar de vez en cuando que los `.sql.gz`
 > se estén generando.
 
+**Verificar que el cron ya está corriendo (correr en el VPS):**
+```bash
+crontab -l | grep backup.sh          # ¿está la línea del cron?
+ls -la /opt/gestorlegal/backups/     # ¿hay archivos .sql.gz de los últimos días?
+```
+Si `crontab -l` no muestra nada o la carpeta está vacía, el respaldo automático **no está
+activo todavía** — hay que hacer los pasos de esta sección en el VPS real.
+
+**Recomendado además:** copiar los `.sql.gz` fuera del VPS (otro servidor, S3, Drive, etc.)
+al menos semanalmente. Un backup que vive en el mismo disco que puede fallar no protege
+contra la falla del disco completo.
+
 ---
 
 ## 3. Google Drive (service account para subir PDFs)
@@ -89,7 +101,22 @@ y subir ahí los PDFs, guardando el link en la tabla `documentos`.
 
 ---
 
-## 4. Checklist de despliegue
+## 4. Migraciones pendientes (para una BD que ya existe)
+
+`schema.sql` solo se corre en el primer arranque del contenedor. Los cambios posteriores
+viven como archivos sueltos en `web/prisma/migrations/*.sql` y hay que aplicarlos a mano
+en el VPS cuando se agregan:
+
+```bash
+docker exec -i gestorlegal-db psql -U gestorlegal -d gestorlegal < web/prisma/migrations/add_auditoria.sql
+```
+
+Repetir por cada archivo `.sql` nuevo que no se haya corrido todavía (son idempotentes,
+usan `IF NOT EXISTS`, así que correrlos de más no rompe nada).
+
+---
+
+## 5. Checklist de despliegue
 
 - [ ] Docker corriendo en el VPS
 - [ ] `.env` con contraseña fuerte

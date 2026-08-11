@@ -2,10 +2,37 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services/resolvers";
-import { requireSession } from "@/lib/guard";
+import { requireSession, type Sesion } from "@/lib/guard";
 import { parsear, urlHttpSchema, montoSchema } from "@/lib/validaciones";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { unlink } from "fs/promises";
 import { join } from "path";
+
+// Un expediente es privado: solo su abogado responsable (o un admin) puede tocarlo.
+async function exigirDuenoExpediente(expedienteId: string, sesion: Sesion) {
+  if (sesion.rol === "admin") return;
+  const e = await prisma.expediente.findUnique({ where: { id: expedienteId }, select: { abogadoResponsableId: true } });
+  if (!e || e.abogadoResponsableId !== sesion.id) throw new Error("Sin permiso sobre este expediente");
+}
+
+// Para registros hijos (actuación, término, parte...) no confiamos en el expedienteId
+// que manda el cliente: lo tomamos del propio registro para saber el dueño real.
+type ConExpediente = {
+  findUnique(args: { where: { id: string }; select: { expedienteId: true } }): Promise<{ expedienteId: string | null } | null>;
+};
+
+// Verifica el permiso sobre el expediente dueño del registro y devuelve su id.
+// Los movimientos de caja pueden no tener expediente (caja general): esos solo los toca un admin.
+async function exigirDuenoDeHijo(delegate: ConExpediente, id: string, sesion: Sesion): Promise<string | null> {
+  const row = await delegate.findUnique({ where: { id }, select: { expedienteId: true } });
+  if (!row) throw new Error("Registro no encontrado");
+  if (row.expedienteId === null) {
+    if (sesion.rol !== "admin") throw new Error("Sin permiso sobre este registro");
+    return null;
+  }
+  await exigirDuenoExpediente(row.expedienteId, sesion);
+  return row.expedienteId;
+}
 
 export type FormExpediente = {
   clienteId: string;
@@ -38,24 +65,40 @@ export async function crearExpedienteAction(form: FormExpediente) {
     clienteId = await upsertCliente(form.clienteNombre, undefined, abogadoId ?? sesion.id);
   }
 
+  const dataBase = {
+    numeroJudicial: form.numeroJudicial || null,
+    clienteId,
+    materia: form.materia || null,
+    etapaProcesal: form.etapa || null,
+    abogadoResponsableId: abogadoId,
+    sucursalId,
+  };
+
+  // numeroInterno es @unique en el schema: si dos personas crean un expediente
+  // al mismo tiempo y calculan el mismo folio, la BD rechaza el segundo insert
+  // (P2002) y aquí reintentamos con el siguiente número en vez de duplicar.
   const año = new Date().getFullYear();
-  const total = await prisma.expediente.count();
-  await prisma.expediente.create({
-    data: {
-      numeroInterno: `EXP-${año}-${String(total + 1).padStart(4, "0")}`,
-      numeroJudicial: form.numeroJudicial || null,
-      clienteId,
-      materia: form.materia || null,
-      etapaProcesal: form.etapa || null,
-      abogadoResponsableId: abogadoId,
-      sucursalId,
-    },
-  });
+  let exp;
+  for (let intento = 0; intento < 5; intento++) {
+    const total = await prisma.expediente.count();
+    const numeroInterno = `EXP-${año}-${String(total + 1 + intento).padStart(4, "0")}`;
+    try {
+      exp = await prisma.expediente.create({ data: { ...dataBase, numeroInterno } });
+      break;
+    } catch (err: unknown) {
+      if ((err as { code?: string })?.code === "P2002") continue;
+      throw err;
+    }
+  }
+  if (!exp) throw new Error("No se pudo generar el número de expediente, intenta de nuevo.");
+
+  await registrarAuditoria(sesion.id, exp.id, "crear", "expediente");
   revalidatePath("/expedientes");
 }
 
 export async function editarExpedienteAction(id: string, form: FormExpediente) {
   const sesion = await requireSession();
+  await exigirDuenoExpediente(id, sesion);
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
@@ -91,6 +134,7 @@ export type FormActuacion = {
 
 export async function crearActuacionAction(expedienteId: string, form: FormActuacion) {
   const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
   const actuacion = await prisma.actuacion.create({
     data: {
       expedienteId,
@@ -106,19 +150,24 @@ export async function crearActuacionAction(expedienteId: string, form: FormActua
 }
 
 export async function borrarActuacionAction(actuacionId: string, expedienteId: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  const expedienteReal = await exigirDuenoDeHijo(prisma.actuacion, actuacionId, sesion);
   await prisma.actuacion.delete({ where: { id: actuacionId } });
+  await registrarAuditoria(sesion.id, expedienteReal, "borrar", "actuacion");
   revalidatePath(`/expedientes/${expedienteId}`);
 }
 
 export async function borrarExpedienteAction(id: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(id, sesion);
   await prisma.expediente.delete({ where: { id } });
+  await registrarAuditoria(sesion.id, id, "borrar", "expediente");
   revalidatePath("/expedientes");
 }
 
 export async function renombrarExpedienteAction(id: string, nuevoNumero: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(id, sesion);
   const limpio = nuevoNumero.trim();
   if (!limpio) return { error: "El número no puede estar vacío." };
   const existe = await prisma.expediente.findFirst({ where: { numeroInterno: limpio, NOT: { id } } });
@@ -130,7 +179,8 @@ export async function renombrarExpedienteAction(id: string, nuevoNumero: string)
 }
 
 export async function cambiarEstadoAction(id: string, estado: string, nota: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(id, sesion);
   await prisma.expediente.update({
     where: { id },
     data: {
@@ -152,7 +202,8 @@ export type FormTermino = {
 };
 
 export async function crearTerminoAction(expedienteId: string, form: FormTermino) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
   await prisma.termino.create({
     data: {
       expedienteId,
@@ -167,21 +218,25 @@ export async function crearTerminoAction(expedienteId: string, form: FormTermino
 }
 
 export async function marcarCumplidoTerminoAction(terminoId: string, expedienteId: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoDeHijo(prisma.termino, terminoId, sesion);
   await prisma.termino.update({ where: { id: terminoId }, data: { cumplido: true } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
 
 export async function borrarTerminoAction(terminoId: string, expedienteId: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  const expedienteReal = await exigirDuenoDeHijo(prisma.termino, terminoId, sesion);
   await prisma.termino.delete({ where: { id: terminoId } });
+  await registrarAuditoria(sesion.id, expedienteReal, "borrar", "termino");
   revalidatePath(`/expedientes/${expedienteId}`);
 }
 
 // ── Partes ────────────────────────────────────────────────────────────────────
 
 export async function crearParteAction(expedienteId: string, data: { nombre: string; rol: string; contacto: string }) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
   await prisma.parte.create({
     data: {
       expedienteId,
@@ -194,7 +249,8 @@ export async function crearParteAction(expedienteId: string, data: { nombre: str
 }
 
 export async function editarParteAction(parteId: string, expedienteId: string, data: { nombre: string; rol: string; contacto: string }) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoDeHijo(prisma.parte, parteId, sesion);
   await prisma.parte.update({
     where: { id: parteId },
     data: {
@@ -207,7 +263,8 @@ export async function editarParteAction(parteId: string, expedienteId: string, d
 }
 
 export async function borrarParteAction(parteId: string, expedienteId: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoDeHijo(prisma.parte, parteId, sesion);
   await prisma.parte.delete({ where: { id: parteId } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
@@ -215,7 +272,8 @@ export async function borrarParteAction(parteId: string, expedienteId: string) {
 // ── Audiencias ────────────────────────────────────────────────────────────────
 
 export async function crearAudienciaAction(expedienteId: string, data: { fechaHora: string; tipo: string; lugar: string; estado: string }) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
   await prisma.audiencia.create({
     data: {
       expedienteId,
@@ -229,7 +287,8 @@ export async function crearAudienciaAction(expedienteId: string, data: { fechaHo
 }
 
 export async function editarAudienciaAction(audienciaId: string, expedienteId: string, data: { fechaHora: string; tipo: string; lugar: string; estado: string }) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoDeHijo(prisma.audiencia, audienciaId, sesion);
   await prisma.audiencia.update({
     where: { id: audienciaId },
     data: {
@@ -243,7 +302,8 @@ export async function editarAudienciaAction(audienciaId: string, expedienteId: s
 }
 
 export async function borrarAudienciaAction(audienciaId: string, expedienteId: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoDeHijo(prisma.audiencia, audienciaId, sesion);
   await prisma.audiencia.delete({ where: { id: audienciaId } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
@@ -252,6 +312,7 @@ export async function borrarAudienciaAction(audienciaId: string, expedienteId: s
 
 export async function crearMovimientoAction(expedienteId: string, data: { tipo: string; concepto: string; monto: string; fecha: string }) {
   const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
   const monto = parsear(montoSchema, data.monto);
   await prisma.movimientoCaja.create({
     data: {
@@ -267,8 +328,10 @@ export async function crearMovimientoAction(expedienteId: string, data: { tipo: 
 }
 
 export async function borrarMovimientoAction(movimientoId: string, expedienteId: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  const expedienteReal = await exigirDuenoDeHijo(prisma.movimientoCaja, movimientoId, sesion);
   await prisma.movimientoCaja.delete({ where: { id: movimientoId } });
+  await registrarAuditoria(sesion.id, expedienteReal, "borrar", "movimiento_caja");
   revalidatePath(`/expedientes/${expedienteId}`);
 }
 
@@ -278,6 +341,7 @@ export async function borrarMovimientoAction(movimientoId: string, expedienteId:
 
 export async function crearGastoAction(expedienteId: string, data: { fecha: string; concepto: string; beneficiario: string; monto: string }) {
   const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
   const monto = parsear(montoSchema, data.monto);
   await prisma.gastoExpediente.create({
     data: {
@@ -293,8 +357,10 @@ export async function crearGastoAction(expedienteId: string, data: { fecha: stri
 }
 
 export async function borrarGastoAction(gastoId: string, expedienteId: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  const expedienteReal = await exigirDuenoDeHijo(prisma.gastoExpediente, gastoId, sesion);
   await prisma.gastoExpediente.delete({ where: { id: gastoId } });
+  await registrarAuditoria(sesion.id, expedienteReal, "borrar", "gasto");
   revalidatePath(`/expedientes/${expedienteId}`);
 }
 
@@ -311,7 +377,8 @@ export type FormPlanPago = {
 };
 
 export async function upsertPlanPagoAction(expedienteId: string, form: FormPlanPago) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
   const data = {
     tipo: form.tipo,
     montoTotal: parseFloat(form.montoTotal.replace(/[$,]/g, "")) || 0,
@@ -330,7 +397,8 @@ export async function upsertPlanPagoAction(expedienteId: string, form: FormPlanP
 }
 
 export async function borrarPlanPagoAction(expedienteId: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
   await prisma.planPago.deleteMany({ where: { expedienteId } });
   revalidatePath(`/expedientes/${expedienteId}`);
 }
@@ -338,11 +406,13 @@ export async function borrarPlanPagoAction(expedienteId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function borrarDocumentoAction(documentoId: string, expedienteId: string) {
-  await requireSession();
+  const sesion = await requireSession();
   const doc = await prisma.documento.findUnique({ where: { id: documentoId } });
   if (!doc) return;
+  await exigirDuenoExpediente(doc.expedienteId, sesion);
 
   await prisma.documento.delete({ where: { id: documentoId } });
+  await registrarAuditoria(sesion.id, doc.expedienteId, "borrar", "documento");
 
   if (doc.tipo === "pdf" && doc.linkDrive?.startsWith("/api/uploads/")) {
     const filename = doc.linkDrive.replace("/api/uploads/", "");
@@ -362,7 +432,8 @@ export async function agregarDocumentoDriveAction(
   url: string,
   actuacionId?: string,
 ) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
   // Solo http(s): evita XSS por `javascript:` en el <a href> que renderiza el link.
   const urlSegura = parsear(urlHttpSchema, url);
   const doc = await prisma.documento.create({

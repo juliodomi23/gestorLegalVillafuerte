@@ -91,6 +91,7 @@ model Usuario {
   seguimientos Seguimiento[]
   clientes     Cliente[]
   gastos       GastoExpediente[]
+  auditorias   Auditoria[]
 
   @@map("usuarios")
 }
@@ -385,6 +386,22 @@ model PlanPago {
   expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
 
   @@map("planes_pago")
+}
+
+// Rastro de acciones sensibles (por ahora solo borrados y creación de expediente)
+// para poder reconstruir qué pasó con un caso si algo desaparece.
+model Auditoria {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId    String?  @map("usuario_id") @db.Uuid
+  expedienteId String?  @map("expediente_id") @db.Uuid
+  accion       String   // crear | editar | borrar
+  entidad      String   // expediente | actuacion | termino | movimiento_caja | gasto | documento
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id])
+
+  @@index([expedienteId])
+  @@map("auditoria")
 }
 
 // Prospectos del embudo de ventas: personas que llamaron y aún no contratan.

@@ -15,6 +15,7 @@ export default async function ClientesPage() {
       asesorias: { orderBy: { creadoEn: "desc" }, take: 1, select: { fecha: true } },
     },
     orderBy: { nombre: "asc" },
+    take: 300, // ponytail: tope simple en vez de paginación; subir o paginar de verdad si el despacho pasa de esto
   });
 
   const clientes: ClienteView[] = rows.map((c) => {

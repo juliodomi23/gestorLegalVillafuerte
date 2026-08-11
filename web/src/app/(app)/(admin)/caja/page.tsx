@@ -19,6 +19,7 @@ export default async function CajaPage() {
         expediente: { select: { numeroInterno: true } },
       },
       orderBy: { fecha: "desc" },
+      take: 300, // ponytail: tope simple en vez de paginación; subir o paginar de verdad si el despacho pasa de esto
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.planPago.findMany({

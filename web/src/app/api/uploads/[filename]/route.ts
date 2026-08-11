@@ -3,6 +3,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(_req: NextRequest, { params }: { params: { filename: string } }) {
   // Defensa en profundidad: además del middleware, exigimos sesión aquí.
@@ -12,6 +13,18 @@ export async function GET(_req: NextRequest, { params }: { params: { filename: s
 
   // Solo permite nombres seguros (sin path traversal)
   const name = params.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+  // El PDF pertenece a un expediente: solo su dueño (o un admin) puede descargarlo,
+  // aunque conozca o adivine el nombre de archivo.
+  if (session.user.rol !== "admin") {
+    const doc = await prisma.documento.findFirst({
+      where: { linkDrive: `/api/uploads/${name}` },
+      select: { expediente: { select: { abogadoResponsableId: true } } },
+    });
+    if (!doc || doc.expediente.abogadoResponsableId !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+  }
   const filepath = join(process.cwd(), "uploads", name);
   try {
     const data = await readFile(filepath);
