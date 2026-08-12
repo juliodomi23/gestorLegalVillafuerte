@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import SeguimientosClient, { type SeguimientoView } from "./client";
-import { alcanceDe, porAbogado } from "@/lib/alcance";
+import { alcanceDe, porSeguimiento } from "@/lib/alcance";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "—";
@@ -33,7 +33,7 @@ export default async function SeguimientosPage() {
 
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.seguimiento.findMany({
-      where: { estado: "activo", ...porAbogado(alcance) },
+      where: { estado: "activo", ...porSeguimiento(alcance) },
       include: { cliente: true, abogado: true, sucursal: true },
       orderBy: { proximoLlamado: "asc" },
     }),

@@ -48,6 +48,17 @@ export function porCliente(a: Alcance) {
   };
 }
 
+// where para seguimientos: los suyos más los de cualquier cliente que ya ve.
+export function porSeguimiento(a: Alcance) {
+  if (!a) return {};
+  return {
+    OR: [
+      { abogadoId: { in: a.abogadoIds } },
+      { cliente: porCliente(a) },
+    ],
+  };
+}
+
 // where para citas: las de sus sucursales más las suyas propias.
 export function porAgenda(a: Alcance) {
   if (!a) return {};
