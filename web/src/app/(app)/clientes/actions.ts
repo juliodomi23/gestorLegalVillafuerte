@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireSession, type Sesion } from "@/lib/guard";
 import { parsear, clienteSchema } from "@/lib/validaciones";
+import { alcanceDe, porCliente } from "@/lib/alcance";
 
-// Los clientes son privados: un abogado solo puede tocar los suyos.
+// Puede tocar los mismos clientes que ve en la lista: los suyos y los de sus expedientes.
 async function exigirDuenoCliente(id: string, sesion: Sesion) {
-  if (sesion.rol === "admin") return;
-  const c = await prisma.cliente.findUnique({ where: { id }, select: { abogadoId: true } });
-  if (!c || c.abogadoId !== sesion.id) throw new Error("Sin permiso sobre este cliente");
+  const alcance = await alcanceDe(sesion.id, sesion.rol);
+  const c = await prisma.cliente.findFirst({ where: { id, ...porCliente(alcance) }, select: { id: true } });
+  if (!c) throw new Error("Sin permiso sobre este cliente");
 }
 
 export async function crearClienteAction(form: { nombre: string; tipo: string; telefono: string; email: string }) {

@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ExpedientesClient, { type ExpView } from "./client";
 import type { ClienteBasico } from "./client";
-import { alcanceDe } from "@/lib/alcance";
+import { alcanceDe, porCliente } from "@/lib/alcance";
 
 function textoVence(fecha: Date | null): { texto: string; urgente: boolean } | null {
   if (!fecha) return null;
@@ -40,7 +40,7 @@ export default async function ExpedientesPage({
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     prisma.cliente.findMany({
-      where: alcance ? { abogadoId: { in: alcance.abogadoIds } } : undefined,
+      where: porCliente(alcance),
       orderBy: { nombre: "asc" },
       select: { id: true, nombre: true, telefono: true },
     }),

@@ -36,6 +36,18 @@ export function porAbogado(a: Alcance) {
   return a ? { abogadoId: { in: a.abogadoIds } } : {};
 }
 
+// where para clientes: los suyos más los de los expedientes que lleva. Sin esto
+// un abogado ve el expediente pero no al cliente (lo capturó recepción o el bot).
+export function porCliente(a: Alcance) {
+  if (!a) return {};
+  return {
+    OR: [
+      { abogadoId: { in: a.abogadoIds } },
+      { expedientes: { some: { abogadoResponsableId: { in: a.abogadoIds } } } },
+    ],
+  };
+}
+
 // where para citas: las de sus sucursales más las suyas propias.
 export function porAgenda(a: Alcance) {
   if (!a) return {};

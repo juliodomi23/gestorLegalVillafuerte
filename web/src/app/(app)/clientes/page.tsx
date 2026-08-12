@@ -2,14 +2,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ClientesClient, { type ClienteView } from "./client";
-import { alcanceDe, porAbogado } from "@/lib/alcance";
+import { alcanceDe, porCliente } from "@/lib/alcance";
 
 export default async function ClientesPage() {
   const session = await getServerSession(authOptions);
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
   const rows = await prisma.cliente.findMany({
-    where: porAbogado(alcance),
+    where: porCliente(alcance),
     include: {
       _count: { select: { expedientes: true } },
       asesorias: { orderBy: { creadoEn: "desc" }, take: 1, select: { fecha: true } },

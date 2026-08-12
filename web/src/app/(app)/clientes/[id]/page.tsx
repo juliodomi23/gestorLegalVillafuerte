@@ -33,8 +33,10 @@ export default async function ClienteDetallePage({ params }: { params: { id: str
 
   if (!cliente) notFound();
 
-  // Cliente privado: solo su abogado dueño, su encargado o el admin pueden abrirlo por URL.
-  if (alcance && !alcance.abogadoIds.includes(cliente.abogadoId ?? "")) notFound();
+  // Solo lo abre por URL quien lo ve en la lista: su dueño, quien lleva alguno de sus
+  // expedientes (los de arriba ya vienen filtrados por alcance), su encargado o el admin.
+  const esDueno = alcance ? alcance.abogadoIds.includes(cliente.abogadoId ?? "") : true;
+  if (!esDueno && cliente.expedientes.length === 0) notFound();
 
   const meta = [
     { k: "Tipo",            v: cliente.tipo === "moral" ? "Persona moral" : "Persona física" },
