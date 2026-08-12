@@ -163,17 +163,21 @@ export function Sel({
   value,
   onChange,
   options,
+  required,
 }: {
   label: string;
   col?: number;
   value: string;
   onChange: (v: string) => void;
   options: string[];
+  /** La opción vacía tiene value="", así que el `required` nativo basta: el
+   *  navegador bloquea el submit sin JS extra. */
+  required?: boolean;
 }) {
   return (
     <label className={`col-span-12 ${COL[col]} block`}>
       <Etiqueta>{label}</Etiqueta>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={`${linea} cursor-pointer`}>
+      <select required={required} value={value} onChange={(e) => onChange(e.target.value)} className={`${linea} cursor-pointer`}>
         <option value="" />
         {options.map((o) => (
           <option key={o} value={o}>

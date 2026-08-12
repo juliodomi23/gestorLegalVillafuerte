@@ -336,8 +336,10 @@ export default function AsesoriasClient({
         <Casillas label="¿Pagó la asesoría?" value={form.pago} onChange={(v) => set("pago", v)} options={["Sí", "No"]} />
         {form.pago === "Sí" && <Campo label="Monto" col={3} value={form.monto} onChange={(v) => set("monto", v)} placeholder="500" />}
         <Sel label="Status" col={form.pago === "Sí" ? 5 : 8} value={form.status} onChange={(v) => set("status", v)} options={STATUS_LABELS} />
-        {/* Abierto para todos: quien captura no siempre es quien atiende (recepción, Lic. Karen). */}
-        <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={abogados} />
+        {/* Abierto para todos: quien captura no siempre es quien atiende (recepción, Lic. Karen).
+            Obligatorio: si se deja vacío la asesoría queda a nombre de quien captura y
+            nunca le llega al abogado que va a atender al cliente. */}
+        <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={abogados} required />
       </Hoja>
     </>
   );
