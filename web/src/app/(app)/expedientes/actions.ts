@@ -34,6 +34,17 @@ async function exigirDuenoDeHijo(delegate: ConExpediente, id: string, sesion: Se
   return row.expedienteId;
 }
 
+// Borra el PDF del disco. Los documentos de Drive solo son un link: no hay nada que borrar.
+async function borrarArchivoSubido(doc: { tipo: string | null; linkDrive: string | null }) {
+  if (doc.tipo !== "pdf" || !doc.linkDrive?.startsWith("/api/uploads/")) return;
+  const filename = doc.linkDrive.replace("/api/uploads/", "");
+  try {
+    await unlink(join(process.cwd(), "uploads", filename));
+  } catch {
+    // archivo ya no existe, ignorar
+  }
+}
+
 export type FormExpediente = {
   clienteId: string;
   clienteNombre: string;
@@ -152,6 +163,11 @@ export async function crearActuacionAction(expedienteId: string, form: FormActua
 export async function borrarActuacionAction(actuacionId: string, expedienteId: string) {
   const sesion = await requireSession();
   const expedienteReal = await exigirDuenoDeHijo(prisma.actuacion, actuacionId, sesion);
+  // Los documentos de la actuación se van con ella: si no, el FK queda en NULL y el
+  // PDF sigue apareciendo en la pestaña Documentos del expediente.
+  const docs = await prisma.documento.findMany({ where: { actuacionId } });
+  await prisma.documento.deleteMany({ where: { actuacionId } });
+  await Promise.all(docs.map(borrarArchivoSubido));
   await prisma.actuacion.delete({ where: { id: actuacionId } });
   await registrarAuditoria(sesion.id, expedienteReal, "borrar", "actuacion");
   revalidatePath(`/expedientes/${expedienteId}`);
@@ -413,15 +429,7 @@ export async function borrarDocumentoAction(documentoId: string, expedienteId: s
 
   await prisma.documento.delete({ where: { id: documentoId } });
   await registrarAuditoria(sesion.id, doc.expedienteId, "borrar", "documento");
-
-  if (doc.tipo === "pdf" && doc.linkDrive?.startsWith("/api/uploads/")) {
-    const filename = doc.linkDrive.replace("/api/uploads/", "");
-    try {
-      await unlink(join(process.cwd(), "uploads", filename));
-    } catch {
-      // archivo ya no existe, ignorar
-    }
-  }
+  await borrarArchivoSubido(doc);
 
   revalidatePath(`/expedientes/${expedienteId}`);
 }

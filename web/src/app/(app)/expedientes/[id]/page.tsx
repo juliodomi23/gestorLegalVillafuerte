@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { alcanceDe } from "@/lib/alcance";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ArrowLeft, AlarmClock } from "lucide-react";
@@ -63,8 +64,10 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
 
   if (!exp) notFound();
 
-  // Un abogado solo puede abrir sus propios expedientes, aunque pegue la URL directa.
-  if (!esAdmin && exp.abogadoResponsableId !== session?.user?.id) notFound();
+  // Un abogado solo puede abrir sus propios expedientes (o los de su gente, si es
+  // encargado), aunque pegue la URL directa.
+  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+  if (alcance && !alcance.abogadoIds.includes(exp.abogadoResponsableId ?? "")) notFound();
 
   const sucursales = sucursalesDb.map((s) => s.nombre);
   const abogados = abogadosDb.map((u) => u.nombre);

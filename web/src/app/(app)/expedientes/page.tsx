@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ExpedientesClient, { type ExpView } from "./client";
 import type { ClienteBasico } from "./client";
+import { alcanceDe } from "@/lib/alcance";
 
 function textoVence(fecha: Date | null): { texto: string; urgente: boolean } | null {
   if (!fecha) return null;
@@ -22,12 +23,11 @@ export default async function ExpedientesPage({
 }) {
   const session = await getServerSession(authOptions);
 
-  const esAdmin = session?.user?.rol === "admin";
-  const userId = session?.user?.id;
+  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
   const [rows, sucursalesDb, abogadosDb, clientesDb] = await Promise.all([
     prisma.expediente.findMany({
-      where: esAdmin ? undefined : { abogadoResponsableId: userId },
+      where: alcance ? { abogadoResponsableId: { in: alcance.abogadoIds } } : undefined,
       include: {
         cliente: true,
         abogadoResponsable: true,
@@ -40,7 +40,7 @@ export default async function ExpedientesPage({
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     prisma.cliente.findMany({
-      where: esAdmin ? undefined : { abogadoId: userId },
+      where: alcance ? { abogadoId: { in: alcance.abogadoIds } } : undefined,
       orderBy: { nombre: "asc" },
       select: { id: true, nombre: true, telefono: true },
     }),

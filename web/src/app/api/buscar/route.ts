@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { alcanceDe } from "@/lib/alcance";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -10,12 +11,12 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) return NextResponse.json([]);
 
-  const esAdmin = session.user?.rol === "admin";
+  const alcance = await alcanceDe(session.user?.id, session.user?.rol);
 
   const [expedientes, prospectos] = await Promise.all([
     prisma.expediente.findMany({
       where: {
-        ...(esAdmin ? {} : { abogadoResponsableId: session.user?.id }),
+        ...(alcance ? { abogadoResponsableId: { in: alcance.abogadoIds } } : {}),
         OR: [
           { cliente: { nombre: { contains: q, mode: "insensitive" } } },
           { numeroInterno: { contains: q, mode: "insensitive" } },

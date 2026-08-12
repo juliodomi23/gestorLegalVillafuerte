@@ -34,8 +34,10 @@ export const usuarioSchema = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").optional().or(z.literal("")),
   rol: rolSchema,
   sucursalId: z.string().optional().or(z.literal("")),
-  sucursalEncargadaId: z.string().optional().or(z.literal("")),
   telefonoWhatsapp: telefonoSchema,
+  // Un encargado puede llevar varias sucursales y varias personas a la vez.
+  sucursalesACargo: z.array(z.string().uuid()).default([]),
+  personasACargo: z.array(z.string().uuid()).default([]),
 });
 
 export const clienteSchema = z.object({

@@ -6,15 +6,18 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/guard";
 import { parsear, usuarioSchema } from "@/lib/validaciones";
 
-export async function crearUsuarioAction(data: {
+export type FormUsuario = {
   nombre: string;
   email: string;
   password: string;
   rol: string;
   sucursalId: string;
-  sucursalEncargadaId: string;
   telefonoWhatsapp: string;
-}) {
+  sucursalesACargo: string[];
+  personasACargo: string[];
+};
+
+export async function crearUsuarioAction(data: FormUsuario) {
   await requireAdmin();
   const d = parsear(usuarioSchema, data);
   if (!d.password) throw new Error("La contraseña es obligatoria para un usuario nuevo");
@@ -27,25 +30,15 @@ export async function crearUsuarioAction(data: {
       debeCambiarPassword: true,
       rol: d.rol,
       sucursalId: d.sucursalId || null,
-      sucursalEncargadaId: d.sucursalEncargadaId || null,
       telefonoWhatsapp: d.telefonoWhatsapp || null,
+      sucursalesACargo: { connect: d.sucursalesACargo.map((id) => ({ id })) },
+      personasACargo: { connect: d.personasACargo.map((id) => ({ id })) },
     },
   });
   revalidatePath("/configuracion");
 }
 
-export async function editarUsuarioAction(
-  id: string,
-  data: {
-    nombre: string;
-    email: string;
-    password: string;
-    rol: string;
-    sucursalId: string;
-    sucursalEncargadaId: string;
-    telefonoWhatsapp: string;
-  }
-) {
+export async function editarUsuarioAction(id: string, data: FormUsuario) {
   await requireAdmin();
   const d = parsear(usuarioSchema, data);
   const update: Record<string, unknown> = {
@@ -53,8 +46,10 @@ export async function editarUsuarioAction(
     email: d.email ? d.email.toLowerCase() : null,
     rol: d.rol,
     sucursalId: d.sucursalId || null,
-    sucursalEncargadaId: d.sucursalEncargadaId || null,
     telefonoWhatsapp: d.telefonoWhatsapp || null,
+    // `set` reemplaza la lista completa: lo que el admin no marcó, se quita.
+    sucursalesACargo: { set: d.sucursalesACargo.map((sid) => ({ id: sid })) },
+    personasACargo: { set: d.personasACargo.map((uid) => ({ id: uid })) },
   };
   if (d.password) {
     update.passwordHash = await bcrypt.hash(d.password, 10);

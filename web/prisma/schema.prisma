@@ -32,6 +32,7 @@ model Sucursal {
 
   usuarios     Usuario[] @relation("UsuarioSucursal")
   encargados   Usuario[] @relation("EncargadoSucursal")
+  encargadosACargo Usuario[] @relation("EncargadoSucursales")
   expedientes  Expediente[]
   movimientos  MovimientoCaja[]
   llamadas     Llamada[]
@@ -75,6 +76,9 @@ model Usuario {
   passwordHash         String?  @map("password_hash")
   telefonoWhatsapp     String?  @map("telefono_whatsapp")
   rol                  String   @default("abogado") // admin | abogado | asistente
+  // ponytail: columna muerta, reemplazada por `sucursalesACargo` (un encargado lleva varias).
+  // Se conserva porque `prisma db push` (sin --accept-data-loss) falla al borrar una columna
+  // con datos; bórrala a mano con ALTER TABLE cuando quieras.
   sucursalEncargadaId  String?  @map("sucursal_encargada_id") @db.Uuid
   activo               Boolean  @default(true)
   debeCambiarPassword  Boolean  @default(false) @map("debe_cambiar_password")
@@ -82,6 +86,13 @@ model Usuario {
 
   sucursal          Sucursal?        @relation("UsuarioSucursal", fields: [sucursalId], references: [id])
   sucursalEncargada Sucursal?        @relation("EncargadoSucursal", fields: [sucursalEncargadaId], references: [id])
+
+  // Un encargado ve la actividad de las sucursales que lleva y de las personas
+  // que tiene asignadas directamente (Lic. Rosario: Comitán + SanCris, etc.).
+  sucursalesACargo Sucursal[] @relation("EncargadoSucursales")
+  personasACargo   Usuario[]  @relation("EncargadoPersonas")
+  encargadoPor     Usuario[]  @relation("EncargadoPersonas")
+
   expedientes  Expediente[]
   actuaciones  Actuacion[]
   citas        Cita[]

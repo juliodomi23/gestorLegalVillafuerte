@@ -32,7 +32,9 @@ export async function crearAsesoriaAction(form: FormAsesoria) {
   const sesion = await requireSession();
   // El "abogado que atendió" es quien está en sesión, salvo que un admin
   // registre a nombre de otro (necesitan poder capturar por otros abogados).
-  const abogado = sesion.rol === "admin" ? form.abogado : sesion.nombre;
+  // Quien captura no siempre es quien atendió: el campo va abierto y se cae
+  // a la sesión solo si viene vacío.
+  const abogado = form.abogado || sesion.nombre;
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(abogado),
     resolverSucursal(form.sucursal),
@@ -69,7 +71,9 @@ export async function crearAsesoriaAction(form: FormAsesoria) {
 
 export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
   const sesion = await requireSession();
-  const abogado = sesion.rol === "admin" ? form.abogado : sesion.nombre;
+  // Quien captura no siempre es quien atendió: el campo va abierto y se cae
+  // a la sesión solo si viene vacío.
+  const abogado = form.abogado || sesion.nombre;
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(abogado),
     resolverSucursal(form.sucursal),

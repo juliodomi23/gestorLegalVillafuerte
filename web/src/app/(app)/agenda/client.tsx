@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, Phone, Trash2, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarPlus, Phone, PhoneCall, Trash2, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
 import { crearCitaAction, borrarCitaAction } from "./actions";
+import { marcarLlamadoAction } from "../seguimientos/actions";
 
 export type CitaView = {
   id: string;
@@ -18,6 +19,17 @@ export type CitaView = {
   sucursal: string;
   abogado: string;
   estado: string;
+};
+
+// Llamada de seguimiento que toca ese día (viene de /seguimientos).
+export type SeguimientoAgendaView = {
+  id: string;
+  fechaISO: string;
+  cliente: string;
+  asunto: string;
+  telefono: string;
+  sucursal: string;
+  abogado: string;
 };
 
 const VISTAS = ["dia", "semana", "mes"] as const;
@@ -119,14 +131,66 @@ function TablaSimple({ citas, onBorrar }: { citas: CitaView[]; onBorrar: (id: st
   );
 }
 
+function TablaSeguimientos({
+  seguimientos,
+  mostrarDia,
+  onLlamado,
+}: {
+  seguimientos: SeguimientoAgendaView[];
+  mostrarDia: boolean;
+  onLlamado: (id: string) => void;
+}) {
+  return (
+    <table className="w-full min-w-[720px] text-[13.5px]">
+      <thead>
+        <tr className="border-b border-line text-left">
+          {mostrarDia && <th className="eyebrow text-muted px-5 py-3">Día</th>}
+          <th className={`eyebrow text-muted py-3 ${mostrarDia ? "px-3" : "px-5"}`}>Asesorado</th>
+          <th className="eyebrow text-muted px-3 py-3">Caso</th>
+          <th className="eyebrow text-muted px-3 py-3">Teléfono</th>
+          <th className="eyebrow text-muted px-3 py-3">Sucursal</th>
+          <th className="eyebrow text-muted px-3 py-3">Abogado</th>
+          <th className="eyebrow text-muted px-3 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-line/70">
+        {seguimientos.map((s) => (
+          <tr key={s.id} className="hover:bg-paper/60 transition-colors">
+            {mostrarDia && <td className="px-5 py-3.5 text-muted capitalize">{formatearDia(s.fechaISO)}</td>}
+            <td className={`py-3.5 font-bold ${mostrarDia ? "px-3" : "px-5"}`}>{s.cliente}</td>
+            <td className="px-3 py-3.5">{s.asunto}</td>
+            <td className="px-3 py-3.5 num text-muted whitespace-nowrap">
+              <Phone size={13} className="inline mr-1" />
+              {s.telefono}
+            </td>
+            <td className="px-3 py-3.5 text-muted">{s.sucursal}</td>
+            <td className="px-3 py-3.5">{s.abogado}</td>
+            <td className="px-3 py-3.5 text-right">
+              <button
+                onClick={() => onLlamado(s.id)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-bold text-navy hover:bg-navy/[.06] transition-colors"
+                title="Marcar como llamado y reprogramar"
+              >
+                <PhoneCall size={14} /> Llamado
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export default function AgendaClient({
   citas,
+  seguimientos,
   sucursales,
   abogados,
   fechaActual,
   vista,
 }: {
   citas: CitaView[];
+  seguimientos: SeguimientoAgendaView[];
   sucursales: string[];
   abogados: string[];
   fechaActual: string;
@@ -155,6 +219,11 @@ export default function AgendaClient({
 
   async function borrar(id: string) {
     if (await confirmar({ titulo: "¿Cancelar esta cita?", peligro: true, confirmLabel: "Cancelar cita", cancelLabel: "Volver" })) await borrarCitaAction(id);
+  }
+
+  async function llamado(id: string) {
+    await marcarLlamadoAction(id);
+    router.refresh();
   }
 
   async function guardar() {
@@ -263,6 +332,22 @@ export default function AgendaClient({
             </Card>
           ))}
         </div>
+      )}
+
+      {seguimientos.length > 0 && (
+        <Card className="overflow-x-auto mt-5">
+          <div className="px-5 py-3 border-b border-line">
+            <h3 className="font-semibold text-[14px] text-ink">Llamadas de seguimiento</h3>
+            <p className="text-[12px] text-muted">
+              {seguimientos.length} asesorado{seguimientos.length !== 1 ? "s" : ""} por llamar en este período
+            </p>
+          </div>
+          <TablaSeguimientos
+            seguimientos={seguimientos}
+            mostrarDia={vistaActual !== "dia"}
+            onLlamado={llamado}
+          />
+        </Card>
       )}
 
       <p className="text-[12px] text-muted mt-3 flex items-center gap-1.5">

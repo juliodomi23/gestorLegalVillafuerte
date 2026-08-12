@@ -136,15 +136,12 @@ export default function AsesoriasClient({
   sucursales,
   abogados,
   sesionNombre,
-  sesionRol,
 }: {
   asesorias: AsesoriaView[];
   sucursales: string[];
   abogados: string[];
   sesionNombre: string;
-  sesionRol: string;
 }) {
-  const esAdmin = sesionRol === "admin";
   const TABS = [...TABS_FIJAS, ...sucursales];
   const [tabActiva, setTabActiva] = useState("Todas");
   const [busqueda, setBusqueda] = useState("");
@@ -197,7 +194,7 @@ export default function AsesoriasClient({
   function abrirNuevo() {
     setError(null);
     setEditId(null);
-    setForm({ ...vacio, sucursal: tabActiva !== "Todas" ? tabActiva : "", abogado: esAdmin ? "" : sesionNombre });
+    setForm({ ...vacio, sucursal: tabActiva !== "Todas" ? tabActiva : "", abogado: sesionNombre });
     setFolioHoja(null);
     setFechaHoja(hoyLargo());
     setOpen(true);
@@ -206,7 +203,7 @@ export default function AsesoriasClient({
     setError(null);
     setEditId(a.id);
     setForm({
-      nombre: a.nombre, telefono: a.telefono, asunto: a.asunto, sucursal: a.sucursal, abogado: esAdmin ? a.abogado : sesionNombre,
+      nombre: a.nombre, telefono: a.telefono, asunto: a.asunto, sucursal: a.sucursal, abogado: a.abogado,
       pago: a.pago ? "Sí" : "No", monto: a.pago ? String(a.monto) : "", status: statusInfo[a.status].label,
       edad: a.edad, sexo: a.sexo, estadoCivil: a.estadoCivil, escolaridad: a.escolaridad, domicilio: a.domicilio,
       nacionalidad: a.nacionalidad, ocupacion: a.ocupacion, correo: a.correo, domicilioLaboral: a.domicilioLaboral,
@@ -308,7 +305,7 @@ export default function AsesoriasClient({
         pie={
           <>
             <span className="block border-t border-line/80 pt-1.5 max-w-[260px]">
-              Atendió: {esAdmin ? form.abogado || "—" : sesionNombre}
+              Atendió: {form.abogado || sesionNombre || "—"}
             </span>
           </>
         }
@@ -339,7 +336,8 @@ export default function AsesoriasClient({
         <Casillas label="¿Pagó la asesoría?" value={form.pago} onChange={(v) => set("pago", v)} options={["Sí", "No"]} />
         {form.pago === "Sí" && <Campo label="Monto" col={3} value={form.monto} onChange={(v) => set("monto", v)} placeholder="500" />}
         <Sel label="Status" col={form.pago === "Sí" ? 5 : 8} value={form.status} onChange={(v) => set("status", v)} options={STATUS_LABELS} />
-        {esAdmin && <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={abogados} />}
+        {/* Abierto para todos: quien captura no siempre es quien atiende (recepción, Lic. Karen). */}
+        <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={abogados} />
       </Hoja>
     </>
   );

@@ -6,6 +6,7 @@ import {
   FilePlus, MessagesSquare, Banknote,
 } from "lucide-react";
 import Link from "next/link";
+import { alcanceDe, porAgenda } from "@/lib/alcance";
 
 function fmtDias(dias: number) {
   if (dias < 0) return "Vencido";
@@ -18,27 +19,22 @@ export default async function InicioPage() {
   const session = await getServerSession(authOptions);
   const nombre = session?.user?.name ?? "Lic.";
   const esAdmin = session?.user?.rol === "admin";
-  const userId = session?.user?.id;
+  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
   const hoyInicio = new Date(); hoyInicio.setHours(0, 0, 0, 0);
   const hoyFin    = new Date(); hoyFin.setHours(23, 59, 59, 999);
+  const mananaInicio = new Date(hoyInicio); mananaInicio.setDate(mananaInicio.getDate() + 1);
+  const mananaFin    = new Date(hoyFin);    mananaFin.setDate(mananaFin.getDate() + 1);
   const semanaFin = new Date(); semanaFin.setDate(semanaFin.getDate() + 7); semanaFin.setHours(23, 59, 59, 999);
 
-  const expWhere = esAdmin ? { estado: "activo" as const } : { estado: "activo" as const, abogadoResponsableId: userId };
-  const expFilter = esAdmin ? {} : { expediente: { abogadoResponsableId: userId } };
-
+  const expWhere = alcance
+    ? { estado: "activo" as const, abogadoResponsableId: { in: alcance.abogadoIds } }
+    : { estado: "activo" as const };
+  const expFilter = alcance ? { expediente: { abogadoResponsableId: { in: alcance.abogadoIds } } } : {};
   // Mismo criterio que /agenda: la agenda se comparte por sucursal.
-  const usuario =
-    !esAdmin && userId
-      ? await prisma.usuario.findUnique({ where: { id: userId }, select: { sucursalId: true } })
-      : null;
-  const citaFilter = esAdmin
-    ? {}
-    : usuario?.sucursalId
-      ? { OR: [{ sucursalId: usuario.sucursalId }, { abogadoId: userId }] }
-      : { abogadoId: userId };
+  const citaFilter = porAgenda(alcance);
 
-  const [expActivos, terminosSemana, audienciasHoy, citasHoy, actividadRows] = await Promise.all([
+  const [expActivos, terminosSemana, audienciasHoy, audienciasManana, citasHoy, actividadRows] = await Promise.all([
     prisma.expediente.count({ where: expWhere }),
     prisma.termino.findMany({
       where: {
@@ -56,6 +52,17 @@ export default async function InicioPage() {
         estado: "programada",
         ...expFilter,
       },
+    }),
+    // Las audiencias se avisan un día antes: esto es el recordatorio dentro de la app
+    // (el de WhatsApp lo dispara n8n contra /api/n8n/audiencias/manana).
+    prisma.audiencia.findMany({
+      where: {
+        fechaHora: { gte: mananaInicio, lte: mananaFin },
+        estado: "programada",
+        ...expFilter,
+      },
+      include: { expediente: { include: { cliente: true } } },
+      orderBy: { fechaHora: "asc" },
     }),
     prisma.cita.count({
       where: {
@@ -81,7 +88,7 @@ export default async function InicioPage() {
   const kpis = [
     { label: "Expedientes activos",    valor: String(expActivos),        icon: FolderOpen,    nota: "Total activos",              notaColor: undefined,    href: "/expedientes" },
     { label: "Vencimientos / semana",  valor: String(terminosSemana.length), icon: AlarmClock, valorColor: terminosSemana.length > 0 ? "text-danger" : undefined, nota: urgentes > 0 ? `${urgentes} vencen en 48 h` : "Sin urgentes", notaColor: urgentes > 0 ? "text-danger" : undefined, href: "/expedientes" },
-    { label: "Audiencias hoy",         valor: String(audienciasHoy),     icon: Gavel,         nota: "Programadas hoy",            notaColor: undefined,    href: "/agenda" },
+    { label: "Audiencias hoy",         valor: String(audienciasHoy),     icon: Gavel,         nota: audienciasManana.length > 0 ? `${audienciasManana.length} mañana` : "Nada mañana", notaColor: audienciasManana.length > 0 ? "text-amber" : undefined, href: "/agenda" },
     { label: "Citas hoy",              valor: String(citasHoy),          icon: CalendarCheck, nota: "Agendadas para hoy",         notaColor: undefined,    href: "/agenda" },
   ];
 
@@ -99,6 +106,27 @@ export default async function InicioPage() {
         <p className="text-muted text-[14px] mt-0.5">Esto es lo que necesita atención hoy.</p>
       </div>
 
+      {audienciasManana.length > 0 && (
+        <div className="mb-6 rounded-xl border border-amber/40 bg-amber-wash px-5 py-4">
+          <p className="eyebrow text-amber flex items-center gap-1.5">
+            <Gavel size={14} strokeWidth={1.75} /> Audiencias de mañana
+          </p>
+          <div className="mt-2 space-y-1.5">
+            {audienciasManana.map((a) => (
+              <Link key={a.id} href={`/expedientes/${a.expediente.id}`} className="block text-[13.5px] text-ink hover:underline">
+                <span className="num font-bold">
+                  {a.fechaHora.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Mexico_City" })}
+                </span>
+                {" · "}
+                <span className="exp-no">{a.expediente.numeroInterno ?? "S/N"}</span>
+                {a.expediente.cliente?.nombre ? ` · ${a.expediente.cliente.nombre}` : ""}
+                {a.lugar ? ` · ${a.lugar}` : ""}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div data-tour="kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {kpis.map((k) => {
           const Icon = k.icon;
@@ -110,7 +138,7 @@ export default async function InicioPage() {
               </div>
               <p className={`num text-[40px] font-semibold leading-none mt-3 ${k.valorColor ?? "text-ink"}`}>{k.valor}</p>
               <p className={`text-[12px] mt-1.5 flex items-center gap-1 ${k.notaColor ?? "text-muted"}`}>
-                {k.notaColor && <TrendingUp size={14} />} {k.nota}
+                {k.notaColor === "text-danger" && <TrendingUp size={14} />} {k.nota}
               </p>
             </Link>
           );

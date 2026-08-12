@@ -15,13 +15,41 @@ export type UsuarioView = {
   telefonoWhatsapp: string | null;
   sucursal: string | null;
   sucursalId: string | null;
-  sucursalEncargada: string | null;
-  sucursalEncargadaId: string | null;
+  sucursalesACargo: { id: string; nombre: string }[];
+  personasACargo: { id: string; nombre: string }[];
   activo: boolean;
 };
 
 const ROL_LABELS: Record<string, string> = { admin: "Admin", abogado: "Abogado", asistente: "Asistente" };
-const vacio = { nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", sucursalEncargadaId: "", telefonoWhatsapp: "" };
+const vacio = {
+  nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", telefonoWhatsapp: "",
+  sucursalesACargo: [] as string[],
+  personasACargo: [] as string[],
+};
+
+// Un encargado ve la actividad de las sucursales que lleva y de las personas que
+// tiene asignadas: por eso son varias, no una.
+function Casillas({
+  opciones,
+  seleccion,
+  onToggle,
+}: {
+  opciones: { id: string; nombre: string }[];
+  seleccion: string[];
+  onToggle: (id: string) => void;
+}) {
+  if (opciones.length === 0) return <p className="text-[13px] text-muted">Sin opciones.</p>;
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+      {opciones.map((o) => (
+        <label key={o.id} className="flex items-center gap-1.5 text-[13px] cursor-pointer">
+          <input type="checkbox" checked={seleccion.includes(o.id)} onChange={() => onToggle(o.id)} />
+          {o.nombre}
+        </label>
+      ))}
+    </div>
+  );
+}
 
 export default function ConfiguracionClient({
   usuarios,
@@ -36,7 +64,16 @@ export default function ConfiguracionClient({
   const [saving, setSaving] = useState(false);
   const confirmar = useConfirm();
 
-  function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
+  function set(c: "nombre" | "email" | "password" | "rol" | "sucursalId" | "telefonoWhatsapp", v: string) {
+    setForm((f) => ({ ...f, [c]: v }));
+  }
+
+  function toggle(c: "sucursalesACargo" | "personasACargo", id: string) {
+    setForm((f) => ({
+      ...f,
+      [c]: f[c].includes(id) ? f[c].filter((x) => x !== id) : [...f[c], id],
+    }));
+  }
 
   function abrirNuevo() {
     setEditId(null);
@@ -52,8 +89,9 @@ export default function ConfiguracionClient({
       password: "",
       rol: u.rol,
       sucursalId: u.sucursalId ?? "",
-      sucursalEncargadaId: u.sucursalEncargadaId ?? "",
       telefonoWhatsapp: u.telefonoWhatsapp ?? "",
+      sucursalesACargo: u.sucursalesACargo.map((s) => s.id),
+      personasACargo: u.personasACargo.map((p) => p.id),
     });
     setOpen(true);
   }
@@ -132,7 +170,9 @@ export default function ConfiguracionClient({
                   </span>
                 </td>
                 <td className="px-3 py-3">{u.sucursal ?? "—"}</td>
-                <td className="px-3 py-3 text-muted">{u.sucursalEncargada ?? "—"}</td>
+                <td className="px-3 py-3 text-muted">
+                  {[...u.sucursalesACargo.map((s) => s.nombre), ...u.personasACargo.map((p) => p.nombre)].join(", ") || "—"}
+                </td>
                 <td className="px-3 py-3 num text-muted">{u.telefonoWhatsapp ?? "—"}</td>
                 <td className="px-3 py-3">
                   <div className="flex items-center justify-end gap-1">
@@ -172,11 +212,18 @@ export default function ConfiguracionClient({
             onChange={(e) => set("sucursalId", sucursalIds[e.target.value] ?? "")}
           />
         </Field>
-        <Field label="Encargado de (sucursal)">
-          <Select
-            options={["", ...sucursalOpts]}
-            value={sucursales.find((s) => s.id === form.sucursalEncargadaId)?.nombre ?? ""}
-            onChange={(e) => set("sucursalEncargadaId", sucursalIds[e.target.value] ?? "")}
+        <Field label="Encargado de estas sucursales" full>
+          <Casillas
+            opciones={sucursales}
+            seleccion={form.sucursalesACargo}
+            onToggle={(id) => toggle("sucursalesACargo", id)}
+          />
+        </Field>
+        <Field label="Encargado de estas personas" full>
+          <Casillas
+            opciones={activos.filter((u) => u.id !== editId).map((u) => ({ id: u.id, nombre: u.nombre }))}
+            seleccion={form.personasACargo}
+            onToggle={(id) => toggle("personasACargo", id)}
           />
         </Field>
         <Field label="WhatsApp (para dictar al bot)" full>

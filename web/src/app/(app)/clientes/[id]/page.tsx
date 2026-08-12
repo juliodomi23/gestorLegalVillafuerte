@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { alcanceDe } from "@/lib/alcance";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ArrowLeft, FolderOpen, Phone, Mail } from "lucide-react";
@@ -14,16 +15,15 @@ function fmtDate(d: Date | null): string {
 
 export default async function ClienteDetallePage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  const esAdmin = session?.user?.rol === "admin";
-  const userId = session?.user?.id;
+  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
   const cliente = await prisma.cliente.findUnique({
     where: { id: params.id },
     include: {
       abogado: true,
       expedientes: {
-        // Un abogado solo ve los expedientes suyos, aunque el cliente tenga más.
-        where: esAdmin ? undefined : { abogadoResponsableId: userId },
+        // Un abogado solo ve los expedientes suyos (o los de su gente, si es encargado).
+        where: alcance ? { abogadoResponsableId: { in: alcance.abogadoIds } } : undefined,
         include: { abogadoResponsable: true, sucursal: true },
         orderBy: { creadoEn: "desc" },
       },
@@ -33,8 +33,8 @@ export default async function ClienteDetallePage({ params }: { params: { id: str
 
   if (!cliente) notFound();
 
-  // Cliente privado: solo su abogado dueño (o el admin) puede abrirlo por URL.
-  if (!esAdmin && cliente.abogadoId !== userId) notFound();
+  // Cliente privado: solo su abogado dueño, su encargado o el admin pueden abrirlo por URL.
+  if (alcance && !alcance.abogadoIds.includes(cliente.abogadoId ?? "")) notFound();
 
   const meta = [
     { k: "Tipo",            v: cliente.tipo === "moral" ? "Persona moral" : "Persona física" },

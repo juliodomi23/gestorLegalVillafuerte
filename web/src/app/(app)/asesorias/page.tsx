@@ -3,15 +3,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AsesoriasClient, { type AsesoriaView } from "./client";
 import type { StatusAsesoria } from "@/lib/constants";
+import { alcanceDe, porAbogado } from "@/lib/alcance";
 
 export default async function AsesoriasPage() {
   const session = await getServerSession(authOptions);
-  const esAdmin = session?.user?.rol === "admin";
-  const userId = session?.user?.id;
+  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.asesoria.findMany({
-      where: esAdmin ? undefined : { abogadoId: userId },
+      where: porAbogado(alcance),
       include: { sucursal: true, abogado: true },
       orderBy: { fecha: "desc" },
       take: 300, // ponytail: tope simple en vez de paginación; subir o paginar de verdad si el despacho pasa de esto
@@ -62,7 +62,6 @@ export default async function AsesoriasPage() {
       sucursales={sucursales}
       abogados={abogados}
       sesionNombre={session?.user?.name ?? ""}
-      sesionRol={session?.user?.rol ?? ""}
     />
   );
 }

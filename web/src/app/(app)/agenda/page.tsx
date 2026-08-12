@@ -1,9 +1,17 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import AgendaClient, { type CitaView } from "./client";
+import AgendaClient, { type CitaView, type SeguimientoAgendaView } from "./client";
+import { alcanceDe, porAbogado, porAgenda } from "@/lib/alcance";
 
 const TZ = "America/Mexico_City";
+
+// `proximoLlamado` es DATE (sin hora): Postgres lo devuelve a medianoche UTC, así que
+// no se puede comparar contra los límites timestamptz -06:00 del rango de citas.
+function limiteDate(d: Date, finDelDia = false) {
+  const ymd = d.toLocaleDateString("en-CA", { timeZone: TZ });
+  return new Date(`${ymd}T${finDelDia ? "23:59:59.999" : "00:00:00"}Z`);
+}
 
 function rangoFecha(fechaStr: string, vista: string) {
   if (vista === "semana") {
@@ -41,8 +49,7 @@ export default async function AgendaPage({
   searchParams: { fecha?: string; vista?: string };
 }) {
   const session = await getServerSession(authOptions);
-  const esAdmin = session?.user?.rol === "admin";
-  const userId = session?.user?.id;
+  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
   const vista = searchParams.vista ?? "dia";
   const fechaStr =
@@ -52,26 +59,28 @@ export default async function AgendaPage({
   const { inicio, fin } = rangoFecha(fechaStr, vista);
 
   // Agenda compartida por sucursal: cada abogado ve todas las citas de su
-  // sucursal (más las propias, por si alguna quedó sin sucursal). Admin ve todo.
-  const usuario =
-    !esAdmin && userId
-      ? await prisma.usuario.findUnique({ where: { id: userId }, select: { sucursalId: true } })
-      : null;
-  const filtroCitas = esAdmin
-    ? {}
-    : usuario?.sucursalId
-      ? { OR: [{ sucursalId: usuario.sucursalId }, { abogadoId: userId }] }
-      : { abogadoId: userId };
-
-  const [rows, sucursalesDb, abogadosDb] = await Promise.all([
+  // sucursal (más las propias, por si alguna quedó sin sucursal). Admin ve todo,
+  // y un encargado ve además las de las sucursales/personas que lleva.
+  const [rows, seguimientoRows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.cita.findMany({
       where: {
         fechaHora: { gte: inicio, lte: fin },
         estado: { not: "cancelada" },
-        ...filtroCitas,
+        ...porAgenda(alcance),
       },
       include: { cliente: true, abogado: true, sucursal: true },
       orderBy: { fechaHora: "asc" },
+    }),
+    // Las llamadas de seguimiento de los asesorados también caen en la agenda,
+    // en el día en que toca llamarles.
+    prisma.seguimiento.findMany({
+      where: {
+        estado: "activo",
+        proximoLlamado: { gte: limiteDate(inicio), lte: limiteDate(fin, true) },
+        ...porAbogado(alcance),
+      },
+      include: { cliente: true, abogado: true, sucursal: true },
+      orderBy: { proximoLlamado: "asc" },
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
@@ -94,12 +103,23 @@ export default async function AgendaPage({
     estado: c.estado === "confirmada" ? "Confirmada" : "Por confirmar",
   }));
 
+  const seguimientos: SeguimientoAgendaView[] = seguimientoRows.map((s) => ({
+    id: s.id,
+    fechaISO: s.proximoLlamado!.toISOString().slice(0, 10),
+    cliente: s.cliente?.nombre ?? "—",
+    asunto: s.tipoCaso ?? "Seguimiento",
+    telefono: s.cliente?.telefono ?? "—",
+    sucursal: s.sucursal?.nombre ?? "—",
+    abogado: s.abogado?.nombre ?? "—",
+  }));
+
   const sucursales = sucursalesDb.map((s) => s.nombre);
   const abogados = abogadosDb.map((u) => u.nombre);
 
   return (
     <AgendaClient
       citas={citas}
+      seguimientos={seguimientos}
       sucursales={sucursales}
       abogados={abogados}
       fechaActual={fechaStr}
