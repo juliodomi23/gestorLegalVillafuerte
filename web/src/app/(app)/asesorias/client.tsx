@@ -85,9 +85,9 @@ function DaySection({ fecha, rows, onEdit, onDelete }: { fecha: string; rows: As
               {rows.map((a) => (
                 <tr key={a.id} className="hover:bg-paper/40 transition-colors">
                   <td className="px-3 py-3 num text-muted">{a.folio ?? "—"}</td>
-                  <td className="px-5 py-3"><p className="font-bold text-ink">{a.nombre}</p><p className="text-[11.5px] num text-muted">{a.telefono}</p></td>
-                  <td className="px-3 py-3 text-ink">{a.asunto}</td>
-                  <td className="px-3 py-3 text-muted">{a.abogado}</td>
+                  <td className="px-5 py-3"><p className="font-bold text-ink">{a.nombre}</p><p className="text-[11.5px] num text-muted">{a.telefono || "—"}</p></td>
+                  <td className="px-3 py-3 text-ink">{a.asunto || "—"}</td>
+                  <td className="px-3 py-3 text-muted">{a.abogado || "—"}</td>
                   <td className="px-3 py-3">{a.pago ? <span className="text-success font-bold num">${a.monto.toLocaleString("es-MX")}</span> : <span className="text-muted">No</span>}</td>
                   <td className="px-3 py-3">
                     <div className="relative group inline-block">
@@ -160,6 +160,14 @@ export default function AsesoriasClient({
   const router = useRouter();
 
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
+
+  // `abogados` solo trae usuarios activos. Si la asesoría está a nombre de alguien
+  // dado de baja, su nombre no estaría entre las opciones y el <select required>
+  // bloquearía el guardado sin explicar por qué. Lo agregamos para poder editarla.
+  const opcionesAbogado = useMemo(
+    () => (form.abogado && !abogados.includes(form.abogado) ? [form.abogado, ...abogados] : abogados),
+    [form.abogado, abogados]
+  );
 
   const totalMes = asesorias.length;
   const firmaronMes = asesorias.filter((a) => a.status === "contrato_firmado").length;
@@ -339,7 +347,7 @@ export default function AsesoriasClient({
         {/* Abierto para todos: quien captura no siempre es quien atiende (recepción, Lic. Karen).
             Obligatorio: si se deja vacío la asesoría queda a nombre de quien captura y
             nunca le llega al abogado que va a atender al cliente. */}
-        <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={abogados} required />
+        <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={opcionesAbogado} required />
       </Hoja>
     </>
   );

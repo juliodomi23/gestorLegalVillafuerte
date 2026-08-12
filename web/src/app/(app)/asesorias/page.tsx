@@ -30,10 +30,13 @@ export default async function AsesoriasPage() {
       fecha: `${dd}/${mm}/${yyyy}`,
       folio: a.folio ?? null,
       nombre: a.nombre ?? "Sin nombre",
-      telefono: a.telefono ?? "—",
-      asunto: a.tema ?? a.resumen ?? "—",
-      sucursal: a.sucursal?.nombre ?? "—",
-      abogado: a.abogado?.nombre ?? "—",
+      // Vacío es "", nunca "—": estos valores alimentan el formulario de edición y
+      // un "—" se guardaría literal (o dejaría el <select> en un valor inexistente,
+      // que con `required` bloquea el guardado). El guion lo pone la tabla al pintar.
+      telefono: a.telefono ?? "",
+      asunto: a.tema ?? a.resumen ?? "",
+      sucursal: a.sucursal?.nombre ?? "",
+      abogado: a.abogado?.nombre ?? "",
       pago: a.pagoAsesoria,
       monto: Number(a.monto ?? 0),
       status: (a.status as StatusAsesoria) ?? "pendiente",
