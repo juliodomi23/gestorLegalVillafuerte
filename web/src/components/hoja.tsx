@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Printer } from "lucide-react";
 
 /**
@@ -46,9 +47,10 @@ export function Hoja({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // Hija directa de <body> para que al imprimir se pueda ocultar todo lo demás.
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-ink/45 backdrop-blur-sm overflow-y-auto py-6 px-4 hoja-fondo">
       <form
         onSubmit={(e) => {
@@ -119,7 +121,8 @@ export function Hoja({
           </div>
         </footer>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

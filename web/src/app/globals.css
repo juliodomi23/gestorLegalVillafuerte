@@ -32,12 +32,10 @@
     size: letter;
     margin: 14mm;
   }
-  body * {
-    visibility: hidden;
-  }
-  .hoja,
-  .hoja * {
-    visibility: visible;
+  /* La hoja se monta en un portal directo de <body>: el resto se quita del flujo
+     (con visibility seguía ocupando alto y salía una segunda página en blanco). */
+  body > *:not(.hoja-fondo) {
+    display: none !important;
   }
   .hoja-fondo {
     position: static;
@@ -47,9 +45,9 @@
     overflow: visible;
   }
   .hoja {
-    position: absolute;
-    left: 0;
-    top: 0;
+    /* ponytail: zoom fijo para que la hoja quepa en una sola carta. Si se le
+       agregan campos y vuelve a partirse, bajarlo. */
+    zoom: 0.78;
     width: 100%;
     max-width: none;
     box-shadow: none;
