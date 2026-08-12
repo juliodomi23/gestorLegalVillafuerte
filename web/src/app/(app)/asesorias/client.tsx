@@ -136,12 +136,17 @@ export default function AsesoriasClient({
   sucursales,
   abogados,
   sesionNombre,
+  sesionRol,
 }: {
   asesorias: AsesoriaView[];
   sucursales: string[];
   abogados: string[];
   sesionNombre: string;
+  sesionRol: string;
 }) {
+  // Solo recepción (asistente) y admin asignan la asesoría a otro abogado. El abogado
+  // que atiende no reasigna: solo completa la hoja que le dejaron.
+  const puedeAsignar = sesionRol === "asistente" || sesionRol === "admin";
   const TABS = [...TABS_FIJAS, ...sucursales];
   const [tabActiva, setTabActiva] = useState("Todas");
   const [busqueda, setBusqueda] = useState("");
@@ -202,7 +207,9 @@ export default function AsesoriasClient({
   function abrirNuevo() {
     setError(null);
     setEditId(null);
-    setForm({ ...vacio, sucursal: tabActiva !== "Todas" ? tabActiva : "", abogado: sesionNombre });
+    // Recepción arranca sin abogado a propósito: el `required` la obliga a elegir a quién
+    // le toca. Un abogado se la queda él mismo, sin pensarlo.
+    setForm({ ...vacio, sucursal: tabActiva !== "Todas" ? tabActiva : "", abogado: puedeAsignar ? "" : sesionNombre });
     setFolioHoja(null);
     setFechaHoja(hoyLargo());
     setOpen(true);
@@ -344,10 +351,9 @@ export default function AsesoriasClient({
         <Casillas label="¿Pagó la asesoría?" value={form.pago} onChange={(v) => set("pago", v)} options={["Sí", "No"]} />
         {form.pago === "Sí" && <Campo label="Monto" col={3} value={form.monto} onChange={(v) => set("monto", v)} placeholder="500" />}
         <Sel label="Status" col={form.pago === "Sí" ? 5 : 8} value={form.status} onChange={(v) => set("status", v)} options={STATUS_LABELS} />
-        {/* Abierto para todos: quien captura no siempre es quien atiende (recepción, Lic. Karen).
-            Obligatorio: si se deja vacío la asesoría queda a nombre de quien captura y
-            nunca le llega al abogado que va a atender al cliente. */}
-        <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={opcionesAbogado} required />
+        {/* Obligatorio para quien puede asignar: si se deja vacío la asesoría queda a nombre
+            de quien captura y nunca le llega al abogado que va a atender al cliente. */}
+        {puedeAsignar && <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={opcionesAbogado} required />}
       </Hoja>
     </>
   );

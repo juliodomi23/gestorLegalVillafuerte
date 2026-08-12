@@ -65,6 +65,7 @@ export default async function AsesoriasPage() {
       sucursales={sucursales}
       abogados={abogados}
       sesionNombre={session?.user?.name ?? ""}
+      sesionRol={session?.user?.rol ?? ""}
     />
   );
 }

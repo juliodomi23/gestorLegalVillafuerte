@@ -2,7 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { resolverAbogado, resolverSucursal, asignarFolio } from "@/lib/services/resolvers";
-import { requireSession } from "@/lib/guard";
+import { requireSession, type Sesion } from "@/lib/guard";
 import type { StatusAsesoria } from "@/lib/constants";
 
 export type FormAsesoria = {
@@ -28,13 +28,16 @@ export type FormAsesoria = {
   presupuestoTexto?: string;
 };
 
+// Solo recepción y admin asignan la asesoría a otro abogado. Va aquí además del
+// formulario porque un server action es un endpoint HTTP: cualquiera con sesión
+// puede invocarlo con el payload que quiera.
+function puedeAsignar(sesion: Sesion) {
+  return sesion.rol === "admin" || sesion.rol === "asistente";
+}
+
 export async function crearAsesoriaAction(form: FormAsesoria) {
   const sesion = await requireSession();
-  // El "abogado que atendió" es quien está en sesión, salvo que un admin
-  // registre a nombre de otro (necesitan poder capturar por otros abogados).
-  // Quien captura no siempre es quien atendió: el campo va abierto y se cae
-  // a la sesión solo si viene vacío.
-  const abogado = form.abogado || sesion.nombre;
+  const abogado = puedeAsignar(sesion) ? form.abogado || sesion.nombre : sesion.nombre;
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(abogado),
     resolverSucursal(form.sucursal),
@@ -71,23 +74,22 @@ export async function crearAsesoriaAction(form: FormAsesoria) {
 
 export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
   const sesion = await requireSession();
-  // Quien captura no siempre es quien atendió: el campo va abierto y se cae
-  // a la sesión solo si viene vacío.
-  const abogado = form.abogado || sesion.nombre;
-  const [abogadoId, sucursalId] = await Promise.all([
-    resolverAbogado(abogado),
-    resolverSucursal(form.sucursal),
-  ]);
+  // Un abogado que edita NO reasigna: se respeta el abogado que ya tenía. Si forzáramos
+  // aquí la sesión, un encargado que corrige la asesoría de su gente se la robaría.
+  const sucursalId = await resolverSucursal(form.sucursal);
+  const reasignar = puedeAsignar(sesion)
+    ? { abogadoId: await resolverAbogado(form.abogado || sesion.nombre) }
+    : {};
   await prisma.asesoria.update({
     where: { id },
     data: {
+      ...reasignar,
       nombre: form.nombre,
       telefono: form.telefono || null,
       tema: form.asunto || null,
       pagoAsesoria: form.pago,
       monto: form.pago && form.monto ? form.monto : null,
       status: form.status,
-      abogadoId,
       sucursalId,
       edad: form.edad || null,
       sexo: form.sexo || null,
