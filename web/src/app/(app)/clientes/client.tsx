@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
-import { crearClienteAction, editarClienteAction, borrarClienteAction } from "./actions";
+import { editarClienteAction, borrarClienteAction } from "./actions";
 
 export type ClienteView = {
   id: string;
@@ -38,7 +38,6 @@ export default function ClientesClient({ clientes }: { clientes: ClienteView[] }
       .filter((c) => !fTipo || c.tipo === fTipo);
   }, [clientes, busqueda, fTipo]);
 
-  function abrirNuevo() { setEditId(null); setForm(vacio); setOpen(true); }
   function abrirEditar(c: ClienteView) {
     setEditId(c.id);
     setForm({ nombre: c.nombre, tipo: c.tipo === "Moral" ? "Moral" : "Física", telefono: c.telefono === "—" ? "" : c.telefono, email: c.email });
@@ -50,7 +49,7 @@ export default function ClientesClient({ clientes }: { clientes: ClienteView[] }
   async function guardar() {
     setSaving(true);
     const data = { nombre: form.nombre, tipo: form.tipo === "Moral" ? "moral" : "fisica", telefono: form.telefono, email: form.email };
-    if (editId) { await editarClienteAction(editId, data); } else { await crearClienteAction(data); }
+    await editarClienteAction(editId!, data);
     setSaving(false);
     setOpen(false);
   }
@@ -62,10 +61,6 @@ export default function ClientesClient({ clientes }: { clientes: ClienteView[] }
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar nombre o teléfono…" />
         <FilterSelect label="Tipo" value={fTipo} onChange={setFTipo} options={["Física", "Moral"]} />
-        <span className="flex-1" />
-        <button onClick={abrirNuevo} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
-          <Plus size={18} strokeWidth={1.75} /> Nuevo cliente
-        </button>
       </div>
 
       <Card className="overflow-x-auto">
@@ -107,7 +102,7 @@ export default function ClientesClient({ clientes }: { clientes: ClienteView[] }
         </table>
       </Card>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={editId ? "Editar cliente" : "Nuevo cliente"} onSubmit={guardar} submitLabel={saving ? "Guardando…" : editId ? "Guardar cambios" : "Crear cliente"}>
+      <Modal open={open} onClose={() => setOpen(false)} title="Editar cliente" onSubmit={guardar} submitLabel={saving ? "Guardando…" : "Guardar cambios"}>
         <Field label="Nombre" full><Input value={form.nombre} onChange={(e) => set("nombre", e.target.value)} placeholder="Nombre o razón social" required /></Field>
         <Field label="Tipo"><Select options={["Física", "Moral"]} value={form.tipo} onChange={(e) => set("tipo", e.target.value)} /></Field>
         <Field label="Teléfono"><Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} placeholder="961 123 4567" /></Field>

@@ -9,7 +9,9 @@ export default async function ClientesPage() {
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
   const rows = await prisma.cliente.findMany({
-    where: porCliente(alcance),
+    // Cliente = contrato firmado, o sea expediente abierto. Sin expediente sigue
+    // siendo prospecto y se ve en Asesorias/Prospectos, no aqui.
+    where: { expedientes: { some: {} }, ...porCliente(alcance) },
     include: {
       _count: { select: { expedientes: true } },
       asesorias: { orderBy: { creadoEn: "desc" }, take: 1, select: { fecha: true } },

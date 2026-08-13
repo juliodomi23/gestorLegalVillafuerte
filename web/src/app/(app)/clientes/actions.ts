@@ -12,21 +12,6 @@ async function exigirDuenoCliente(id: string, sesion: Sesion) {
   if (!c) throw new Error("Sin permiso sobre este cliente");
 }
 
-export async function crearClienteAction(form: { nombre: string; tipo: string; telefono: string; email: string }) {
-  const sesion = await requireSession();
-  const d = parsear(clienteSchema, form);
-  await prisma.cliente.create({
-    data: {
-      nombre: d.nombre,
-      tipo: d.tipo === "Moral" ? "moral" : "fisica",
-      telefono: d.telefono || null,
-      email: d.email || null,
-      abogadoId: sesion.id,
-    },
-  });
-  revalidatePath("/clientes");
-}
-
 export async function editarClienteAction(id: string, form: { nombre: string; tipo: string; telefono: string; email: string }) {
   const sesion = await requireSession();
   await exigirDuenoCliente(id, sesion);
