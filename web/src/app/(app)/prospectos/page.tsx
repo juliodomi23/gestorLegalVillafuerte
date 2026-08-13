@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { listarProspectos } from "@/lib/services/prospectos";
+import { listarProspectosUnificados } from "@/lib/services/prospectos";
+import { alcanceDe } from "@/lib/alcance";
 import ProspectosClient, { type ProspectoView } from "./client";
 
 const TZ = "America/Mexico_City";
@@ -22,23 +23,29 @@ export default async function ProspectosPage({
 
   const mes = searchParams.mes ? parseInt(searchParams.mes) : mesActualMX();
 
-  const rows = await listarProspectos({
-    ciudad: searchParams.ciudad || undefined,
-    estado: searchParams.estado || undefined,
-    mes,
-    anio: ANIO,
-  });
+  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+  const rows = await listarProspectosUnificados(
+    {
+      ciudad: searchParams.ciudad || undefined,
+      estado: searchParams.estado || undefined,
+      mes,
+      anio: ANIO,
+    },
+    alcance,
+  );
 
   const prospectos: ProspectoView[] = rows.map((p) => ({
     id: p.id,
+    origen: p.origen,
+    clienteId: p.clienteId,
     nombre: p.nombre,
     telefono: p.telefono ?? "—",
     ciudad: p.ciudad ?? "—",
     asunto: p.asunto ?? "—",
     estado: p.estado,
     nota: p.nota ?? "",
-    fechaLlamada: p.fechaLlamada
-      ? p.fechaLlamada.toLocaleDateString("es-MX", {
+    fechaLlamada: p.fecha
+      ? p.fecha.toLocaleDateString("es-MX", {
           day: "numeric",
           month: "short",
           timeZone: TZ,

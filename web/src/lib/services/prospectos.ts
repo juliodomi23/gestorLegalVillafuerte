@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { porAbogado, type Alcance } from "@/lib/alcance";
 
 export type DatosProspecto = {
   nombre: string;
@@ -89,4 +90,98 @@ export async function listarProspectos(filtros?: {
     },
     orderBy: [{ fechaLlamada: "desc" }, { creadoEn: "desc" }],
   });
+}
+
+// Los dos embudos viven en tablas distintas: `prospectos` (bot de llamadas) y las
+// asesorías de quien todavía no firma. En vez de copiar filas de un lado al otro,
+// la pantalla los junta al leer. La asesoría se sigue editando en su pantalla.
+const STATUS_ASESORIA_A_ESTADO: Record<string, string> = {
+  pendiente: "por_contactar",
+  contrato_firmado: "convertido",
+  no_regreso: "llamar_despues",
+  descartado: "descartado",
+};
+
+export type FilaProspectoUnificada = {
+  id: string;
+  origen: "llamada" | "asesoria";
+  /** Solo en las de asesoría: para abrir el expediente sin crear otro cliente. */
+  clienteId: string | null;
+  nombre: string;
+  telefono: string | null;
+  ciudad: string | null;
+  asunto: string | null;
+  estado: string;
+  nota: string | null;
+  fecha: Date | null;
+};
+
+export async function listarProspectosUnificados(
+  filtros: { ciudad?: string; estado?: string; mes?: number; anio?: number },
+  alcance: Alcance,
+) {
+  const anio = filtros.anio ?? new Date().getFullYear();
+  const mes = filtros.mes;
+  const rango =
+    mes !== undefined
+      ? { gte: new Date(Date.UTC(anio, mes - 1, 1)), lt: new Date(Date.UTC(anio, mes, 1)) }
+      : undefined;
+
+  // Filtrar por un estado que ninguna asesoría puede tener (no_contesto, agendo_cita)
+  // deja fuera a todas: no hay status equivalente.
+  const statusBuscado = filtros.estado
+    ? Object.keys(STATUS_ASESORIA_A_ESTADO).find((s) => STATUS_ASESORIA_A_ESTADO[s] === filtros.estado)
+    : undefined;
+  const pedirAsesorias = !filtros.estado || statusBuscado !== undefined;
+
+  const [llamadas, asesorias] = await Promise.all([
+    listarProspectos(filtros),
+    pedirAsesorias
+      ? prisma.asesoria.findMany({
+          where: {
+            AND: [
+              // Prospecto = sin expediente todavía, ni propio ni del cliente.
+              { expedienteId: null },
+              { OR: [{ clienteId: null }, { cliente: { expedientes: { none: {} } } }] },
+              porAbogado(alcance),
+              ...(rango ? [{ fecha: rango }] : []),
+              ...(statusBuscado ? [{ status: statusBuscado }] : []),
+              // La ciudad del bot es texto libre; la de una asesoría es su sucursal.
+              ...(filtros.ciudad ? [{ sucursal: { nombre: { contains: filtros.ciudad, mode: "insensitive" as const } } }] : []),
+            ],
+          },
+          include: { cliente: { select: { id: true } }, sucursal: { select: { nombre: true } } },
+          orderBy: { fecha: "desc" },
+        })
+      : [],
+  ]);
+
+  const filas: FilaProspectoUnificada[] = [
+    ...llamadas.map((p) => ({
+      id: p.id,
+      origen: "llamada" as const,
+      clienteId: null,
+      nombre: p.nombre,
+      telefono: p.telefono,
+      ciudad: p.ciudad,
+      asunto: p.asunto,
+      estado: p.estado,
+      nota: p.nota,
+      fecha: p.fechaLlamada,
+    })),
+    ...asesorias.map((a) => ({
+      id: a.id,
+      origen: "asesoria" as const,
+      clienteId: a.cliente?.id ?? null,
+      nombre: a.nombre ?? "—",
+      telefono: a.telefono,
+      ciudad: a.sucursal?.nombre ?? null,
+      asunto: a.tema,
+      estado: STATUS_ASESORIA_A_ESTADO[a.status] ?? "por_contactar",
+      nota: a.seguimiento ?? a.resumen,
+      fecha: a.fecha,
+    })),
+  ];
+
+  return filas.sort((x, y) => (y.fecha?.getTime() ?? 0) - (x.fecha?.getTime() ?? 0));
 }

@@ -9,6 +9,9 @@ import { actualizarProspectoAction, borrarProspectoAction, convertirProspectoAct
 
 export type ProspectoView = {
   id: string;
+  /** llamada = tabla prospectos (editable aquí). asesoria = se edita en Asesorías. */
+  origen: "llamada" | "asesoria";
+  clienteId: string | null;
   nombre: string;
   telefono: string;
   ciudad: string;
@@ -81,11 +84,23 @@ function FilaProspecto({
   }
 
   const estiloEstado = ESTADO_ESTILOS[estado] ?? "bg-paper text-muted";
+  const esAsesoria = p.origen === "asesoria";
+
+  function irAExpediente() {
+    const params = new URLSearchParams({ nuevo: "1", nombre: p.nombre });
+    if (p.clienteId) params.set("clienteId", p.clienteId);
+    router.push(`/expedientes?${params.toString()}`);
+  }
 
   return (
     <tr className={`hover:bg-paper/60 transition-colors ${pending ? "opacity-60" : ""}`}>
       <td className="px-4 py-3 text-[12px] text-muted whitespace-nowrap num">
         {p.fechaLlamada}
+      </td>
+      <td className="px-3 py-3">
+        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${esAsesoria ? "bg-navy/[.08] text-navy" : "bg-line/60 text-muted"}`}>
+          {esAsesoria ? "Asesoría" : "Llamada"}
+        </span>
       </td>
       <td className="px-3 py-3 font-bold text-ink">{p.nombre}</td>
       <td className="px-3 py-3 text-[13px] text-muted whitespace-nowrap">
@@ -105,6 +120,11 @@ function FilaProspecto({
       </td>
       <td className="px-3 py-3 text-[13px]">{p.asunto}</td>
       <td className="px-3 py-3">
+        {esAsesoria ? (
+          <span className={`px-2 py-1 rounded text-[12px] font-bold ${estiloEstado}`}>
+            {ESTADOS.find((e) => e.value === estado)?.label ?? estado}
+          </span>
+        ) : (
         <select
           value={estado}
           onChange={(e) => cambiarEstado(e.target.value)}
@@ -116,8 +136,12 @@ function FilaProspecto({
             </option>
           ))}
         </select>
+        )}
       </td>
       <td className="px-3 py-3 min-w-[180px]">
+        {esAsesoria ? (
+          <span className="text-[12.5px] text-muted">{nota || "—"}</span>
+        ) : (
         <input
           type="text"
           value={nota}
@@ -126,18 +150,19 @@ function FilaProspecto({
           placeholder="Añadir nota…"
           className="w-full px-2 py-1 rounded bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none text-[12.5px] text-ink placeholder:text-muted/60 transition-colors"
         />
+        )}
       </td>
       <td className="px-3 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
           <button
-            onClick={convertir}
+            onClick={esAsesoria ? irAExpediente : convertir}
             disabled={converting}
             title="Crear expediente para este prospecto"
             className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors disabled:opacity-40"
           >
             <ArrowUpRight size={15} />
           </button>
-          {esAdmin && (
+          {esAdmin && !esAsesoria && (
             <button
               onClick={borrar}
               className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors"
@@ -200,9 +225,10 @@ export default function ProspectosClient({
   const mesLabel = MESES.find((m) => m.num === filtroMes)?.label ?? "—";
 
   function exportarCSV() {
-    const encabezado = ["Fecha", "Nombre", "Teléfono", "Ciudad", "Asunto", "Estado", "Nota"];
+    const encabezado = ["Fecha", "Origen", "Nombre", "Teléfono", "Ciudad", "Asunto", "Estado", "Nota"];
     const filas = prospectos.map((p) => [
       p.fechaLlamada,
+      p.origen === "asesoria" ? "Asesoría" : "Llamada",
       p.nombre,
       p.telefono,
       p.ciudad,
@@ -293,10 +319,11 @@ export default function ProspectosClient({
       </div>
 
       <Card className="overflow-x-auto">
-        <table className="w-full min-w-[860px] text-[13.5px]">
+        <table className="w-full min-w-[940px] text-[13.5px]">
           <thead>
             <tr className="border-b border-line text-left">
               <th className="eyebrow text-muted px-4 py-3">Fecha</th>
+              <th className="eyebrow text-muted px-3 py-3">Origen</th>
               <th className="eyebrow text-muted px-3 py-3">Nombre</th>
               <th className="eyebrow text-muted px-3 py-3">Teléfono</th>
               <th className="eyebrow text-muted px-3 py-3">Ciudad</th>
@@ -313,7 +340,7 @@ export default function ProspectosClient({
             {prospectos.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-10 text-center text-muted"
                 >
                   No hay prospectos con estos filtros.
