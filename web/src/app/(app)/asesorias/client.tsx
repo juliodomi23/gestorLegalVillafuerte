@@ -135,12 +135,15 @@ export default function AsesoriasClient({
   asesorias,
   sucursales,
   abogados,
+  turnoTuxtla,
   sesionNombre,
   sesionRol,
 }: {
   asesorias: AsesoriaView[];
   sucursales: string[];
   abogados: string[];
+  /** A quién le toca la siguiente asesoría de Tuxtla (sugerencia, se puede cambiar). */
+  turnoTuxtla: string | null;
   sesionNombre: string;
   sesionRol: string;
 }) {
@@ -173,6 +176,11 @@ export default function AsesoriasClient({
     () => (form.abogado && !abogados.includes(form.abogado) ? [form.abogado, ...abogados] : abogados),
     [form.abogado, abogados]
   );
+
+  // Aviso del turno: solo al registrar una asesoría nueva de Tuxtla (al editar el
+  // abogado ya está decidido) y solo para quien asigna.
+  const avisoTurno =
+    puedeAsignar && !editId && turnoTuxtla && /tuxtla/i.test(form.sucursal) ? turnoTuxtla : null;
 
   const totalMes = asesorias.length;
   const firmaronMes = asesorias.filter((a) => a.status === "contrato_firmado").length;
@@ -208,8 +216,11 @@ export default function AsesoriasClient({
     setError(null);
     setEditId(null);
     // Recepción arranca sin abogado a propósito: el `required` la obliga a elegir a quién
-    // le toca. Un abogado se la queda él mismo, sin pensarlo.
-    setForm({ ...vacio, sucursal: tabActiva !== "Todas" ? tabActiva : "", abogado: puedeAsignar ? "" : sesionNombre });
+    // le toca. Un abogado se la queda él mismo, sin pensarlo. En Tuxtla, donde las
+    // asesorías rotan, viene ya puesto el que sigue en el turno (y se puede cambiar).
+    const sucursal = tabActiva !== "Todas" ? tabActiva : "";
+    const enTurno = /tuxtla/i.test(sucursal) ? turnoTuxtla ?? "" : "";
+    setForm({ ...vacio, sucursal, abogado: puedeAsignar ? enTurno : sesionNombre });
     setFolioHoja(null);
     setFechaHoja(hoyLargo());
     setOpen(true);
@@ -344,7 +355,19 @@ export default function AsesoriasClient({
 
         <Seccion>Asunto y presupuesto</Seccion>
         <Campo label="Asunto" col={8} value={form.asunto} onChange={(v) => set("asunto", v)} placeholder="Divorcio, pagaré…" />
-        <Sel label="Sucursal" value={form.sucursal} onChange={(v) => set("sucursal", v)} options={sucursales} />
+        {/* Al elegir Tuxtla se propone el del turno, salvo que ya se haya puesto a alguien. */}
+        <Sel
+          label="Sucursal"
+          value={form.sucursal}
+          onChange={(v) =>
+            setForm((f) => ({
+              ...f,
+              sucursal: v,
+              abogado: puedeAsignar && !editId && !f.abogado && /tuxtla/i.test(v) ? turnoTuxtla ?? "" : f.abogado,
+            }))
+          }
+          options={sucursales}
+        />
         <Area label="Presupuesto" value={form.presupuestoTexto} onChange={(v) => set("presupuestoTexto", v)} placeholder={"Opción A) $15,000 y 10%\nOpción B) …"} />
 
         <Seccion>Cobro y seguimiento</Seccion>
@@ -354,6 +377,12 @@ export default function AsesoriasClient({
         {/* Obligatorio para quien puede asignar: si se deja vacío la asesoría queda a nombre
             de quien captura y nunca le llega al abogado que va a atender al cliente. */}
         {puedeAsignar && <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={opcionesAbogado} required />}
+        {avisoTurno && (
+          <p className="col-span-12 text-[12.5px] text-muted">
+            Turno de Tuxtla: le toca a <strong className="text-ink">{avisoTurno}</strong>. Ya viene
+            seleccionado; cámbialo si no está disponible y el turno sigue desde quien atienda.
+          </p>
+        )}
       </Hoja>
     </>
   );

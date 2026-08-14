@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import AsesoriasClient, { type AsesoriaView } from "./client";
 import type { StatusAsesoria } from "@/lib/constants";
 import { alcanceDe, porAbogado } from "@/lib/alcance";
+import { abogadoEnTurnoTuxtla } from "@/lib/services/resolvers";
 
 export default async function AsesoriasPage() {
   const session = await getServerSession(authOptions);
@@ -59,11 +60,16 @@ export default async function AsesoriasPage() {
   const sucursales = sucursalesDb.map((s) => s.nombre);
   const abogados = abogadosDb.map((u) => u.nombre);
 
+  // Se recalcula en cada carga de la página; `revalidatePath("/asesorias")` de las
+  // actions hace que después de registrar una ya aparezca el siguiente.
+  const turnoTuxtla = await abogadoEnTurnoTuxtla();
+
   return (
     <AsesoriasClient
       asesorias={asesorias}
       sucursales={sucursales}
       abogados={abogados}
+      turnoTuxtla={turnoTuxtla}
       sesionNombre={session?.user?.name ?? ""}
       sesionRol={session?.user?.rol ?? ""}
     />

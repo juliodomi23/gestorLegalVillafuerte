@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { TURNO_TUXTLA, siguienteDelTurno, coincideNombre } from "@/lib/turno-regla";
 
 // El bot manda nombres ("Christian", "Tuxtla"); aquí los convertimos a IDs.
 
@@ -32,6 +33,29 @@ export async function resolverAbogado(nombreOTelefono?: string): Promise<string 
     },
   });
   return u?.id ?? null;
+}
+
+// Nombre del abogado al que le toca la siguiente asesoría de Tuxtla, o null si no hay
+// nadie del turno activo. Es solo una sugerencia para el formulario: quien captura
+// puede cambiarlo si el que sigue no está disponible.
+export async function abogadoEnTurnoTuxtla(): Promise<string | null> {
+  const tuxtla = await prisma.sucursal.findFirst({
+    where: { nombre: { contains: "tuxtla", mode: "insensitive" } },
+  });
+  if (!tuxtla) return null;
+
+  const activos = await prisma.usuario.findMany({ where: { activo: true } });
+  const turno = TURNO_TUXTLA
+    .map((clave) => activos.find((u) => coincideNombre(u.nombre, clave)))
+    .filter((u): u is (typeof activos)[number] => !!u);
+
+  const ultima = await prisma.asesoria.findFirst({
+    where: { sucursalId: tuxtla.id, abogadoId: { in: turno.map((u) => u.id) } },
+    orderBy: { creadoEn: "desc" },
+    select: { abogado: { select: { nombre: true } } },
+  });
+
+  return siguienteDelTurno(turno.map((u) => u.nombre), ultima?.abogado?.nombre ?? null);
 }
 
 // Busca un cliente por teléfono (o nombre); si no existe, lo crea.
