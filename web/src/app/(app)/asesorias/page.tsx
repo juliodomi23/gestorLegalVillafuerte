@@ -54,6 +54,8 @@ export default async function AsesoriasPage() {
       hijos: a.hijos ?? "",
       nombreHijos: a.nombreHijos ?? "",
       presupuestoTexto: a.presupuestoTexto ?? "",
+      // La columna se llama `seguimiento` desde el bot; en la hoja es "Observaciones".
+      observaciones: a.seguimiento ?? "",
     };
   });
 

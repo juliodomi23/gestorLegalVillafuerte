@@ -73,7 +73,13 @@ export async function upsertCliente(
   const porNombre = await prisma.cliente.findFirst({
     where: { nombre: { equals: nombre, mode: "insensitive" } },
   });
-  if (porNombre) return porNombre.id;
+  if (porNombre) {
+    // El cliente ya existía sin teléfono (lo creó el bot o recepción): se le completa.
+    if (telefono && !porNombre.telefono) {
+      await prisma.cliente.update({ where: { id: porNombre.id }, data: { telefono } });
+    }
+    return porNombre.id;
+  }
 
   const nuevo = await prisma.cliente.create({
     data: { nombre, telefono, abogadoId: abogadoId ?? null },

@@ -34,6 +34,7 @@ export type AsesoriaView = {
   hijos: string;
   nombreHijos: string;
   presupuestoTexto: string;
+  observaciones: string;
 };
 
 const statusInfo: Record<StatusAsesoria, { label: string; cls: string }> = {
@@ -128,7 +129,7 @@ const TABS_FIJAS = ["Todas"];
 const vacio = {
   nombre: "", telefono: "", asunto: "", sucursal: "", abogado: "", pago: "No", monto: "", status: "Pendiente",
   edad: "", sexo: "", estadoCivil: "", escolaridad: "", domicilio: "", nacionalidad: "Mexicana", ocupacion: "",
-  correo: "", domicilioLaboral: "", hijos: "", nombreHijos: "", presupuestoTexto: "",
+  correo: "", domicilioLaboral: "", hijos: "", nombreHijos: "", presupuestoTexto: "", observaciones: "",
 };
 
 export default function AsesoriasClient({
@@ -234,6 +235,7 @@ export default function AsesoriasClient({
       edad: a.edad, sexo: a.sexo, estadoCivil: a.estadoCivil, escolaridad: a.escolaridad, domicilio: a.domicilio,
       nacionalidad: a.nacionalidad, ocupacion: a.ocupacion, correo: a.correo, domicilioLaboral: a.domicilioLaboral,
       hijos: a.hijos, nombreHijos: a.nombreHijos, presupuestoTexto: a.presupuestoTexto,
+      observaciones: a.observaciones,
     });
     setFolioHoja(a.folio);
     setFechaHoja(formatFecha(a.fecha));
@@ -254,7 +256,7 @@ export default function AsesoriasClient({
         edad: form.edad, sexo: form.sexo, estadoCivil: form.estadoCivil, escolaridad: form.escolaridad,
         domicilio: form.domicilio, nacionalidad: form.nacionalidad, ocupacion: form.ocupacion, correo: form.correo,
         domicilioLaboral: form.domicilioLaboral, hijos: form.hijos, nombreHijos: form.nombreHijos,
-        presupuestoTexto: form.presupuestoTexto,
+        presupuestoTexto: form.presupuestoTexto, observaciones: form.observaciones,
       };
       if (editId) { await editarAsesoriaAction(editId, data); } else { await crearAsesoriaAction(data); }
       setOpen(false);
@@ -377,6 +379,7 @@ export default function AsesoriasClient({
         {/* Obligatorio para quien puede asignar: si se deja vacío la asesoría queda a nombre
             de quien captura y nunca le llega al abogado que va a atender al cliente. */}
         {puedeAsignar && <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={opcionesAbogado} required />}
+        <Area label="Observaciones" rows={4} value={form.observaciones} onChange={(v) => set("observaciones", v)} placeholder="Qué se acordó, qué falta, cómo darle seguimiento…" />
         {avisoTurno && (
           <p className="col-span-12 text-[12.5px] text-muted">
             Turno de Tuxtla: le toca a <strong className="text-ink">{avisoTurno}</strong>. Ya viene

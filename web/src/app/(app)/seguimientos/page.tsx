@@ -53,6 +53,7 @@ export default async function SeguimientosPage() {
     frecuencia: s.frecuenciaDias ?? 7,
     alerta: calcAlerta(s.proximoLlamado),
     llamoEstaSemana: calcLlamoEstaSemana(s.ultimoContacto),
+    notas: s.notas ?? "",
   }));
 
   const sucursales = sucursalesDb.map((s) => s.nombre);

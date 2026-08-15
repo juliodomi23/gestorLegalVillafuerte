@@ -12,6 +12,7 @@ export type FormSeguimiento = {
   abogado: string;
   sucursal: string;
   frecuencia: number;
+  notas?: string;
 };
 
 export async function crearSeguimientoAction(form: FormSeguimiento) {
@@ -30,6 +31,7 @@ export async function crearSeguimientoAction(form: FormSeguimiento) {
       sucursalId,
       tipoCaso: form.tipoCaso || null,
       frecuenciaDias: form.frecuencia,
+      notas: form.notas || null,
       fechaInicio: hoy,
       ultimoContacto: hoy,
       proximoLlamado: sumarDias(hoy, form.frecuencia),
@@ -45,28 +47,42 @@ export async function editarSeguimientoAction(id: string, form: FormSeguimiento)
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
   ]);
-  await prisma.seguimiento.update({
+  const seg = await prisma.seguimiento.update({
     where: { id },
     data: {
       tipoCaso: form.tipoCaso || null,
       frecuenciaDias: form.frecuencia,
       abogadoId,
       sucursalId,
+      notas: form.notas || null,
     },
   });
+  // El teléfono vive en el cliente, no en el seguimiento: si no se copia aquí,
+  // el abogado lo escribe en el formulario y al guardar se pierde.
+  if (seg.clienteId && form.telefono) {
+    await prisma.cliente.update({
+      where: { id: seg.clienteId },
+      data: { telefono: form.telefono, nombre: form.cliente || undefined },
+    });
+  }
   revalidatePath("/seguimientos");
 }
 
-export async function marcarLlamadoAction(id: string) {
+// `observaciones` = qué se le dijo al cliente en esta llamada. Se van apilando en
+// `notas`, la más reciente arriba, con la fecha delante.
+export async function marcarLlamadoAction(id: string, observaciones?: string) {
   await requireSession();
   const s = await prisma.seguimiento.findUnique({ where: { id } });
   if (!s) return;
   const hoy = new Date();
+  const nota = observaciones?.trim();
+  const entrada = nota ? `${hoy.toLocaleDateString("es-MX")} — ${nota}` : null;
   await prisma.seguimiento.update({
     where: { id },
     data: {
       ultimoContacto: hoy,
       proximoLlamado: sumarDias(hoy, s.frecuenciaDias ?? 7),
+      ...(entrada ? { notas: s.notas ? `${entrada}\n${s.notas}` : entrada } : {}),
     },
   });
   revalidatePath("/seguimientos");

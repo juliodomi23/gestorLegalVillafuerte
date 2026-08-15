@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { Plus, Pencil, Trash2, Phone, MessageCircle, PhoneCall } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox } from "@/components/ui";
-import { Modal, Field, Input, Select } from "@/components/modal";
+import { Modal, Field, Input, Select, Textarea } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
 import { crearSeguimientoAction, editarSeguimientoAction, marcarLlamadoAction, borrarSeguimientoAction } from "./actions";
 
@@ -19,6 +19,8 @@ export type SeguimientoView = {
   frecuencia: number;
   alerta: "hoy" | "atrasado" | null;
   llamoEstaSemana: boolean;
+  /** Historial de lo que se le dijo al cliente, la llamada más reciente arriba. */
+  notas: string;
 };
 
 const alertaInfo = {
@@ -26,7 +28,7 @@ const alertaInfo = {
   atrasado: { label: "Atrasado",   cls: "bg-danger-wash text-danger" },
 } as const;
 
-const vacio = { cliente: "", tipoCaso: "", abogado: "", sucursal: "", telefono: "", frecuencia: "7" };
+const vacio = { cliente: "", tipoCaso: "", abogado: "", sucursal: "", telefono: "", frecuencia: "7", notas: "" };
 
 export default function SeguimientosClient({
   seguimientos,
@@ -44,6 +46,9 @@ export default function SeguimientosClient({
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  // Modal de "Llamé": pide qué se le dijo al cliente antes de marcar la llamada.
+  const [llamada, setLlamada] = useState<{ id: string; cliente: string } | null>(null);
+  const [nota, setNota] = useState("");
   const confirmar = useConfirm();
 
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
@@ -64,16 +69,22 @@ export default function SeguimientosClient({
   function abrirNuevo() { setEditId(null); setForm(vacio); setOpen(true); }
   function abrirEditar(s: SeguimientoView) {
     setEditId(s.id);
-    setForm({ cliente: s.cliente, tipoCaso: s.tipoCaso, abogado: s.abogado, sucursal: s.sucursal, telefono: s.telefono === "—" ? "" : s.telefono, frecuencia: String(s.frecuencia) });
+    setForm({ cliente: s.cliente, tipoCaso: s.tipoCaso, abogado: s.abogado, sucursal: s.sucursal, telefono: s.telefono === "—" ? "" : s.telefono, frecuencia: String(s.frecuencia), notas: s.notas });
     setOpen(true);
   }
   async function borrar(id: string) {
     if (await confirmar({ titulo: "¿Eliminar este seguimiento?", peligro: true, confirmLabel: "Eliminar" })) await borrarSeguimientoAction(id);
   }
-  async function marcar(id: string) { await marcarLlamadoAction(id); }
+  async function registrarLlamada() {
+    if (!llamada) return;
+    setSaving(true);
+    await marcarLlamadoAction(llamada.id, nota);
+    setSaving(false);
+    setLlamada(null);
+  }
   async function guardar() {
     setSaving(true);
-    const data = { cliente: form.cliente, tipoCaso: form.tipoCaso, abogado: form.abogado, sucursal: form.sucursal, telefono: form.telefono, frecuencia: parseInt(form.frecuencia) || 7 };
+    const data = { cliente: form.cliente, tipoCaso: form.tipoCaso, abogado: form.abogado, sucursal: form.sucursal, telefono: form.telefono, frecuencia: parseInt(form.frecuencia) || 7, notas: form.notas };
     if (editId) { await editarSeguimientoAction(editId, data); } else { await crearSeguimientoAction(data); }
     setSaving(false);
     setOpen(false);
@@ -118,6 +129,7 @@ export default function SeguimientosClient({
               <th className="eyebrow text-muted px-3 py-3">Última llamada</th>
               <th className="eyebrow text-muted px-3 py-3">Próximo llamado</th>
               <th className="eyebrow text-muted px-3 py-3">Cada</th>
+              <th className="eyebrow text-muted px-3 py-3">Observaciones</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Acciones</th>
             </tr>
           </thead>
@@ -136,16 +148,20 @@ export default function SeguimientosClient({
                   {s.alerta && <span className={`ml-2 px-2 py-0.5 rounded text-[11px] font-bold ${alertaInfo[s.alerta].cls}`}>{alertaInfo[s.alerta].label}</span>}
                 </td>
                 <td className="px-3 py-3.5 num text-muted">{s.frecuencia} días</td>
+                {/* Última llamada arriba; el historial completo se ve al editar. */}
+                <td className="px-3 py-3.5 text-muted max-w-[260px]">
+                  <span className="line-clamp-2" title={s.notas}>{s.notas.split("\n")[0] || "—"}</span>
+                </td>
                 <td className="px-3 py-3.5">
                   <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => marcar(s.id)} className="flex items-center gap-1 px-2 py-1 rounded-md border border-line text-[12px] font-bold hover:border-navy/40 transition-colors"><PhoneCall size={14} /> Llamé</button>
+                    <button onClick={() => { setNota(""); setLlamada({ id: s.id, cliente: s.cliente }); }} className="flex items-center gap-1 px-2 py-1 rounded-md border border-line text-[12px] font-bold hover:border-navy/40 transition-colors"><PhoneCall size={14} /> Llamé</button>
                     <button onClick={() => abrirEditar(s)} className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"><Pencil size={16} /></button>
                     <button onClick={() => borrar(s.id)} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors"><Trash2 size={16} /></button>
                   </div>
                 </td>
               </tr>
             ))}
-            {visibles.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-muted">Sin resultados.</td></tr>}
+            {visibles.length === 0 && <tr><td colSpan={9} className="px-5 py-10 text-center text-muted">Sin resultados.</td></tr>}
           </tbody>
         </table>
         <p className="text-[12px] text-muted px-5 py-3 flex items-center gap-1.5">
@@ -160,6 +176,21 @@ export default function SeguimientosClient({
         <Field label="Abogado"><Select options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} /></Field>
         <Field label="Sucursal"><Select options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} /></Field>
         <Field label="Llamar cada (días)" full><Input type="number" value={form.frecuencia} onChange={(e) => set("frecuencia", e.target.value)} placeholder="7" /></Field>
+        <Field label="Observaciones (historial de llamadas)" full>
+          <Textarea rows={5} value={form.notas} onChange={(e) => set("notas", e.target.value)} placeholder="Qué se le ha dicho al cliente…" />
+        </Field>
+      </Modal>
+
+      <Modal
+        open={!!llamada}
+        onClose={() => setLlamada(null)}
+        title={`Llamada a ${llamada?.cliente ?? ""}`}
+        onSubmit={registrarLlamada}
+        submitLabel={saving ? "Guardando…" : "Registrar llamada"}
+      >
+        <Field label="¿Qué se le dijo al cliente?" full>
+          <Textarea rows={4} value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Se le informó que…" autoFocus />
+        </Field>
       </Modal>
     </>
   );

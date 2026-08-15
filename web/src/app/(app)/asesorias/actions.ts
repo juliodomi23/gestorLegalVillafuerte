@@ -26,6 +26,7 @@ export type FormAsesoria = {
   hijos?: string;
   nombreHijos?: string;
   presupuestoTexto?: string;
+  observaciones?: string;
 };
 
 // Solo recepción y admin asignan la asesoría a otro abogado. Va aquí además del
@@ -67,6 +68,7 @@ export async function crearAsesoriaAction(form: FormAsesoria) {
       hijos: form.hijos || null,
       nombreHijos: form.nombreHijos || null,
       presupuestoTexto: form.presupuestoTexto || null,
+      seguimiento: form.observaciones || null,
     },
   });
   revalidatePath("/asesorias");
@@ -103,6 +105,7 @@ export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
       hijos: form.hijos || null,
       nombreHijos: form.nombreHijos || null,
       presupuestoTexto: form.presupuestoTexto || null,
+      seguimiento: form.observaciones || null,
     },
   });
   revalidatePath("/asesorias");
