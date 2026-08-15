@@ -69,7 +69,10 @@ export default function SeguimientosClient({
   function abrirNuevo() { setEditId(null); setForm(vacio); setOpen(true); }
   function abrirEditar(s: SeguimientoView) {
     setEditId(s.id);
-    setForm({ cliente: s.cliente, tipoCaso: s.tipoCaso, abogado: s.abogado, sucursal: s.sucursal, telefono: s.telefono === "—" ? "" : s.telefono, frecuencia: String(s.frecuencia), notas: s.notas });
+    // La tabla pinta "—" cuando el dato está vacío; si se carga tal cual al formulario,
+    // ese guion se guarda como texto.
+    const sinGuion = (v: string) => (v === "—" ? "" : v);
+    setForm({ cliente: s.cliente, tipoCaso: sinGuion(s.tipoCaso), abogado: sinGuion(s.abogado), sucursal: sinGuion(s.sucursal), telefono: sinGuion(s.telefono), frecuencia: String(s.frecuencia), notas: s.notas });
     setOpen(true);
   }
   async function borrar(id: string) {
