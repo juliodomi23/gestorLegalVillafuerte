@@ -26,7 +26,6 @@ export type FormAsesoria = {
   hijos?: string;
   nombreHijos?: string;
   presupuestoTexto?: string;
-  observaciones?: string;
 };
 
 // Solo recepción y admin asignan la asesoría a otro abogado. Va aquí además del
@@ -67,8 +66,8 @@ export async function crearAsesoriaAction(form: FormAsesoria) {
       domicilioLaboral: form.domicilioLaboral || null,
       hijos: form.hijos || null,
       nombreHijos: form.nombreHijos || null,
+      // `seguimiento` no se toca desde la hoja: se escribe después, desde la tabla.
       presupuestoTexto: form.presupuestoTexto || null,
-      seguimiento: form.observaciones || null,
     },
   });
   revalidatePath("/asesorias");
@@ -104,10 +103,17 @@ export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
       domicilioLaboral: form.domicilioLaboral || null,
       hijos: form.hijos || null,
       nombreHijos: form.nombreHijos || null,
+      // `seguimiento` no se toca desde la hoja: se escribe después, desde la tabla.
       presupuestoTexto: form.presupuestoTexto || null,
-      seguimiento: form.observaciones || null,
     },
   });
+  revalidatePath("/asesorias");
+}
+
+/** Nota de seguimiento del prospecto. Se escribe desde la tabla, días después de la asesoría. */
+export async function guardarSeguimientoAsesoriaAction(id: string, seguimiento: string) {
+  await requireSession();
+  await prisma.asesoria.update({ where: { id }, data: { seguimiento: seguimiento.trim() || null } });
   revalidatePath("/asesorias");
 }
 

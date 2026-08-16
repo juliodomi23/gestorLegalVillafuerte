@@ -7,7 +7,8 @@ import { PageTitle, Card, SearchBox, FilterSelect } from "@/components/ui";
 import { Hoja, Campo, Sel, Area, Seccion, Casillas } from "@/components/hoja";
 import { useConfirm } from "@/components/confirm";
 import type { StatusAsesoria } from "@/lib/constants";
-import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction, cambiarStatusAsesoriaAction } from "./actions";
+import { Modal, Field, Textarea } from "@/components/modal";
+import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction, cambiarStatusAsesoriaAction, guardarSeguimientoAsesoriaAction } from "./actions";
 
 export type AsesoriaView = {
   id: string;
@@ -34,7 +35,8 @@ export type AsesoriaView = {
   hijos: string;
   nombreHijos: string;
   presupuestoTexto: string;
-  observaciones: string;
+  /** Qué pasó después de la asesoría. No se llena en la hoja: se escribe desde la tabla. */
+  seguimiento: string;
 };
 
 const statusInfo: Record<StatusAsesoria, { label: string; cls: string }> = {
@@ -57,7 +59,7 @@ function formatFecha(f: string) {
   return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
-function DaySection({ fecha, rows, onEdit, onDelete }: { fecha: string; rows: AsesoriaView[]; onEdit: (r: AsesoriaView) => void; onDelete: (id: string) => void }) {
+function DaySection({ fecha, rows, onEdit, onDelete, onSeguimiento }: { fecha: string; rows: AsesoriaView[]; onEdit: (r: AsesoriaView) => void; onDelete: (id: string) => void; onSeguimiento: (r: AsesoriaView) => void }) {
   const [open, setOpen] = useState(true);
   const recaudado = rows.filter((r) => r.pago).reduce((s, r) => s + r.monto, 0);
   return (
@@ -70,7 +72,7 @@ function DaySection({ fecha, rows, onEdit, onDelete }: { fecha: string; rows: As
       </button>
       {open && (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-[13px]">
+          <table className="w-full min-w-[800px] text-[13px]">
             <thead>
               <tr className="border-t border-b border-line text-left bg-surface">
                 <th className="eyebrow text-muted px-3 py-2.5">Folio</th>
@@ -79,6 +81,7 @@ function DaySection({ fecha, rows, onEdit, onDelete }: { fecha: string; rows: As
                 <th className="eyebrow text-muted px-3 py-2.5">Abogado</th>
                 <th className="eyebrow text-muted px-3 py-2.5">Pagó</th>
                 <th className="eyebrow text-muted px-3 py-2.5">Status</th>
+                <th className="eyebrow text-muted px-3 py-2.5">Seguimiento</th>
                 <th className="eyebrow text-muted px-3 py-2.5 text-right">Acc.</th>
               </tr>
             </thead>
@@ -108,6 +111,16 @@ function DaySection({ fecha, rows, onEdit, onDelete }: { fecha: string; rows: As
                       </div>
                     </div>
                   </td>
+                  {/* Se escribe después de la asesoría, sin abrir la hoja. */}
+                  <td className="px-3 py-3 max-w-[280px]">
+                    <button
+                      onClick={() => onSeguimiento(a)}
+                      title={a.seguimiento || "Escribir seguimiento"}
+                      className={`text-left w-full text-[12.5px] rounded px-1.5 py-1 -mx-1.5 hover:bg-navy/[.06] transition-colors ${a.seguimiento ? "text-ink" : "text-muted"}`}
+                    >
+                      {a.seguimiento ? <span className="line-clamp-2">{a.seguimiento}</span> : "+ Nota"}
+                    </button>
+                  </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center justify-end gap-1">
                       {a.urlDocumento ? <a href={a.urlDocumento} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"><ExternalLink size={14} /></a> : <span className="p-1.5 w-[30px]" />}
@@ -129,7 +142,7 @@ const TABS_FIJAS = ["Todas"];
 const vacio = {
   nombre: "", telefono: "", asunto: "", sucursal: "", abogado: "", pago: "No", monto: "", status: "Pendiente",
   edad: "", sexo: "", estadoCivil: "", escolaridad: "", domicilio: "", nacionalidad: "Mexicana", ocupacion: "",
-  correo: "", domicilioLaboral: "", hijos: "", nombreHijos: "", presupuestoTexto: "", observaciones: "",
+  correo: "", domicilioLaboral: "", hijos: "", nombreHijos: "", presupuestoTexto: "",
 };
 
 export default function AsesoriasClient({
@@ -165,6 +178,9 @@ export default function AsesoriasClient({
   const [folioHoja, setFolioHoja] = useState<string | null>(null);
   const [fechaHoja, setFechaHoja] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Nota de seguimiento: se escribe desde la tabla, aparte de la hoja.
+  const [seguimiento, setSeguimiento] = useState<{ id: string; nombre: string } | null>(null);
+  const [notaSeguimiento, setNotaSeguimiento] = useState("");
   const confirmar = useConfirm();
   const router = useRouter();
 
@@ -235,7 +251,6 @@ export default function AsesoriasClient({
       edad: a.edad, sexo: a.sexo, estadoCivil: a.estadoCivil, escolaridad: a.escolaridad, domicilio: a.domicilio,
       nacionalidad: a.nacionalidad, ocupacion: a.ocupacion, correo: a.correo, domicilioLaboral: a.domicilioLaboral,
       hijos: a.hijos, nombreHijos: a.nombreHijos, presupuestoTexto: a.presupuestoTexto,
-      observaciones: a.observaciones,
     });
     setFolioHoja(a.folio);
     setFechaHoja(formatFecha(a.fecha));
@@ -243,6 +258,18 @@ export default function AsesoriasClient({
   }
   async function borrar(id: string) {
     if (await confirmar({ titulo: "¿Eliminar esta asesoría?", peligro: true, confirmLabel: "Eliminar" })) await borrarAsesoriaAction(id);
+  }
+  function abrirSeguimiento(a: AsesoriaView) {
+    setSeguimiento({ id: a.id, nombre: a.nombre });
+    setNotaSeguimiento(a.seguimiento);
+  }
+  async function guardarSeguimiento() {
+    if (!seguimiento) return;
+    setSaving(true);
+    await guardarSeguimientoAsesoriaAction(seguimiento.id, notaSeguimiento);
+    setSaving(false);
+    setSeguimiento(null);
+    router.refresh();
   }
   async function guardar() {
     setSaving(true);
@@ -256,7 +283,7 @@ export default function AsesoriasClient({
         edad: form.edad, sexo: form.sexo, estadoCivil: form.estadoCivil, escolaridad: form.escolaridad,
         domicilio: form.domicilio, nacionalidad: form.nacionalidad, ocupacion: form.ocupacion, correo: form.correo,
         domicilioLaboral: form.domicilioLaboral, hijos: form.hijos, nombreHijos: form.nombreHijos,
-        presupuestoTexto: form.presupuestoTexto, observaciones: form.observaciones,
+        presupuestoTexto: form.presupuestoTexto,
       };
       if (editId) { await editarAsesoriaAction(editId, data); } else { await crearAsesoriaAction(data); }
       setOpen(false);
@@ -312,7 +339,19 @@ export default function AsesoriasClient({
       </div>
 
       {porDia.length === 0 && <Card className="p-10 text-center text-muted text-[14px]">Sin asesorías para esta sucursal.</Card>}
-      {porDia.map(([fecha, rows]) => <DaySection key={fecha} fecha={fecha} rows={rows} onEdit={abrirEditar} onDelete={borrar} />)}
+      {porDia.map(([fecha, rows]) => <DaySection key={fecha} fecha={fecha} rows={rows} onEdit={abrirEditar} onDelete={borrar} onSeguimiento={abrirSeguimiento} />)}
+
+      <Modal
+        open={!!seguimiento}
+        onClose={() => setSeguimiento(null)}
+        title={`Seguimiento de ${seguimiento?.nombre ?? ""}`}
+        onSubmit={guardarSeguimiento}
+        submitLabel={saving ? "Guardando…" : "Guardar seguimiento"}
+      >
+        <Field label="¿En qué quedó el prospecto?" full>
+          <Textarea rows={5} value={notaSeguimiento} onChange={(e) => setNotaSeguimiento(e.target.value)} placeholder="Volvió por sus escrituras, quedó de traer CURP…" autoFocus />
+        </Field>
+      </Modal>
 
       {porDia.length > 0 && (
         <p data-tour="asesorias-digital" className="text-[12px] text-muted mt-2 flex items-center gap-1.5">
@@ -379,7 +418,6 @@ export default function AsesoriasClient({
         {/* Obligatorio para quien puede asignar: si se deja vacío la asesoría queda a nombre
             de quien captura y nunca le llega al abogado que va a atender al cliente. */}
         {puedeAsignar && <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={opcionesAbogado} required />}
-        <Area label="Observaciones" rows={4} value={form.observaciones} onChange={(v) => set("observaciones", v)} placeholder="Qué se acordó, qué falta, cómo darle seguimiento…" />
         {avisoTurno && (
           <p className="col-span-12 text-[12.5px] text-muted">
             Turno de Tuxtla: le toca a <strong className="text-ink">{avisoTurno}</strong>. Ya viene
