@@ -35,7 +35,7 @@ export type SeguimientoAgendaView = {
 const VISTAS = ["dia", "semana", "mes"] as const;
 type Vista = (typeof VISTAS)[number];
 
-const vacio = { cliente: "", asunto: "", telefono: "", hora: "", sucursal: "", abogado: "" };
+const vacio = { cliente: "", asunto: "", telefono: "", fecha: "", hora: "", sucursal: "", abogado: "" };
 
 function navegarFecha(fechaStr: string, vista: Vista, dir: 1 | -1): string {
   const [y, m, d] = fechaStr.split("-").map(Number);
@@ -231,6 +231,7 @@ export default function AgendaClient({
     await crearCitaAction({
       cliente: form.cliente,
       asunto: form.asunto,
+      fecha: form.fecha || fechaActual,
       hora: form.hora,
       telefono: form.telefono,
       sucursal: form.sucursal,
@@ -297,7 +298,10 @@ export default function AgendaClient({
 
         <span className="flex-1" />
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setForm((f) => ({ ...f, fecha: fechaActual }));
+            setOpen(true);
+          }}
           className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors"
         >
           <CalendarPlus size={18} strokeWidth={1.75} /> Nueva cita
@@ -376,6 +380,9 @@ export default function AgendaClient({
             onChange={(e) => set("asunto", e.target.value)}
             placeholder="Divorcio, consulta…"
           />
+        </Field>
+        <Field label="Fecha">
+          <Input type="date" value={form.fecha} onChange={(e) => set("fecha", e.target.value)} required />
         </Field>
         <Field label="Hora">
           <Input type="time" value={form.hora} onChange={(e) => set("hora", e.target.value)} />
