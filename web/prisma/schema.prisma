@@ -28,11 +28,6 @@ model Sucursal {
   direccion  String?
   telefono   String?
   ultimoFolio Int     @default(0) @map("ultimo_folio")
-  // Geocerca del reloj checador: sin lat/lon, esta sucursal no valida ubicación al checar.
-  lat         Float?
-  lon         Float?
-  radioM      Int      @default(100) @map("radio_m")
-  horaEntrada String?  @map("hora_entrada") // HH:MM, opcional (para puntualidad)
   creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   usuarios     Usuario[] @relation("UsuarioSucursal")
@@ -44,7 +39,6 @@ model Sucursal {
   asesorias    Asesoria[]
   seguimientos Seguimiento[]
   citas        Cita[]
-  checadas     Checada[]
 
   @@map("sucursales")
 }
@@ -88,7 +82,6 @@ model Usuario {
   sucursalEncargadaId  String?  @map("sucursal_encargada_id") @db.Uuid
   activo               Boolean  @default(true)
   debeCambiarPassword  Boolean  @default(false) @map("debe_cambiar_password")
-  pin                  String?  @unique @map("pin") // 4-8 dígitos, para checar sin sesión (reloj checador)
   creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   sucursal          Sucursal?        @relation("UsuarioSucursal", fields: [sucursalId], references: [id])
@@ -110,29 +103,8 @@ model Usuario {
   clientes     Cliente[]
   gastos       GastoExpediente[]
   auditorias   Auditoria[]
-  checadas     Checada[]
 
   @@map("usuarios")
-}
-
-// Entrada/salida del reloj checador. Se registra desde /checar/[sucursal] (sesión
-// ya iniciada, o PIN si no la hay), sin pasar por login normal.
-model Checada {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  usuarioId  String   @map("usuario_id") @db.Uuid
-  sucursalId String   @map("sucursal_id") @db.Uuid
-  tipo       String   // entrada | salida
-  origen     String   @default("sesion") // sesion | pin
-  // true = el GPS confirmó que estaba dentro de la geocerca; null = no se pudo
-  // verificar (sin GPS, o la sucursal no tiene geocerca configurada). Nunca false:
-  // si el GPS confirma que está fuera, la checada se rechaza y no se guarda.
-  enSitio    Boolean? @map("en_sitio")
-  creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz
-
-  usuario  Usuario  @relation(fields: [usuarioId], references: [id])
-  sucursal Sucursal @relation(fields: [sucursalId], references: [id])
-
-  @@map("checadas")
 }
 
 model Cliente {

@@ -35,8 +35,6 @@ export const usuarioSchema = z.object({
   rol: rolSchema,
   sucursalId: z.string().optional().or(z.literal("")),
   telefonoWhatsapp: telefonoSchema,
-  // Para checar entrada/salida sin sesión (reloj checador) desde /checar/[sucursal].
-  pin: z.string().trim().regex(/^\d{4,8}$/, "El PIN debe tener 4-8 dígitos").optional().or(z.literal("")),
   // Un encargado puede llevar varias sucursales y varias personas a la vez.
   sucursalesACargo: z.array(z.string().uuid()).default([]),
   personasACargo: z.array(z.string().uuid()).default([]),
