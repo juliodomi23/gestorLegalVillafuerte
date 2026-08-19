@@ -13,6 +13,7 @@ export type UsuarioView = {
   email: string | null;
   rol: string;
   telefonoWhatsapp: string | null;
+  pin: string | null;
   sucursal: string | null;
   sucursalId: string | null;
   sucursalesACargo: { id: string; nombre: string }[];
@@ -22,7 +23,7 @@ export type UsuarioView = {
 
 const ROL_LABELS: Record<string, string> = { admin: "Admin", abogado: "Abogado", asistente: "Asistente" };
 const vacio = {
-  nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", telefonoWhatsapp: "",
+  nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", telefonoWhatsapp: "", pin: "",
   sucursalesACargo: [] as string[],
   personasACargo: [] as string[],
 };
@@ -64,7 +65,7 @@ export default function ConfiguracionClient({
   const [saving, setSaving] = useState(false);
   const confirmar = useConfirm();
 
-  function set(c: "nombre" | "email" | "password" | "rol" | "sucursalId" | "telefonoWhatsapp", v: string) {
+  function set(c: "nombre" | "email" | "password" | "rol" | "sucursalId" | "telefonoWhatsapp" | "pin", v: string) {
     setForm((f) => ({ ...f, [c]: v }));
   }
 
@@ -90,6 +91,7 @@ export default function ConfiguracionClient({
       rol: u.rol,
       sucursalId: u.sucursalId ?? "",
       telefonoWhatsapp: u.telefonoWhatsapp ?? "",
+      pin: u.pin ?? "",
       sucursalesACargo: u.sucursalesACargo.map((s) => s.id),
       personasACargo: u.personasACargo.map((p) => p.id),
     });
@@ -228,6 +230,14 @@ export default function ConfiguracionClient({
         </Field>
         <Field label="WhatsApp (para dictar al bot)" full>
           <Input value={form.telefonoWhatsapp} onChange={(e) => set("telefonoWhatsapp", e.target.value)} placeholder="961 123 4567" />
+        </Field>
+        <Field label="PIN del reloj checador (opcional)" full>
+          <Input
+            value={form.pin}
+            onChange={(e) => set("pin", e.target.value.replace(/\D/g, "").slice(0, 8))}
+            placeholder="4 a 8 dígitos, para checar sin iniciar sesión"
+            inputMode="numeric"
+          />
         </Field>
       </Modal>
     </>
