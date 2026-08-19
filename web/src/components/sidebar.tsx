@@ -17,6 +17,7 @@ import {
   LogOut,
   HelpCircle,
   BarChart3,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
@@ -46,6 +47,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
     titulo: "Administración",
     items: [
       { href: "/caja", label: "Caja", icon: Wallet, soloAdmin: true },
+      { href: "/reloj-checador", label: "Reloj checador", icon: Clock, soloAdmin: true },
       { href: "/configuracion", label: "Configuración", icon: Settings, soloAdmin: true },
     ],
   },
