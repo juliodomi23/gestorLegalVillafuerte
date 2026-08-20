@@ -11,7 +11,13 @@ export async function crearEventoCalendar(datos: {
 }): Promise<string | null> {
   const url = process.env.N8N_CALENDAR_WEBHOOK_URL;
   const apiKey = process.env.N8N_CALENDAR_WEBHOOK_KEY;
-  if (!url || !apiKey) return null; // integración no configurada
+  if (!url || !apiKey) {
+    // Sin esto el fallo es invisible: la cita se guarda sin evento y nadie se entera.
+    console.warn(
+      "[calendar] N8N_CALENDAR_WEBHOOK_URL/KEY sin definir: la cita se guarda sin evento en Calendar"
+    );
+    return null;
+  }
 
   const fin = new Date(datos.inicio.getTime() + 30 * 60_000); // igual que ver_disponibilidad en n8n
 

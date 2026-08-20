@@ -64,6 +64,11 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       N8N_API_KEY: ${N8N_API_KEY}
+      # Webhook de n8n que crea el evento en Google Calendar al agendar una cita.
+      # Si faltan, crearEventoCalendar() devuelve null sin ruido y la cita se
+      # guarda sin evento: definirlas en el .env NO basta, tienen que mapearse aquí.
+      N8N_CALENDAR_WEBHOOK_URL: ${N8N_CALENDAR_WEBHOOK_URL:-}
+      N8N_CALENDAR_WEBHOOK_KEY: ${N8N_CALENDAR_WEBHOOK_KEY:-}
       # Admin inicial: el seed lo crea en el primer arranque (idempotente).
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
