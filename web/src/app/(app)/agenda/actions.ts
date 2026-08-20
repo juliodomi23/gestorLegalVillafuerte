@@ -5,6 +5,9 @@ import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services
 import { requireSession } from "@/lib/guard";
 import { crearEventoCalendar } from "@/lib/googleCalendar";
 
+const TZ_DESPACHO = "America/Mexico_City";
+const OFFSET_DESPACHO = "-06:00";
+
 export async function crearCitaAction(form: {
   cliente: string;
   asunto: string;
@@ -21,10 +24,15 @@ export async function crearCitaAction(form: {
   ]);
   // El cliente nuevo pertenece al abogado de la cita; si no se eligió, a quien la crea.
   const clienteId = await upsertCliente(form.cliente, form.telefono || undefined, abogadoId ?? sesion.id);
-  // fecha: "2026-08-20", hora: "10:30" → combinar en un solo Date local
-  const [y, mo, d] = (form.fecha || new Date().toLocaleDateString("en-CA")).split("-").map(Number);
-  const [h, m] = (form.hora || "09:00").split(":").map(Number);
-  const fechaHora = new Date(y, mo - 1, d, h, m, 0, 0);
+  // fecha: "2026-08-20", hora: "10:30" → un solo Date.
+  // El offset va explícito: el contenedor corre en UTC, así que `new Date(y, mo, d, h, m)`
+  // interpretaba lo capturado como hora UTC y la cita quedaba 6 h corrida (11:30 → 05:30),
+  // tanto en la agenda como en el evento de Google Calendar.
+  // Chiapas es UTC-6 todo el año: México no aplica horario de verano desde 2022.
+  const fecha = form.fecha || new Date().toLocaleDateString("en-CA", { timeZone: TZ_DESPACHO });
+  const hora = form.hora || "09:00";
+  const fechaHora = new Date(`${fecha}T${hora}:00${OFFSET_DESPACHO}`);
+  if (isNaN(fechaHora.getTime())) throw new Error("Fecha u hora inválida");
 
   const googleEventId = await crearEventoCalendar({
     cliente: form.cliente,
