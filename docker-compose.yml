@@ -22,7 +22,9 @@ services:
 
   # Respaldo diario de la BD al volumen gestorlegal_backups, conserva 14 días.
   # ponytail: bucle sh en vez de cron; si el contenedor reinicia se reinicia el ciclo.
-  # Suficiente para un respaldo diario — cambiar a cron real si se necesita hora exacta.
+  # Respaldo al arrancar y luego todos los días a las 20:00 hora del despacho.
+  # El sleep se calcula contra el próximo 20:00 en vez de dormir 86400s fijos: así la hora no
+  # se va corriendo con cada redespliegue. Sin cron ni imagen extra.
   backup:
     image: postgres:16
     restart: unless-stopped
@@ -34,13 +36,17 @@ services:
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB}
+      TZ: America/Mexico_City
     volumes:
       - gestorlegal_backups:/backups
     command: >
       sh -c 'while true; do
       pg_dump | gzip > /backups/gestorlegal_$$(date +%F_%H%M).sql.gz &&
       find /backups -name "*.sql.gz" -mtime +14 -delete;
-      sleep 86400;
+      ahora=$$(date +%s);
+      proximo=$$(date -d "today 20:00" +%s);
+      [ $$ahora -ge $$proximo ] && proximo=$$(date -d "tomorrow 20:00" +%s);
+      sleep $$((proximo - ahora));
       done'
 
   app:
