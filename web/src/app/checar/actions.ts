@@ -12,7 +12,16 @@ import {
   registrarIntentoPin,
 } from "@/lib/checador";
 
-export type ResultadoChecada = { tipo: "entrada" | "salida"; nombre: string; enSitio: boolean | null };
+// Next reemplaza el mensaje de cualquier throw de un server action por un genérico
+// ("An error occurred in the Server Components render") en producción. Por eso el
+// motivo del fallo viaja como dato de retorno, no como excepción.
+export type ResultadoChecada =
+  | { ok: true; tipo: "entrada" | "salida"; nombre: string; enSitio: boolean | null }
+  | { ok: false; error: string };
+
+function fallo(e: unknown): ResultadoChecada {
+  return { ok: false, error: e instanceof Error ? e.message : "No se pudo registrar la checada" };
+}
 
 export type Ubicacion = { lat: number; lon: number; precision: number } | null;
 
@@ -35,6 +44,14 @@ async function resolverEnSitio(sucursalId: string, ubicacion: Ubicacion): Promis
 
 // Con la sesión ya iniciada en el celular: no pide nada, solo confirma quién es.
 export async function registrarChecadaSesion(sucursalSlug: string, ubicacion: Ubicacion): Promise<ResultadoChecada> {
+  try {
+    return await checarConSesion(sucursalSlug, ubicacion);
+  } catch (e) {
+    return fallo(e);
+  }
+}
+
+async function checarConSesion(sucursalSlug: string, ubicacion: Ubicacion): Promise<ResultadoChecada> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("No hay sesión activa");
   const sucursal = await resolverSucursalPorSlug(sucursalSlug);
@@ -45,11 +62,23 @@ export async function registrarChecadaSesion(sucursalSlug: string, ubicacion: Ub
   await prisma.checada.create({
     data: { usuarioId: session.user.id, sucursalId: sucursal.id, tipo, origen: "sesion", enSitio },
   });
-  return { tipo, nombre: session.user.name ?? "", enSitio };
+  return { ok: true, tipo, nombre: session.user.name ?? "", enSitio };
 }
 
 // Sin sesión (celular prestado, o quien no tiene cuenta en el sistema): PIN.
 export async function registrarChecadaPin(
+  pin: string,
+  sucursalSlug: string,
+  ubicacion: Ubicacion
+): Promise<ResultadoChecada> {
+  try {
+    return await checarConPin(pin, sucursalSlug, ubicacion);
+  } catch (e) {
+    return fallo(e);
+  }
+}
+
+async function checarConPin(
   pin: string,
   sucursalSlug: string,
   ubicacion: Ubicacion
@@ -77,5 +106,5 @@ export async function registrarChecadaPin(
   await prisma.checada.create({
     data: { usuarioId: usuario.id, sucursalId: sucursal.id, tipo, origen: "pin", enSitio },
   });
-  return { tipo, nombre: usuario.nombre, enSitio };
+  return { ok: true, tipo, nombre: usuario.nombre, enSitio };
 }

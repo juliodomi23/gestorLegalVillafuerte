@@ -29,6 +29,11 @@ export default async function CheckarPage({ params }: { params: { sucursal: stri
       sucursalSlug={params.sucursal}
       sucursalNombre={sucursal.nombre}
       sesion={sesion}
+      geocerca={
+        sucursal.lat != null && sucursal.lon != null
+          ? { lat: sucursal.lat, lon: sucursal.lon, radioM: sucursal.radioM }
+          : null
+      }
     />
   );
 }

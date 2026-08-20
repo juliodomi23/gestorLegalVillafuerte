@@ -27,7 +27,7 @@ export function tipoDespuesDe(
 }
 
 // Distancia en metros entre dos coordenadas (fórmula haversine).
-function distanciaMetros(lat1: number, lon1: number, lat2: number, lon2: number): number {
+export function distanciaMetros(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
   const rad = (g: number) => (g * Math.PI) / 180;
   const dLat = rad(lat2 - lat1);

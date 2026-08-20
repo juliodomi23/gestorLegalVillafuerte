@@ -1,61 +1,106 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Loader, LogIn, LogOut, KeyRound, MapPin, MapPinOff } from "lucide-react";
 import { registrarChecadaSesion, registrarChecadaPin, type ResultadoChecada, type Ubicacion } from "../actions";
+import type { Geocerca } from "./mapa";
+
+// Leaflet toca window al importarse, asi que el minimapa no puede renderizarse en el servidor.
+const MapaGeocerca = dynamic(() => import("./mapa"), {
+  ssr: false,
+  loading: () => <div className="mt-5 h-[200px] rounded-xl bg-line/60 animate-pulse" />,
+});
 
 type Sesion = { nombre: string; tipoSugerido: "entrada" | "salida" } | null;
 
 const ETIQUETA: Record<"entrada" | "salida", string> = { entrada: "Entrada", salida: "Salida" };
 
-// Intenta obtener el GPS del celular; null si lo niega, tarda demasiado, o el
-// navegador no lo soporta. No selfie de respaldo: si no hay GPS, la checada se
-// guarda igual pero marcada como no verificada (visible para el admin).
-function obtenerUbicacion(): Promise<Ubicacion> {
+type MotivoSinGps = "denegado" | "sin_senal" | "no_soportado" | null;
+
+// Intenta obtener el GPS del celular. Devuelve también POR QUÉ falló: "denegado"
+// es el único caso accionable por la persona (el navegador recuerda un permiso
+// negado y ya no vuelve a preguntar, así que sin este aviso parece que la app
+// nunca pidió la ubicación). Sin GPS la checada se guarda igual, marcada como
+// no verificada y visible así para el admin.
+function obtenerUbicacion(): Promise<{ ubicacion: Ubicacion; motivo: MotivoSinGps }> {
   return new Promise((resolve) => {
-    if (!("geolocation" in navigator)) return resolve(null);
-    const listo = setTimeout(() => resolve(null), 8000);
+    if (!("geolocation" in navigator)) return resolve({ ubicacion: null, motivo: "no_soportado" });
+    let resuelto = false;
+    const terminar = (r: { ubicacion: Ubicacion; motivo: MotivoSinGps }) => {
+      if (resuelto) return;
+      resuelto = true;
+      clearTimeout(limite);
+      resolve(r);
+    };
+    const limite = setTimeout(() => terminar({ ubicacion: null, motivo: "sin_senal" }), 8000);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        clearTimeout(listo);
-        resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, precision: pos.coords.accuracy });
-      },
-      () => {
-        clearTimeout(listo);
-        resolve(null);
-      },
+      (pos) =>
+        terminar({
+          ubicacion: { lat: pos.coords.latitude, lon: pos.coords.longitude, precision: pos.coords.accuracy },
+          motivo: null,
+        }),
+      (err) =>
+        terminar({
+          ubicacion: null,
+          motivo: err.code === err.PERMISSION_DENIED ? "denegado" : "sin_senal",
+        }),
       { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
     );
   });
 }
 
+const AVISO_SIN_GPS: Record<Exclude<MotivoSinGps, null>, string> = {
+  denegado:
+    "Tu navegador tiene bloqueada la ubicación para este sitio y ya no vuelve a preguntar. Abre el candado de la barra de direcciones, permite la ubicación y vuelve a intentar.",
+  sin_senal: "No se pudo leer el GPS a tiempo. Sal a un lugar con señal y vuelve a intentar.",
+  no_soportado: "Este navegador no soporta ubicación.",
+};
+
 export default function CheckarClient({
   sucursalSlug,
   sucursalNombre,
   sesion,
+  geocerca,
 }: {
   sucursalSlug: string;
   sucursalNombre: string;
   sesion: Sesion;
+  geocerca: Geocerca | null;
 }) {
   const [usarPin, setUsarPin] = useState(!sesion);
   const [pin, setPin] = useState("");
   const [cargando, setCargando] = useState(false);
   const [ubicando, setUbicando] = useState(false);
   const [error, setError] = useState("");
-  const [resultado, setResultado] = useState<ResultadoChecada | null>(null);
+  const [avisoGps, setAvisoGps] = useState<MotivoSinGps>(null);
+  const [miUbicacion, setMiUbicacion] = useState<{ lat: number; lon: number } | null>(null);
+  const [resultado, setResultado] = useState<Extract<ResultadoChecada, { ok: true }> | null>(null);
+
+  useEffect(() => {
+    if (!geocerca) return;
+    let vivo = true;
+    obtenerUbicacion().then(({ ubicacion, motivo }) => {
+      if (!vivo) return;
+      if (ubicacion) setMiUbicacion({ lat: ubicacion.lat, lon: ubicacion.lon });
+      setAvisoGps(motivo);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [geocerca]);
 
   async function conSesion() {
     setError("");
     setUbicando(true);
-    const ubicacion = await obtenerUbicacion();
+    const { ubicacion, motivo } = await obtenerUbicacion();
+    setAvisoGps(motivo);
+    if (ubicacion) setMiUbicacion({ lat: ubicacion.lat, lon: ubicacion.lon });
     setUbicando(false);
     setCargando(true);
-    try {
-      setResultado(await registrarChecadaSesion(sucursalSlug, ubicacion));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo registrar la checada");
-    }
+    const r = await registrarChecadaSesion(sucursalSlug, ubicacion);
+    if (r.ok) setResultado(r);
+    else setError(r.error);
     setCargando(false);
   }
 
@@ -63,14 +108,17 @@ export default function CheckarClient({
     e.preventDefault();
     setError("");
     setUbicando(true);
-    const ubicacion = await obtenerUbicacion();
+    const { ubicacion, motivo } = await obtenerUbicacion();
+    setAvisoGps(motivo);
+    if (ubicacion) setMiUbicacion({ lat: ubicacion.lat, lon: ubicacion.lon });
     setUbicando(false);
     setCargando(true);
-    try {
-      setResultado(await registrarChecadaPin(pin, sucursalSlug, ubicacion));
+    const r = await registrarChecadaPin(pin, sucursalSlug, ubicacion);
+    if (r.ok) {
+      setResultado(r);
       setPin("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo registrar la checada");
+    } else {
+      setError(r.error);
     }
     setCargando(false);
   }
@@ -85,6 +133,8 @@ export default function CheckarClient({
         </div>
         <p className="eyebrow text-amber text-center">Reloj checador</p>
         <h1 className="font-serif text-[26px] text-ink leading-tight mt-1 mb-1 text-center">{sucursalNombre}</h1>
+
+        {!resultado && geocerca && <MapaGeocerca geocerca={geocerca} yo={miUbicacion} />}
 
         {resultado ? (
           <div className="mt-6 text-center bg-success-wash rounded-xl px-5 py-6">
@@ -168,6 +218,11 @@ export default function CheckarClient({
               </form>
             )}
             {error && <p className="text-[13px] text-danger bg-danger-wash rounded-lg px-3 py-2 mt-4 text-center">{error}</p>}
+            {avisoGps && (
+              <p className="text-[12.5px] text-muted bg-amber-wash rounded-lg px-3 py-2 mt-3 flex items-start gap-2">
+                <MapPinOff size={14} className="shrink-0 mt-0.5" /> {AVISO_SIN_GPS[avisoGps]}
+              </p>
+            )}
           </>
         )}
       </div>

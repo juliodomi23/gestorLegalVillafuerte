@@ -18,6 +18,7 @@ import {
   HelpCircle,
   BarChart3,
   Clock,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
@@ -132,6 +133,15 @@ export function Sidebar({
           <div className="text-[13px] text-white truncate">{nombre}</div>
           <div className="text-[11px] text-white/45">{rolLabel[rol]}</div>
         </div>
+        <Link
+          href="/mi-pin"
+          onClick={onClose}
+          title="Mi PIN del reloj checador"
+          aria-label="Mi PIN del reloj checador"
+          className="text-white/45 hover:text-white transition-colors"
+        >
+          <KeyRound size={18} strokeWidth={1.75} />
+        </Link>
         <button
           onClick={() => window.dispatchEvent(new Event("gl:tour"))}
           title="Ver recorrido"
