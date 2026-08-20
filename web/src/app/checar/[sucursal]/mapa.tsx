@@ -10,7 +10,7 @@ export type Geocerca = { lat: number; lon: number; radioM: number };
 const AZUL = "#0891B2";
 const VERDE = "#22C55E";
 
-// Minimapa de OpenStreetMap: círculo azul = área de la sucursal, punto verde =
+// Minimapa: círculo azul = área de la sucursal, punto verde =
 // donde te ubicó el GPS. Es informativo; quien decide si la checada entra es el
 // servidor, que además conoce el margen de imprecisión del GPS.
 export default function MapaGeocerca({ geocerca, yo }: { geocerca: Geocerca; yo: { lat: number; lon: number } | null }) {
@@ -20,11 +20,15 @@ export default function MapaGeocerca({ geocerca, yo }: { geocerca: Geocerca; yo:
 
   useEffect(() => {
     if (!div.current || mapa.current) return;
-    const m = L.map(div.current, { zoomControl: false, attributionControl: false }).setView(
-      [geocerca.lat, geocerca.lon],
-      17
-    );
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(m);
+    const m = L.map(div.current, { zoomControl: false }).setView([geocerca.lat, geocerca.lon], 17);
+    // Los tiles NO pueden salir de tile.openstreetmap.org: su política de uso bloquea
+    // a Leaflet desde el navegador y devuelve 503 (header x-blocked). CARTO sirve los
+    // mismos datos de OSM y sí permite este uso; la atribución es obligatoria.
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      subdomains: "abcd",
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(m);
     L.circle([geocerca.lat, geocerca.lon], {
       radius: geocerca.radioM,
       color: AZUL,
