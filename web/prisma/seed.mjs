@@ -35,7 +35,7 @@ async function sembrarActividades() {
     if (existente) {
       await prisma.actividadPlantilla.update({
         where: { id: existente.id },
-        data: { hora: a.hora, descripcion: a.descripcion },
+        data: { hora: a.hora, descripcion: a.descripcion, senal: a.senal ?? null },
       });
     } else {
       await prisma.actividadPlantilla.create({ data: a });

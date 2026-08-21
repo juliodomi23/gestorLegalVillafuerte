@@ -4,6 +4,7 @@
 // avance es simplemente realizadas/total — igual que en la hoja original.
 
 import { prisma } from "@/lib/prisma";
+import { calcularSenales, type Senal } from "./senales";
 
 const TZ_DESPACHO = "America/Mexico_City";
 
@@ -16,6 +17,8 @@ export type ActividadDelDia = {
   descripcion: string;
   realizada: boolean;
   observaciones: string;
+  // Lo que el gestor ya sabe al respecto, si esta actividad tiene una señal ligada.
+  senal: Senal | null;
 };
 
 export type DiaResumen = {
@@ -66,6 +69,11 @@ export async function actividadesDelDia(fechaISO: string): Promise<ActividadDelD
   ]);
 
   const porPlantilla = new Map(registros.map((r) => [r.plantillaId, r]));
+  const senales = await calcularSenales(
+    plantillas.map((p) => p.senal).filter((s): s is string => !!s),
+    fechaISO
+  );
+
   return plantillas.map((p) => {
     const r = porPlantilla.get(p.id);
     return {
@@ -75,6 +83,7 @@ export async function actividadesDelDia(fechaISO: string): Promise<ActividadDelD
       descripcion: p.descripcion,
       realizada: r?.realizada ?? false,
       observaciones: r?.observaciones ?? "",
+      senal: p.senal ? senales[p.senal] ?? null : null,
     };
   });
 }

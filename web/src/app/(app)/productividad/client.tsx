@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, Loader, MessageSquare } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, CircleDot, Loader, MessageSquare } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { marcarActividadAction } from "./actions";
 import type { ActividadDelDia, DiaResumen } from "@/lib/services/productividad";
@@ -78,6 +78,7 @@ export default function ProductividadClient({
 
   const hechas = actividades.filter(estaMarcada).length;
   const total = actividades.length;
+  const conSenal = actividades.filter((a) => a.senal).length;
   const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
 
   const totalSemana = semana.reduce((s, d) => s + d.total, 0);
@@ -149,7 +150,8 @@ export default function ProductividadClient({
           <div>
             <h3 className="font-serif text-[17px]">Actividades del día</h3>
             <p className="text-[12.5px] text-muted mt-0.5">
-              Todas pesan igual. Marca la casilla al completarla; la nota es opcional.
+              Todas pesan igual. Donde el gestor ya tiene el dato, lo verás debajo sin
+              tener que preguntarlo.
             </p>
           </div>
           {pendiente && <Loader size={15} className="animate-spin text-muted shrink-0" />}
@@ -203,6 +205,17 @@ export default function ProductividadClient({
                   </button>
                 </div>
 
+                {a.senal && (
+                  <p
+                    className={`text-[12px] ml-[70px] mt-1.5 flex items-center gap-1.5 ${
+                      a.senal.hecho ? "text-success" : "text-muted"
+                    }`}
+                  >
+                    {a.senal.hecho ? <Check size={12} strokeWidth={3} /> : <CircleDot size={12} />}
+                    {a.senal.detalle}
+                  </p>
+                )}
+
                 {notaAbierta === a.plantillaId ? (
                   <textarea
                     autoFocus
@@ -225,6 +238,13 @@ export default function ProductividadClient({
             </p>
           )}
         </div>
+
+        {conSenal > 0 && (
+          <p className="text-[12px] text-muted px-5 py-3 border-t border-line">
+            {conSenal} de {total} actividades muestran lo que el gestor ya registró hoy. Es
+            informativo: un cero puede ser que no se hizo, o que se hizo y no se capturó.
+          </p>
+        )}
       </Card>
 
       <Card className="p-5">

@@ -475,6 +475,9 @@ model ActividadPlantilla {
   hora        String   // HH:MM
   orden       Int
   descripcion String
+  // Qué dato del gestor da por hecha esta actividad, si es que hay alguno.
+  // Ver lib/services/senales.ts. null = solo se puede marcar a mano.
+  senal       String?
   activa      Boolean  @default(true)
   creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
