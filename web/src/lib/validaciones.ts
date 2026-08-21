@@ -37,8 +37,8 @@ export const usuarioSchema = z.object({
   telefonoWhatsapp: telefonoSchema,
   // Para checar entrada/salida sin sesión (reloj checador) desde /checar/[sucursal].
   pin: z.string().trim().regex(/^\d{4,8}$/, "El PIN debe tener 4-8 dígitos").optional().or(z.literal("")),
-  // Envíos automáticos: "" (ninguno) | "sucursal" | "todas".
-  recibeEnvio: z.enum(["", "sucursal", "todas"]).default(""),
+  // Envíos automáticos: "" (ninguno) | "todas" | nombre de la sucursal del resumen.
+  recibeEnvio: z.string().trim().max(60).default(""),
   // Acceso a la sección de Productividad sin necesidad de ser admin.
   verProductividad: z.boolean().default(false),
   // Un encargado puede llevar varias sucursales y varias personas a la vez.

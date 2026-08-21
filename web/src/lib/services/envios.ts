@@ -121,22 +121,30 @@ export type Destinatario = {
 };
 
 // A quién le toca cada envío. Sale de Configuración › Usuarios, no del código.
+//
+// `recibeEnvio` guarda "todas" o el nombre de la sucursal cuyo resumen recibe esa
+// persona, que no tiene por qué ser la de su ficha: los tres coordinadores de Tuxtla
+// están dados de alta en otras plazas y aun así el resumen que les toca es el de Tuxtla.
 export async function destinatarios(tipo?: "sucursal" | "todas"): Promise<Destinatario[]> {
   const usuarios = await prisma.usuario.findMany({
     where: {
       activo: true,
-      recibeEnvio: tipo ? tipo : { not: null },
       telefonoWhatsapp: { not: null },
+      ...(tipo === "todas"
+        ? { recibeEnvio: "todas" }
+        : tipo === "sucursal"
+        ? { recibeEnvio: { not: null, notIn: ["", "todas"] } }
+        : { recibeEnvio: { not: null } }),
     },
-    include: { sucursal: { select: { nombre: true } } },
     orderBy: { nombre: "asc" },
   });
 
   return usuarios.map((u) => ({
     nombre: u.nombre,
     telefono: u.telefonoWhatsapp ?? "",
-    sucursal: u.sucursal?.nombre ?? null,
-    tipo: u.recibeEnvio ?? "",
+    // Para el envío por sucursal, la sucursal es la del envío, no la de su ficha.
+    sucursal: u.recibeEnvio === "todas" ? null : u.recibeEnvio,
+    tipo: u.recibeEnvio === "todas" ? "todas" : "sucursal",
   }));
 }
 

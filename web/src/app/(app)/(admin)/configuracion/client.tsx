@@ -24,6 +24,8 @@ export type UsuarioView = {
 };
 
 const ROL_LABELS: Record<string, string> = { admin: "Admin", abogado: "Abogado", asistente: "Asistente" };
+const ENVIO_NINGUNO = "No recibe";
+const ENVIO_TODAS = "Citados de todo el despacho (8:00)";
 const vacio = {
   nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", telefonoWhatsapp: "", pin: "",
   verProductividad: false,
@@ -247,25 +249,35 @@ export default function ConfiguracionClient({
         </Field>
         <Field label="Envíos automáticos por WhatsApp" full>
           <Select
-            options={["No recibe", "Resumen de su sucursal (9:00)", "Citados de todo el despacho (8:00)"]}
+            options={[
+              ENVIO_NINGUNO,
+              ENVIO_TODAS,
+              ...sucursales.map((s) => `Resumen de ${s.nombre} (9:00)`),
+            ]}
             value={
-              form.recibeEnvio === "sucursal"
-                ? "Resumen de su sucursal (9:00)"
+              form.recibeEnvio === ""
+                ? ENVIO_NINGUNO
                 : form.recibeEnvio === "todas"
-                ? "Citados de todo el despacho (8:00)"
-                : "No recibe"
+                ? ENVIO_TODAS
+                : `Resumen de ${form.recibeEnvio} (9:00)`
             }
-            onChange={(e) =>
+            onChange={(e) => {
+              const v = e.target.value;
               setForm((f) => ({
                 ...f,
-                recibeEnvio: e.target.value.startsWith("Resumen")
-                  ? "sucursal"
-                  : e.target.value.startsWith("Citados")
-                  ? "todas"
-                  : "",
-              }))
-            }
+                recibeEnvio:
+                  v === ENVIO_TODAS
+                    ? "todas"
+                    : v === ENVIO_NINGUNO
+                    ? ""
+                    : v.replace(/^Resumen de /, "").replace(/ \(9:00\)$/, ""),
+              }));
+            }}
           />
+          <p className="text-[12px] text-muted mt-1.5">
+            La sucursal del resumen no tiene que ser la de su ficha: los coordinadores de
+            Tuxtla están dados de alta en otras plazas.
+          </p>
         </Field>
         <Field label="Permisos" full>
           <label className="flex items-start gap-2.5 text-[13.5px] cursor-pointer">

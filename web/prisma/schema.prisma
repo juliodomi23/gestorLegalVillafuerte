@@ -94,8 +94,11 @@ model Usuario {
   // no debe ver Caja ni Configuración.
   verProductividad     Boolean  @default(false) @map("ver_productividad")
   // Envíos automáticos por WhatsApp. null = no recibe ninguno.
-  //   "sucursal" → resumen de asesorías de SU sucursal, 9:00
-  //   "todas"    → citados del día de todo el despacho, 8:00 (Lic. Karen)
+  //   "todas"            → citados del día de todo el despacho, 8:00 (Lic. Karen)
+  //   <nombre sucursal>  → resumen de asesorías de ESA sucursal, 9:00
+  // Guarda la sucursal del envío, no un booleano, porque no siempre es la del campo
+  // `sucursalId`: los coordinadores de Tuxtla tienen fichas en otras plazas y aun así
+  // el resumen que les toca es el de Tuxtla.
   // Se elige en Configuración › Usuarios; así cambiar destinatarios no es un deploy.
   recibeEnvio          String?  @map("recibe_envio")
   creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz
