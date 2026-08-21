@@ -1,12 +1,12 @@
 import { autorizado, noAutorizado, ok, fail, leerBody } from "@/lib/api";
 import { agendarCita, citasDelDia, type DatosCita } from "@/lib/services/citas";
+import { hoyDespacho } from "@/lib/fecha";
 
 // CRON matutino: citas del día para mandar recordatorios. ?fecha=2026-06-09 (default: hoy)
 export async function GET(req: Request) {
   if (!autorizado(req)) return noAutorizado();
-  const fecha =
-    new URL(req.url).searchParams.get("fecha") ??
-    new Date().toISOString().split("T")[0];
+  // toISOString() daba el día UTC: pasadas las 18:00 en Chiapas ya era mañana.
+  const fecha = new URL(req.url).searchParams.get("fecha") ?? hoyDespacho();
   try {
     const citas = await citasDelDia(fecha);
     return ok(citas);

@@ -3,15 +3,7 @@
 // se consultan desde otro lado.
 
 import { prisma } from "@/lib/prisma";
-
-const TZ_OFFSET = "-06:00"; // Chiapas, todo el año
-
-function rangoDelDia(fechaISO: string) {
-  return {
-    gte: new Date(`${fechaISO}T00:00:00${TZ_OFFSET}`),
-    lte: new Date(`${fechaISO}T23:59:59.999${TZ_OFFSET}`),
-  };
-}
+import { rangoDelDiaDespacho as rangoDelDia } from "@/lib/fecha";
 
 function horaLocal(fecha: Date): string {
   return fecha.toLocaleTimeString("es-MX", {

@@ -5,8 +5,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { calcularSenales, type Senal } from "./senales";
-
-const TZ_DESPACHO = "America/Mexico_City";
+import { hoyDespacho, TZ_DESPACHO } from "@/lib/fecha";
 
 export const DIAS = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
@@ -39,9 +38,7 @@ export function diaSemanaDe(fechaISO: string): number {
   return dom0 === 0 ? 7 : dom0;
 }
 
-export function hoyISO(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: TZ_DESPACHO });
-}
+export const hoyISO = hoyDespacho;
 
 // El lunes de la semana a la que pertenece esa fecha.
 export function lunesDe(fechaISO: string): string {

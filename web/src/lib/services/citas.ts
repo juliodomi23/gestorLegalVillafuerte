@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { parseFecha } from "@/lib/fecha";
+import { parseFecha, rangoDelDiaDespacho } from "@/lib/fecha";
 import { resolverSucursal, resolverAbogado, upsertCliente } from "./resolvers";
 
 export type DatosCita = {
@@ -35,12 +35,10 @@ async function buscarClienteExistente(
 }
 
 export async function citasDelDia(fecha: string) {
-  const inicio = new Date(fecha);
-  inicio.setHours(0, 0, 0, 0);
-  const fin = new Date(fecha);
-  fin.setHours(23, 59, 59, 999);
+  // setHours() usaba la hora del proceso: corriendo en UTC, "el día" iba de las
+  // 18:00 del día anterior a las 17:59 del pedido.
   return prisma.cita.findMany({
-    where: { fechaHora: { gte: inicio, lte: fin } },
+    where: { fechaHora: rangoDelDiaDespacho(fecha) },
     orderBy: { fechaHora: "asc" },
     include: { cliente: true, abogado: true, sucursal: true },
   });

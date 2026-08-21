@@ -9,22 +9,13 @@
 // esa diferencia la resuelve una persona, no una consulta.
 
 import { prisma } from "@/lib/prisma";
-
-const TZ_OFFSET = "-06:00"; // Chiapas, todo el año
+import { rangoDelDiaDespacho as rangoDelDia } from "@/lib/fecha";
 
 export type Senal = {
   clave: string;
   hecho: boolean;
   detalle: string;
 };
-
-// Rango completo del día en hora del despacho, para los campos que son timestamp.
-function rangoDelDia(fechaISO: string) {
-  return {
-    gte: new Date(`${fechaISO}T00:00:00${TZ_OFFSET}`),
-    lte: new Date(`${fechaISO}T23:59:59.999${TZ_OFFSET}`),
-  };
-}
 
 const plural = (n: number, singular: string, plural_: string) =>
   `${n} ${n === 1 ? singular : plural_}`;
