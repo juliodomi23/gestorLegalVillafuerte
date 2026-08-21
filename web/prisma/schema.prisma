@@ -508,3 +508,21 @@ model ActividadRegistro {
   @@index([fecha])
   @@map("actividades_registro")
 }
+
+// Bitácora de los envíos automáticos por WhatsApp. Existe para poder responder
+// "¿ya salió?" sin depender de los logs de n8n: de eso vive el aviso de las 8:30,
+// que avisa justamente cuando el de las 8:00 NO salió.
+model EnvioRegistro {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo         String   // citados_karen | resumen_sucursal | no_shows
+  fecha        DateTime @db.Date
+  destinatario String?
+  total        Int      @default(0)
+  ok           Boolean  @default(true)
+  detalle      String?
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  @@index([tipo, fecha])
+  @@map("envios_registro")
+}
+
