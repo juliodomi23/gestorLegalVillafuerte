@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
+import { puedeVerProductividad } from "@/lib/guard";
 
 export default async function AppLayout({
   children,
@@ -14,8 +15,10 @@ export default async function AppLayout({
   const { name, rol, debeCambiarPassword } = session.user;
   if (debeCambiarPassword) redirect("/cambiar-password");
 
+  const verProductividad = await puedeVerProductividad();
+
   return (
-    <AppShell nombre={name ?? "Usuario"} rol={rol}>
+    <AppShell nombre={name ?? "Usuario"} rol={rol} verProductividad={verProductividad}>
       {children}
     </AppShell>
   );

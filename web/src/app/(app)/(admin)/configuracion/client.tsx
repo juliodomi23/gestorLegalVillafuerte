@@ -14,6 +14,7 @@ export type UsuarioView = {
   rol: string;
   telefonoWhatsapp: string | null;
   pin: string | null;
+  verProductividad: boolean;
   sucursal: string | null;
   sucursalId: string | null;
   sucursalesACargo: { id: string; nombre: string }[];
@@ -24,6 +25,7 @@ export type UsuarioView = {
 const ROL_LABELS: Record<string, string> = { admin: "Admin", abogado: "Abogado", asistente: "Asistente" };
 const vacio = {
   nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", telefonoWhatsapp: "", pin: "",
+  verProductividad: false,
   sucursalesACargo: [] as string[],
   personasACargo: [] as string[],
 };
@@ -92,6 +94,7 @@ export default function ConfiguracionClient({
       sucursalId: u.sucursalId ?? "",
       telefonoWhatsapp: u.telefonoWhatsapp ?? "",
       pin: u.pin ?? "",
+      verProductividad: u.verProductividad,
       sucursalesACargo: u.sucursalesACargo.map((s) => s.id),
       personasACargo: u.personasACargo.map((p) => p.id),
     });
@@ -238,6 +241,22 @@ export default function ConfiguracionClient({
             placeholder="4 a 8 dígitos, para checar sin iniciar sesión"
             inputMode="numeric"
           />
+        </Field>
+        <Field label="Permisos" full>
+          <label className="flex items-start gap-2.5 text-[13.5px] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.verProductividad}
+              onChange={(e) => setForm((f) => ({ ...f, verProductividad: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 accent-navy shrink-0"
+            />
+            <span>
+              Ver Productividad
+              <span className="block text-[12.5px] text-muted">
+                La rutina del Coordinador de Operaciones. Los admin la ven siempre.
+              </span>
+            </span>
+          </label>
         </Field>
       </Modal>
     </>

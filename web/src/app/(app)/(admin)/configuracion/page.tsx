@@ -21,6 +21,7 @@ export default async function ConfiguracionPage() {
     rol: u.rol,
     telefonoWhatsapp: u.telefonoWhatsapp,
     pin: u.pin,
+    verProductividad: u.verProductividad,
     sucursal: u.sucursal?.nombre ?? null,
     sucursalId: u.sucursalId,
     sucursalesACargo: u.sucursalesACargo,

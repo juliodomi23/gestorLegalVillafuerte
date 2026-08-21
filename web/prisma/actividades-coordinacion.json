@@ -1,0 +1,446 @@
+[
+  {
+    "diaSemana": 1,
+    "orden": 1,
+    "hora": "09:00",
+    "descripcion": "Preguntar al lic Villafuerte si ya mando a la secretaria general a las personas citadas del día, las capturas de pantalla de los citados para cada una de las sucursales."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 2,
+    "hora": "10:00",
+    "descripcion": "Preguntar a la secretaria General si ya realizó las llamadas que le dio el lic Villafuerte del día y si ya le mando la relación de las personas que han confirmado, quienes no contestaron y quienes reagendaron."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 3,
+    "hora": "11:30",
+    "descripcion": "Enviar mensaje a los coordinadores para saber si ya revisaron la lista de sus asuntos en su sucursal, así como si ya le preguntaron a sus colaboradores y titulares."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 4,
+    "hora": "12:00",
+    "descripcion": "Pedir la relación a cada uno de los coordinadores y pregunto quienes irán al juzgado para el martes, si es miércoles pregunto quienes irán el jueves."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 5,
+    "hora": "12:00",
+    "descripcion": "Preguntar al colaborador Fernando Salas para preguntarle si ya revisó los acuerdos Federales y si ya entrego los acuerdos a los abogados que correspondan."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 6,
+    "hora": "12:00",
+    "descripcion": "Preguntar a los Coordinadores si ya revisaron en su agenda cuales son los expedientes que no les han dado respuesta de su solicitud para que se mande a pedir información el martes o jueves."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 7,
+    "hora": "13:00",
+    "descripcion": "Preguntar a los coordinadores si ya revisaron en la plataforma sus expedientes, como los expedientes de sus colaboradores y así como de sus titulares y si ya tienen realizado o están realizando los escritos que van a realizar."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 8,
+    "hora": "16:00",
+    "descripcion": "Preguntar a la secretaria general si ya recabó quienes acudieron citas, quienes y cuantos pagaron asesorías de cada sucursal y si ya le mando al licenciado Villafuerte la información."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 9,
+    "hora": "16:00",
+    "descripcion": "Preguntar a los colaboradores si ellos, sus colaboradores y titulares presentaron demandas y si le pasaron los datos al director."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 10,
+    "hora": "17:00",
+    "descripcion": "Preguntar a los coordinadores si sus colaboradores o titulares ya pasaron la información de las asesorías que recibieron y así como los contratos que se hayan revisado del día."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 11,
+    "hora": "20:00",
+    "descripcion": "Preguntar al Director si entró a la plataforma y realizó las llamadas a los clientes que pidieron que se les llamará y si reagendó a los clientes que le pidieron a la secretaria general."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 12,
+    "hora": "20:00",
+    "descripcion": "Preguntar al Director si ya les mando mensaje de reagendar a todas esas personas que dijeron que iban a llagar y que al final no acudieron."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 13,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si anoto lo que entro y lo que salió de la empresa y sus gastos personales."
+  },
+  {
+    "diaSemana": 1,
+    "orden": 14,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si ya realizó las preguntas para el crecimiento de la empresa."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 1,
+    "hora": "09:00",
+    "descripcion": "Preguntar al Lic. Villafuerte si ya mando a la Secretaria General las personas citadas del día, las capturas de pantalla de los citados para cada una de las sucursales."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 2,
+    "hora": "10:00",
+    "descripcion": "Preguntar a la secretaria General si ya realizó las llamadas que le dio el licenciado Villafuerte del día y si ya le mando la relación de las personas que han confirmado, quienes no contestaron y quienes reagendaron."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 3,
+    "hora": "12:00",
+    "descripcion": "Escribir al colaborador Fernando Salas para preguntarle si ya revisó los acuerdos Federales y si ya entrego los acuerdos a los abogados que correspondan."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 4,
+    "hora": "12:00",
+    "descripcion": "preguntar a los Coordinadores si ya revisaron en su agenda cuales son los expedientes que no les han dado respuesta de su solicitud para que se mande a pedir información el martes o jueves."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 5,
+    "hora": "16:00",
+    "descripcion": "Preguntar a los coordinadores si las personas que revisaron acuerdos y entregaron promociones ya les dieron el resumen de sus asuntos y si ya anotaron los escritos que van a realizar para el día siguiente."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 6,
+    "hora": "16:00",
+    "descripcion": "Escribir a la secretaria general para preguntarle si ya recabó quienes acudieron citas, quienes y cuantos pagaron asesorías de cada sucursal y si ya le mando al licenciado Villafuerte la información."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 7,
+    "hora": "16:00",
+    "descripcion": "Preguntar a los colaboradores si ellos, sus colaboradores y titulares presentaron demandas y si le pasaron los datos al director."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 8,
+    "hora": "17:00",
+    "descripcion": "Preguntar a los coordinadores si sus colaboradores o titulares ya pasaron la información de las asesorías que recibieron y así como los contratos que se hayan revisado del día."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 9,
+    "hora": "19:00",
+    "descripcion": "Preguntar al director si ya revisó en la plataforma de las personas que recibieron asesorías y si ya les llamó."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 10,
+    "hora": "20:00",
+    "descripcion": "Preguntar al director si entró a la plataforma y realizó las llamadas a los clientes que pidieron que se les llamará y si reagendó a los clientes que le pidieron a la secretaria general."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 11,
+    "hora": "20:00",
+    "descripcion": "Preguntar al Director si ya les mando mensaje de reagendar a todas esas personas que dijeron que iban a llagar y que al final no acudieron."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 12,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si anoto lo que entro y lo que salió de la empresa y sus gastos personales."
+  },
+  {
+    "diaSemana": 2,
+    "orden": 13,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si ya realizó las preguntas para el crecimiento de la empresa."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 1,
+    "hora": "09:00",
+    "descripcion": "Preguntar al licenciado Villafuerte si ya mando a la Secretaria General las personas citadas del día, las capturas de pantalla de los citados para cada una de las sucursales."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 2,
+    "hora": "10:00",
+    "descripcion": "Preguntar a la secretaria General si ya realizó las llamadas que le dio el licenciado Villafuerte del día y si ya le mando la relación de las personas que han confirmado, quienes no contestaron y quienes reagendaron."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 3,
+    "hora": "11:30",
+    "descripcion": "Mandar mensaje a los coordinadores para saber si ya revisaron la lista de sus asuntos en su sucursal, así como si ya le preguntaron a sus colaboradores y titulares."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 4,
+    "hora": "12:00",
+    "descripcion": "Les pido su relación a cada uno de los coordinadores y pregunto quienes irán al juzgado para el martes, si es miércoles pregunto quienes irán el jueves."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 5,
+    "hora": "12:00",
+    "descripcion": "Escribir al colaborador Fernando Salas para preguntarle si ya revisó los acuerdos Federales y si ya entrego los acuerdos a los abogados que correspondan."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 6,
+    "hora": "12:00",
+    "descripcion": "Preguntar a los Coordinadores si ya revisaron en su agenda cuales son los expedientes que no les han dado respuesta de su solicitud para que se mande a pedir información el martes o jueves."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 7,
+    "hora": "12:00",
+    "descripcion": "Escribir a los coordinadores y les pregunto si sus colaboradores y titulares ya han escaneado los acuerdos que les revisaron un día anterior y las promociones que metieron y si ya lo subieron a la plataforma."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 8,
+    "hora": "13:00",
+    "descripcion": "Preguntar a los coordinadores si ya revisaron en la plataforma sus expedientes, como los expedientes de sus colaboradores y así como de sus titulares y si ya tienen realizado o están realizando los escritos que van a realizar."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 9,
+    "hora": "16:00",
+    "descripcion": "Preguntar a los coordinadores si ya llamaron ellos, sus colaboradores y sus titulares a los clientes y si ya lo subieron a la plataforma"
+  },
+  {
+    "diaSemana": 3,
+    "orden": 10,
+    "hora": "16:00",
+    "descripcion": "Preguntar a la secretaria general si ya recabó quienes acudieron citas, quienes y cuantos pagaron asesorías de cada sucursal y si ya le mando al licenciado Villafuerte la información."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 11,
+    "hora": "16:00",
+    "descripcion": "Preguntar a los colaboradores si ellos, sus colaboradores y titulares presentaron demandas y si le pasaron los datos al director."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 12,
+    "hora": "17:00",
+    "descripcion": "Preguntar a los coordinadores si sus colaboradores o titulares ya pasaron la información de las asesorías que recibieron y así como los contratos que se hayan revisado del día."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 13,
+    "hora": "19:00",
+    "descripcion": "Preguntar al director si ya revisó en la plataforma de las personas que recibieron asesorías y si ya les llamó."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 14,
+    "hora": "20:00",
+    "descripcion": "Preguntar al director si entró a la plataforma y realizó las llamadas a los clientes que pidieron que se les llamará y si reagendó a los clientes que le pidieron a la secretaria general."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 15,
+    "hora": "20:00",
+    "descripcion": "Preguntar al Director si ya les mando mensaje de reagendar a todas esas personas que dijeron que iban a llagar y que al final no acudieron."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 16,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si anoto lo que entro y lo que salió de la empresa y sus gastos personales."
+  },
+  {
+    "diaSemana": 3,
+    "orden": 17,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si ya realizó las preguntas para el crecimiento de la empresa."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 1,
+    "hora": "09:00",
+    "descripcion": "Preguntar al licenciado Villafuerte si ya mando a la Secretaria General las personas citadas del día, las capturas de pantalla de los citados para cada una de las sucursales."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 2,
+    "hora": "10:00",
+    "descripcion": "Preguntar a la secretaria General si ya realizó las llamadas que le dio el licenciado Villafuerte del día y si ya le mando la relación de las personas que han confirmado, quienes no contestaron y quienes reagendaron."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 3,
+    "hora": "12:00",
+    "descripcion": "Preguntar al colaborador Fernando Salas si ya revisó los acuerdos Federales y si ya entrego los acuerdos a los abogados que correspondan."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 4,
+    "hora": "12:00",
+    "descripcion": "Preguntar a los Coordinadores si ya revisaron en su agenda, cuales son los expedientes que no les han dado respuesta de su solicitud para que se mande a pedir información el martes o jueves."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 5,
+    "hora": "16:00",
+    "descripcion": "Preguntar a los coordinadores si las personas que revisaron acuerdos y entregaron promociones ya les dieron el resumen de sus asuntos y si ya anotaron los escritos que van a realizar para el día siguiente."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 6,
+    "hora": "16:00",
+    "descripcion": "Escribir a la secretaria general para preguntarle si ya recabó quienes acudieron citas, quienes y cuantos pagaron asesorías de cada sucursal y si ya le mando al licenciado Villafuerte la información."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 7,
+    "hora": "16:00",
+    "descripcion": "Preguntar a los colaboradores si ellos, sus colaboradores y titulares presentaron demandas y si le pasaron los datos al director."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 8,
+    "hora": "17:00",
+    "descripcion": "Preguntar a los coordinadores si sus colaboradores o titulares ya pasaron la información de las asesorías que recibieron y así como los contratos que se hayan revisado del día."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 9,
+    "hora": "19:00",
+    "descripcion": "Preguntar al director si ya revisó en la plataforma de las personas que recibieron asesorías y si ya les llamó."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 10,
+    "hora": "20:00",
+    "descripcion": "Preguntar al director si entró a la plataforma y realizó las llamadas a los clientes que pidieron que se les llamará y si reagendó a los clientes que le pidieron a la secretaria general."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 11,
+    "hora": "20:00",
+    "descripcion": "Preguntar al Director si ya les mando mensaje de reagendar a todas esas personas que dijeron que iban a llagar y que al final no acudieron."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 12,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si anoto lo que entro y lo que salió de la empresa y sus gastos personales."
+  },
+  {
+    "diaSemana": 4,
+    "orden": 13,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si ya realizó las preguntas para el crecimiento de la empresa."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 1,
+    "hora": "09:00",
+    "descripcion": "Preguntar al licenciado Villafuerte si ya mando a la Secretaria General las personas citadas del día, las capturas de pantalla de los citados para cada una de las sucursales."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 2,
+    "hora": "10:00",
+    "descripcion": "Preguntar a la secretaria General si ya realizó las llamadas que le dio el licenciado Villafuerte del día y si ya le mando la relación de las personas que han confirmado, quienes no contestaron y quienes reagendaron."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 3,
+    "hora": "11:30",
+    "descripcion": "Mandar mensaje a los coordinadores para saber si ya revisaron la lista de sus asuntos en su sucursal, así como si ya le preguntaron a sus colaboradores y titulares."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 4,
+    "hora": "12:00",
+    "descripcion": "Preguntar al colaborador Fernando Salas si ya revisó los acuerdos Federales y si ya entrego los acuerdos a los abogados que correspondan."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 5,
+    "hora": "12:00",
+    "descripcion": "Preguntar a los Coordinadores si ya revisaron en su agenda cuales son los expedientes que no les han dado respuesta de su solicitud para que se mande a pedir información el martes o jueves."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 6,
+    "hora": "12:00",
+    "descripcion": "Preguntar a los coordinadores si sus colaboradores y titulares ya han escaneado los acuerdos que les revisaron un día anterior y las promociones que metieron y si ya lo subieron a la plataforma."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 7,
+    "hora": "13:00",
+    "descripcion": "Preguntar los coordinadores si ya revisaron en la plataforma sus expedientes, como los expedientes de sus colaboradores y así como de sus titulares y si ya tienen realizado o están realizando los escritos que van a realizar."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 8,
+    "hora": "16:00",
+    "descripcion": "Preguntar a los coordinadores si ya llamaron ellos, sus colaboradores y sus titulares a los clientes y si ya lo subieron a la plataforma"
+  },
+  {
+    "diaSemana": 5,
+    "orden": 9,
+    "hora": "16:00",
+    "descripcion": "Preguntar a la secretaria general si ya recabó quienes acudieron citas, quienes y cuantos pagaron asesorías de cada sucursal y si ya le mando al licenciado Villafuerte la información."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 10,
+    "hora": "16:00",
+    "descripcion": "Preguntar a los colaboradores si ellos, sus colaboradores y titulares presentaron demandas y si le pasaron los datos al director."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 11,
+    "hora": "17:00",
+    "descripcion": "Preguntar a los coordinadores si sus colaboradores o titulares ya pasaron la información de las asesorías que recibieron y así como los contratos que se hayan revisado del día."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 12,
+    "hora": "19:00",
+    "descripcion": "Preguntar al director si ya revisó en la plataforma de las personas que recibieron asesorías y si ya les llamó."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 13,
+    "hora": "20:00",
+    "descripcion": "Preguntar al director si entró a la plataforma y realizó las llamadas a los clientes que pidieron que se les llamará y si reagendó a los clientes que le pidieron a la secretaria general."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 14,
+    "hora": "20:00",
+    "descripcion": "Preguntar al Director si ya les mando mensaje de reagendar a todas esas personas que dijeron que iban a llagar y que al final no acudieron."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 15,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si anoto lo que entro y lo que salió de la empresa y sus gastos personales."
+  },
+  {
+    "diaSemana": 5,
+    "orden": 16,
+    "hora": "21:00",
+    "descripcion": "Preguntar al director si ya realizó las preguntas para el crecimiento de la empresa."
+  },
+  {
+    "diaSemana": 6,
+    "orden": 1,
+    "hora": "19:00",
+    "descripcion": "Preguntar al director si ya revisó en la plataforma de las personas que recibieron asesorías y si ya les llamó."
+  }
+]

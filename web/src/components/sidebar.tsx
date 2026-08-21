@@ -19,11 +19,19 @@ import {
   BarChart3,
   Clock,
   KeyRound,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
 
-type Item = { href: string; label: string; icon: LucideIcon; soloAdmin?: boolean };
+type Item = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  soloAdmin?: boolean;
+  // Se muestra solo a quien tiene el permiso de Productividad (admins incluidos).
+  soloProductividad?: boolean;
+};
 
 const grupos: { titulo: string; items: Item[] }[] = [
   {
@@ -49,6 +57,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
     items: [
       { href: "/caja", label: "Caja", icon: Wallet, soloAdmin: true },
       { href: "/reloj-checador", label: "Reloj checador", icon: Clock, soloAdmin: true },
+      { href: "/productividad", label: "Productividad", icon: ListChecks, soloProductividad: true },
       { href: "/configuracion", label: "Configuración", icon: Settings, soloAdmin: true },
     ],
   },
@@ -59,11 +68,13 @@ const rolLabel: Record<Rol, string> = { admin: "Administrador", abogado: "Abogad
 export function Sidebar({
   nombre,
   rol,
+  verProductividad = false,
   drawerOpen = false,
   onClose,
 }: {
   nombre: string;
   rol: Rol;
+  verProductividad?: boolean;
   drawerOpen?: boolean;
   onClose?: () => void;
 }) {
@@ -100,7 +111,11 @@ export function Sidebar({
 
       <nav className="flex-1 py-4 text-[14px]">
         {grupos.map((g) => {
-          const items = g.items.filter((it) => !it.soloAdmin || rol === "admin");
+          const items = g.items.filter(
+            (it) =>
+              (!it.soloAdmin || rol === "admin") &&
+              (!it.soloProductividad || verProductividad)
+          );
           if (items.length === 0) return null;
           return (
             <div key={g.titulo} className="mb-2">

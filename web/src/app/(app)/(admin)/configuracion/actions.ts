@@ -14,6 +14,7 @@ export type FormUsuario = {
   sucursalId: string;
   telefonoWhatsapp: string;
   pin: string;
+  verProductividad: boolean;
   sucursalesACargo: string[];
   personasACargo: string[];
 };
@@ -43,6 +44,7 @@ export async function crearUsuarioAction(data: FormUsuario) {
         sucursalId: d.sucursalId || null,
         telefonoWhatsapp: d.telefonoWhatsapp || null,
         pin: d.pin || null,
+        verProductividad: d.verProductividad,
         sucursalesACargo: { connect: d.sucursalesACargo.map((id) => ({ id })) },
         personasACargo: { connect: d.personasACargo.map((id) => ({ id })) },
       },
@@ -63,6 +65,7 @@ export async function editarUsuarioAction(id: string, data: FormUsuario) {
     sucursalId: d.sucursalId || null,
     telefonoWhatsapp: d.telefonoWhatsapp || null,
     pin: d.pin || null,
+    verProductividad: d.verProductividad,
     // `set` reemplaza la lista completa: lo que el admin no marcó, se quita.
     sucursalesACargo: { set: d.sucursalesACargo.map((sid) => ({ id: sid })) },
     personasACargo: { set: d.personasACargo.map((uid) => ({ id: uid })) },

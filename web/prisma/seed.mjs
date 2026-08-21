@@ -1,16 +1,53 @@
-// Seed del usuario admin inicial.
+// Seed del usuario admin inicial y de la rutina del Coordinador de Operaciones.
 // Lee ADMIN_EMAIL y ADMIN_PASSWORD del entorno — nunca se commitean credenciales.
 // Idempotente: si el admin ya existe, no hace nada.
 //
 // Uso local:  ADMIN_EMAIL=tu@correo.mx ADMIN_PASSWORD=clave node prisma/seed.mjs
 // En prod:    el Dockerfile lo ejecuta en el arranque con las vars del entorno.
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+const aqui = dirname(fileURLToPath(import.meta.url));
 
-async function main() {
+// La rutina semanal del coordinador (74 actividades del Excel del despacho).
+// Idempotente por (diaSemana, orden): al redesplegar actualiza texto y hora, y no
+// duplica. Si en el sistema se desactivó una actividad, se respeta y no revive.
+async function sembrarActividades() {
+  const ruta = join(aqui, "actividades-coordinacion.json");
+  let actividades;
+  try {
+    actividades = JSON.parse(readFileSync(ruta, "utf8"));
+  } catch {
+    console.log("[seed] actividades-coordinacion.json no encontrado — se omite.");
+    return;
+  }
+
+  let creadas = 0;
+  for (const a of actividades) {
+    const existente = await prisma.actividadPlantilla.findFirst({
+      where: { diaSemana: a.diaSemana, orden: a.orden },
+    });
+    if (existente) {
+      await prisma.actividadPlantilla.update({
+        where: { id: existente.id },
+        data: { hora: a.hora, descripcion: a.descripcion },
+      });
+    } else {
+      await prisma.actividadPlantilla.create({ data: a });
+      creadas++;
+    }
+  }
+  console.log(
+    `[seed] Rutina del coordinador: ${actividades.length} actividades revisadas, ${creadas} nuevas.`
+  );
+}
+
+async function sembrarAdmin() {
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
 
@@ -39,6 +76,11 @@ async function main() {
     },
   });
   console.log(`[seed] Usuario admin ${email} creado.`);
+}
+
+async function main() {
+  await sembrarAdmin();
+  await sembrarActividades();
 }
 
 main()

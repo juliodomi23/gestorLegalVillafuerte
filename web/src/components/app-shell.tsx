@@ -9,10 +9,12 @@ import type { Rol } from "@/lib/usuarios";
 export function AppShell({
   nombre,
   rol,
+  verProductividad = false,
   children,
 }: {
   nombre: string;
   rol: Rol;
+  verProductividad?: boolean;
   children: React.ReactNode;
 }) {
   const [drawer, setDrawer] = useState(false);
@@ -20,7 +22,13 @@ export function AppShell({
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[244px_1fr]">
       {/* Sidebar: fijo en desktop, drawer en móvil */}
-      <Sidebar nombre={nombre} rol={rol} drawerOpen={drawer} onClose={() => setDrawer(false)} />
+      <Sidebar
+        nombre={nombre}
+        rol={rol}
+        verProductividad={verProductividad}
+        drawerOpen={drawer}
+        onClose={() => setDrawer(false)}
+      />
 
       {/* Overlay del drawer en móvil */}
       {drawer && <div className="fixed inset-0 z-30 bg-ink/40 lg:hidden" onClick={() => setDrawer(false)} />}
