@@ -31,6 +31,16 @@ export function normalizarTelefono(tel?: string | null): string {
   return d.slice(-10);
 }
 
+// El teléfono a la vista: el del campo, o el que venga dentro del nombre.
+// Las citas del bot llegan como "Asesoría Eunice ‪+52 961 264 1203‬" con el campo
+// teléfono vacío, y ese número es justo lo que hace falta para llamarles.
+export function telefonoVisible(telefono?: string | null, nombre?: string | null): string {
+  const delCampo = normalizarTelefono(telefono);
+  if (delCampo.length === 10) return delCampo;
+  const delNombre = normalizarTelefono(String(nombre ?? "").replace(/\D/g, "").slice(-10));
+  return delNombre.length === 10 ? delNombre : "";
+}
+
 // Nombre comparable: sin acentos, sin dobles espacios, en minúsculas.
 export function normalizarNombre(nombre?: string | null): string {
   return String(nombre ?? "")
@@ -68,14 +78,17 @@ export async function citadosDelDia(
     orderBy: { fechaHora: "asc" },
   });
 
-  return citas.map((c) => ({
-    hora: horaLocal(c.fechaHora),
-    cliente: c.cliente?.nombre ?? c.clienteNombre ?? "Sin nombre",
-    telefono: c.cliente?.telefono ?? c.telefono ?? "",
-    sucursal: c.sucursal?.nombre ?? "Sin sucursal",
-    abogado: c.abogado?.nombre ?? "Sin asignar",
-    estado: c.estado,
-  }));
+  return citas.map((c) => {
+    const nombre = c.cliente?.nombre ?? c.clienteNombre ?? "Sin nombre";
+    return {
+      hora: horaLocal(c.fechaHora),
+      cliente: nombre,
+      telefono: telefonoVisible(c.cliente?.telefono ?? c.telefono, nombre),
+      sucursal: c.sucursal?.nombre ?? "Sin sucursal",
+      abogado: c.abogado?.nombre ?? "Sin asignar",
+      estado: c.estado,
+    };
+  });
 }
 
 export type AsesoriaDelDia = {
@@ -204,11 +217,14 @@ export async function noShowsDelDia(fechaISO: string): Promise<NoShow[]> {
       }
       return true;
     })
-    .map((c) => ({
-      hora: horaLocal(c.fechaHora),
-      cliente: c.cliente?.nombre ?? c.clienteNombre ?? "Sin nombre",
-      telefono: c.cliente?.telefono ?? c.telefono ?? "",
-      sucursal: c.sucursal?.nombre ?? "Sin sucursal",
-      abogado: c.abogado?.nombre ?? "Sin asignar",
-    }));
+    .map((c) => {
+      const nombre = c.cliente?.nombre ?? c.clienteNombre ?? "Sin nombre";
+      return {
+        hora: horaLocal(c.fechaHora),
+        cliente: nombre,
+        telefono: telefonoVisible(c.cliente?.telefono ?? c.telefono, nombre),
+        sucursal: c.sucursal?.nombre ?? "Sin sucursal",
+        abogado: c.abogado?.nombre ?? "Sin asignar",
+      };
+    });
 }

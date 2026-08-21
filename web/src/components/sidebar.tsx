@@ -20,6 +20,7 @@ import {
   Clock,
   KeyRound,
   ListChecks,
+  FileSignature,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
@@ -50,6 +51,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
       { href: "/prospectos", label: "Prospectos", icon: UserSearch },
       { href: "/asesorias", label: "Asesorías", icon: ClipboardList },
       { href: "/seguimientos", label: "Seguimientos", icon: PhoneCall },
+      { href: "/contratos", label: "Contratos", icon: FileSignature },
     ],
   },
   {

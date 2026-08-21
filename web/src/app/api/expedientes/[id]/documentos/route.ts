@@ -59,13 +59,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   await writeFile(join(UPLOADS_DIR, filename), buffer);
 
   const actuacionId = (formData.get("actuacionId") as string | null) || null;
+  // "contrato" lo usa la sección de Contratos para distinguirlos del resto de PDFs.
+  const tipo = formData.get("tipo") === "contrato" ? "contrato" : "pdf";
 
   const doc = await prisma.documento.create({
     data: {
       expedienteId: params.id,
       actuacionId,
       nombre: file.name,
-      tipo: "pdf",
+      tipo,
       linkDrive: `/api/uploads/${filename}`,
       subidoPor: session?.user?.id ?? null,
     },
