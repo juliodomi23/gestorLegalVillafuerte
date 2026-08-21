@@ -22,6 +22,7 @@ export default async function ConfiguracionPage() {
     telefonoWhatsapp: u.telefonoWhatsapp,
     pin: u.pin,
     verProductividad: u.verProductividad,
+    recibeEnvio: u.recibeEnvio,
     sucursal: u.sucursal?.nombre ?? null,
     sucursalId: u.sucursalId,
     sucursalesACargo: u.sucursalesACargo,

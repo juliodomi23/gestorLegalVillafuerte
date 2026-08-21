@@ -93,6 +93,11 @@ model Usuario {
   // operaciones). Es un permiso suelto para no tener que hacer admin a alguien que
   // no debe ver Caja ni Configuración.
   verProductividad     Boolean  @default(false) @map("ver_productividad")
+  // Envíos automáticos por WhatsApp. null = no recibe ninguno.
+  //   "sucursal" → resumen de asesorías de SU sucursal, 9:00
+  //   "todas"    → citados del día de todo el despacho, 8:00 (Lic. Karen)
+  // Se elige en Configuración › Usuarios; así cambiar destinatarios no es un deploy.
+  recibeEnvio          String?  @map("recibe_envio")
   creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   sucursal          Sucursal?        @relation("UsuarioSucursal", fields: [sucursalId], references: [id])

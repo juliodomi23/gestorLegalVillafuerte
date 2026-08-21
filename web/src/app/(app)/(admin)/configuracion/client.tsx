@@ -15,6 +15,7 @@ export type UsuarioView = {
   telefonoWhatsapp: string | null;
   pin: string | null;
   verProductividad: boolean;
+  recibeEnvio: string | null;
   sucursal: string | null;
   sucursalId: string | null;
   sucursalesACargo: { id: string; nombre: string }[];
@@ -26,6 +27,7 @@ const ROL_LABELS: Record<string, string> = { admin: "Admin", abogado: "Abogado",
 const vacio = {
   nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", telefonoWhatsapp: "", pin: "",
   verProductividad: false,
+  recibeEnvio: "",
   sucursalesACargo: [] as string[],
   personasACargo: [] as string[],
 };
@@ -95,6 +97,7 @@ export default function ConfiguracionClient({
       telefonoWhatsapp: u.telefonoWhatsapp ?? "",
       pin: u.pin ?? "",
       verProductividad: u.verProductividad,
+      recibeEnvio: u.recibeEnvio ?? "",
       sucursalesACargo: u.sucursalesACargo.map((s) => s.id),
       personasACargo: u.personasACargo.map((p) => p.id),
     });
@@ -240,6 +243,28 @@ export default function ConfiguracionClient({
             onChange={(e) => set("pin", e.target.value.replace(/\D/g, "").slice(0, 8))}
             placeholder="4 a 8 dígitos, para checar sin iniciar sesión"
             inputMode="numeric"
+          />
+        </Field>
+        <Field label="Envíos automáticos por WhatsApp" full>
+          <Select
+            options={["No recibe", "Resumen de su sucursal (9:00)", "Citados de todo el despacho (8:00)"]}
+            value={
+              form.recibeEnvio === "sucursal"
+                ? "Resumen de su sucursal (9:00)"
+                : form.recibeEnvio === "todas"
+                ? "Citados de todo el despacho (8:00)"
+                : "No recibe"
+            }
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                recibeEnvio: e.target.value.startsWith("Resumen")
+                  ? "sucursal"
+                  : e.target.value.startsWith("Citados")
+                  ? "todas"
+                  : "",
+              }))
+            }
           />
         </Field>
         <Field label="Permisos" full>
