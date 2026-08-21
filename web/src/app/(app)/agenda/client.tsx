@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, Phone, PhoneCall, Trash2, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarPlus, Phone, PhoneCall, Trash2, Pencil, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
-import { crearCitaAction, borrarCitaAction } from "./actions";
+import { crearCitaAction, editarCitaAction, borrarCitaAction } from "./actions";
 import { marcarLlamadoAction } from "../seguimientos/actions";
 
 export type CitaView = {
@@ -71,7 +71,15 @@ function formatearDia(fechaISO: string): string {
   });
 }
 
-function TablaSimple({ citas, onBorrar }: { citas: CitaView[]; onBorrar: (id: string) => void }) {
+function TablaSimple({
+  citas,
+  onEditar,
+  onBorrar,
+}: {
+  citas: CitaView[];
+  onEditar: (cita: CitaView) => void;
+  onBorrar: (id: string) => void;
+}) {
   return (
     <table className="w-full min-w-[820px] text-[13.5px]">
       <thead>
@@ -109,9 +117,19 @@ function TablaSimple({ citas, onBorrar }: { citas: CitaView[]; onBorrar: (id: st
                 {c.estado}
               </span>
             </td>
-            <td className="px-3 py-3.5 text-right">
+            <td className="px-3 py-3.5 text-right whitespace-nowrap">
+              <button
+                onClick={() => onEditar(c)}
+                title="Editar cita"
+                aria-label="Editar cita"
+                className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"
+              >
+                <Pencil size={16} />
+              </button>
               <button
                 onClick={() => onBorrar(c.id)}
+                title="Cancelar cita"
+                aria-label="Cancelar cita"
                 className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors"
               >
                 <Trash2 size={16} />
@@ -200,6 +218,8 @@ export default function AgendaClient({
   const vistaActual: Vista = VISTAS.includes(vista as Vista) ? (vista as Vista) : "dia";
 
   const [open, setOpen] = useState(false);
+  // null = el modal está creando; con id = está editando esa cita.
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
   const confirmar = useConfirm();
@@ -217,6 +237,26 @@ export default function AgendaClient({
     router.push(`/agenda?fecha=${fechaActual}&vista=${v}`);
   }
 
+  function abrirNueva() {
+    setEditandoId(null);
+    setForm(vacio);
+    setOpen(true);
+  }
+
+  function abrirEditar(cita: CitaView) {
+    setEditandoId(cita.id);
+    setForm({
+      cliente: cita.cliente,
+      asunto: cita.asunto === "—" ? "" : cita.asunto,
+      telefono: cita.telefono === "—" ? "" : cita.telefono,
+      fecha: cita.fechaISO,
+      hora: cita.hora,
+      sucursal: cita.sucursal === "—" ? "" : cita.sucursal,
+      abogado: cita.abogado === "—" ? "" : cita.abogado,
+    });
+    setOpen(true);
+  }
+
   async function borrar(id: string) {
     if (await confirmar({ titulo: "¿Cancelar esta cita?", peligro: true, confirmLabel: "Cancelar cita", cancelLabel: "Volver" })) await borrarCitaAction(id);
   }
@@ -228,7 +268,7 @@ export default function AgendaClient({
 
   async function guardar() {
     setSaving(true);
-    await crearCitaAction({
+    const datos = {
       cliente: form.cliente,
       asunto: form.asunto,
       fecha: form.fecha || fechaActual,
@@ -236,10 +276,14 @@ export default function AgendaClient({
       telefono: form.telefono,
       sucursal: form.sucursal,
       abogado: form.abogado,
-    });
+    };
+    if (editandoId) await editarCitaAction(editandoId, datos);
+    else await crearCitaAction(datos);
     setSaving(false);
     setForm(vacio);
+    setEditandoId(null);
     setOpen(false);
+    router.refresh();
   }
 
   const citasPorDia = citas.reduce<Record<string, CitaView[]>>((acc, c) => {
@@ -299,8 +343,8 @@ export default function AgendaClient({
         <span className="flex-1" />
         <button
           onClick={() => {
+            abrirNueva();
             setForm((f) => ({ ...f, fecha: fechaActual }));
-            setOpen(true);
           }}
           className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors"
         >
@@ -310,7 +354,7 @@ export default function AgendaClient({
 
       {vistaActual === "dia" ? (
         <Card className="overflow-x-auto">
-          <TablaSimple citas={citas} onBorrar={borrar} />
+          <TablaSimple citas={citas} onEditar={abrirEditar} onBorrar={borrar} />
         </Card>
       ) : (
         <div className="space-y-4">
@@ -332,7 +376,7 @@ export default function AgendaClient({
                   {citasPorDia[dia].length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <TablaSimple citas={citasPorDia[dia]} onBorrar={borrar} />
+              <TablaSimple citas={citasPorDia[dia]} onEditar={abrirEditar} onBorrar={borrar} />
             </Card>
           ))}
         </div>
@@ -361,10 +405,13 @@ export default function AgendaClient({
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
-        title="Nueva cita"
+        onClose={() => {
+          setOpen(false);
+          setEditandoId(null);
+        }}
+        title={editandoId ? "Editar cita" : "Nueva cita"}
         onSubmit={guardar}
-        submitLabel={saving ? "Guardando…" : "Agendar cita"}
+        submitLabel={saving ? "Guardando…" : editandoId ? "Guardar cambios" : "Agendar cita"}
       >
         <Field label="Cliente" full>
           <Input
