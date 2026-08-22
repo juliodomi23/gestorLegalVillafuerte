@@ -89,6 +89,10 @@ model Usuario {
   activo               Boolean  @default(true)
   debeCambiarPassword  Boolean  @default(false) @map("debe_cambiar_password")
   pin                  String?  @unique @map("pin") // 4-8 dígitos, para checar sin sesión (reloj checador)
+  // true = el PIN lo generó el sistema y la persona todavía no lo ha cambiado.
+  // Mientras siga así se le muestra el aviso para que ponga uno suyo: un PIN que
+  // repartió el admin lo conoce alguien más, y con él se puede checar por otro.
+  pinGenerado          Boolean  @default(false) @map("pin_generado")
   // Productividad la ven los admin y quien tenga esto en true (la coordinadora de
   // operaciones). Es un permiso suelto para no tener que hacer admin a alguien que
   // no debe ver Caja ni Configuración.

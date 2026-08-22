@@ -22,7 +22,10 @@ export default async function MiPinPage() {
 
     const limpio = pin.trim();
     if (limpio === "") {
-      await prisma.usuario.update({ where: { id: sesion.user.id }, data: { pin: null } });
+      await prisma.usuario.update({
+        where: { id: sesion.user.id },
+        data: { pin: null, pinGenerado: false },
+      });
       return { ok: true, pin: null };
     }
     if (!/^\d{4,8}$/.test(limpio)) return { ok: false, error: "El PIN debe ser de 4 a 8 dígitos" };
@@ -34,7 +37,10 @@ export default async function MiPinPage() {
     });
     if (ocupado) return { ok: false, error: "Ese PIN ya lo tiene otra persona, elige otro" };
 
-    await prisma.usuario.update({ where: { id: sesion.user.id }, data: { pin: limpio } });
+    await prisma.usuario.update({
+      where: { id: sesion.user.id },
+      data: { pin: limpio, pinGenerado: false },
+    });
     return { ok: true, pin: limpio };
   }
 
