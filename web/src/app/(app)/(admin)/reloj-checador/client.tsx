@@ -14,6 +14,9 @@ export type ChecadaView = {
   tipo: string;
   origen: string;
   enSitio: boolean | null;
+  clasificacion: "puntual" | "retardo_menor" | "retardo_mayor" | "sin_horario" | null;
+  justificada: boolean;
+  motivo: string | null;
   hora: string;
 };
 
@@ -23,8 +26,13 @@ export type AbogadoResumen = {
   tienePin: boolean;
   sucursal: string;
   horaEntrada: string | null;
-  entradas: number;
-  puntual: number | null; // null = la sucursal no tiene hora de entrada configurada
+  puntuales: number;
+  retardosMenores: number;
+  retardosMayores: number;
+  justificados: number;
+  diasDescuento: number;
+  semaforo: "ok" | "atencion" | "critico";
+  alerta: string | null;
   ultimaChecada: string | null;
   diasSinChecar: number | null;
 };
@@ -41,6 +49,20 @@ export type SucursalGeocerca = {
 
 const RANGOS = [7, 30, 90];
 const REFRESCO_MS = 30_000;
+
+// Reglamento del despacho (17-ago-2026).
+const SEMAFORO: Record<string, { punto: string; fila: string; texto: string }> = {
+  ok: { punto: "bg-success", fila: "", texto: "text-success" },
+  atencion: { punto: "bg-amber", fila: "bg-amber-wash/40", texto: "text-amber" },
+  critico: { punto: "bg-danger", fila: "bg-danger-wash/50", texto: "text-danger" },
+};
+
+const CLASIFICACION: Record<string, { etiqueta: string; clase: string }> = {
+  puntual: { etiqueta: "A tiempo", clase: "bg-success-wash text-success" },
+  retardo_menor: { etiqueta: "Retardo menor", clase: "bg-amber-wash text-amber" },
+  retardo_mayor: { etiqueta: "Retardo mayor", clase: "bg-danger-wash text-danger" },
+  sin_horario: { etiqueta: "Sin horario", clase: "bg-line/60 text-muted" },
+};
 const ORIGEN_LABEL: Record<string, string> = { sesion: "Sesión", pin: "PIN" };
 const ALERTA_DIAS_SIN_CHECAR = 3;
 
@@ -106,12 +128,14 @@ export default function ChecadorClient({
   sucursales,
   dias,
   sucursalId,
+  mes,
 }: {
   checadas: ChecadaView[];
   resumen: AbogadoResumen[];
   sucursales: SucursalGeocerca[];
   dias: number;
   sucursalId: string;
+  mes: string;
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState<SucursalGeocerca | null>(null);
@@ -145,6 +169,10 @@ export default function ChecadorClient({
 
   const sucursalIds = Object.fromEntries([["", ""], ...sucursales.map((s) => [s.nombre, s.id])]);
   const sinPin = resumen.filter((a) => !a.tienePin).length;
+  // Los críticos primero: son los que ya cruzaron un umbral del reglamento.
+  const alertas = resumen
+    .filter((a) => a.alerta)
+    .sort((x, y) => (x.semaforo === "critico" ? -1 : 1) - (y.semaforo === "critico" ? -1 : 1));
 
   return (
     <>
@@ -163,6 +191,24 @@ export default function ChecadorClient({
           </span>
         )}
       </p>
+
+      {alertas.length > 0 && (
+        <Card className="overflow-hidden mb-5 border-danger/30">
+          <div className="px-5 py-3 border-b border-line bg-danger-wash/40">
+            <h3 className="font-serif text-[17px] text-danger flex items-center gap-2">
+              <AlertTriangle size={16} /> Requiere atención
+            </h3>
+          </div>
+          <ul className="divide-y divide-line/70">
+            {alertas.map((a) => (
+              <li key={a.id} className="px-5 py-2.5 text-[13.5px] flex items-start gap-2.5">
+                <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${SEMAFORO[a.semaforo].punto}`} />
+                <span>{a.alerta}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card className="overflow-hidden mb-5">
         <div className="px-5 py-3.5 border-b border-line">
@@ -226,8 +272,11 @@ export default function ChecadorClient({
 
       <Card className="overflow-x-auto mb-5">
         <div className="px-5 py-3.5 border-b border-line">
-          <h3 className="font-serif text-[17px]">Resumen por abogado</h3>
-          <p className="text-[12.5px] text-muted mt-0.5">Puntualidad del período · última vez que marcó (histórico completo).</p>
+          <h3 className="font-serif text-[17px] capitalize">Asistencia de {mes}</h3>
+          <p className="text-[12.5px] text-muted mt-0.5">
+            Reglamento del 17 de agosto: hasta +15 min es a tiempo, +16 retardo menor (½ día),
+            +32 retardo mayor (1 día). Cinco menores = 1 día; cinco mayores = causal de despido.
+          </p>
         </div>
         <table className="w-full min-w-[680px] text-[13.5px]">
           <thead>
@@ -235,15 +284,29 @@ export default function ChecadorClient({
               <th className="eyebrow text-muted px-5 py-3">Abogado</th>
               <th className="eyebrow text-muted px-3 py-3">Sucursal</th>
               <th className="eyebrow text-muted px-3 py-3">PIN</th>
-              <th className="eyebrow text-muted px-3 py-3 text-right">Entradas</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">A tiempo</th>
+              <th className="eyebrow text-muted px-3 py-3 text-right">Ret. menores</th>
+              <th className="eyebrow text-muted px-3 py-3 text-right">Ret. mayores</th>
+              <th className="eyebrow text-muted px-3 py-3 text-right">Días desc.</th>
               <th className="eyebrow text-muted px-3 py-3">Última checada</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
             {resumen.map((a) => (
-              <tr key={a.id} className="hover:bg-paper/60 transition-colors">
-                <td className="px-5 py-3 font-bold">{a.nombre}</td>
+              <tr
+                key={a.id}
+                title={a.alerta ?? undefined}
+                className={`hover:bg-paper/60 transition-colors ${SEMAFORO[a.semaforo].fila}`}
+              >
+                <td className="px-5 py-3 font-bold">
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${SEMAFORO[a.semaforo].punto}`}
+                      aria-label={a.semaforo}
+                    />
+                    {a.nombre}
+                  </span>
+                </td>
                 <td className="px-3 py-3 text-muted">{a.sucursal}</td>
                 <td className="px-3 py-3">
                   {a.tienePin ? (
@@ -254,14 +317,29 @@ export default function ChecadorClient({
                     <span className="text-[12px] text-amber font-bold">Sin PIN</span>
                   )}
                 </td>
-                <td className="px-3 py-3 num text-right">{a.entradas}</td>
+                <td className="px-3 py-3 num text-right text-success">{a.puntuales || "—"}</td>
                 <td className="px-3 py-3 num text-right">
-                  {a.puntual == null ? (
-                    <span className="text-muted">—</span>
+                  {a.retardosMenores > 0 ? (
+                    <span className="text-amber font-bold">{a.retardosMenores}</span>
                   ) : (
-                    <span className={a.puntual < a.entradas ? "text-amber font-bold" : "text-success font-bold"}>
-                      {a.puntual}/{a.entradas}
-                    </span>
+                    <span className="text-muted">—</span>
+                  )}
+                </td>
+                <td className="px-3 py-3 num text-right">
+                  {a.retardosMayores > 0 ? (
+                    <span className="text-danger font-bold">{a.retardosMayores}</span>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </td>
+                <td className="px-3 py-3 num text-right">
+                  {a.diasDescuento > 0 ? (
+                    <span className="font-bold text-danger">{a.diasDescuento}</span>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                  {a.justificados > 0 && (
+                    <span className="block text-[11px] text-muted">{a.justificados} justif.</span>
                   )}
                 </td>
                 <td className="px-3 py-3">
@@ -277,12 +355,13 @@ export default function ChecadorClient({
               </tr>
             ))}
             {resumen.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-10 text-center text-muted">Sin abogados activos.</td></tr>
+              <tr><td colSpan={8} className="px-5 py-10 text-center text-muted">Sin abogados activos.</td></tr>
             )}
           </tbody>
         </table>
         <p className="text-[12px] text-muted px-5 py-3">
-          "A tiempo" solo cuenta en sucursales con hora de entrada configurada (tolerancia {10} min). En rojo, quien no ha checado en {ALERTA_DIAS_SIN_CHECAR}+ días.
+          Los retardos justificados (audiencias, diligencias, trámites) no cuentan para la
+          acumulación. Sólo se clasifican las sucursales con hora de entrada configurada.
         </p>
         {sinPin > 0 && (
           <p className="text-[12.5px] px-5 pb-3 -mt-1 flex items-start gap-1.5 text-amber">
@@ -307,6 +386,7 @@ export default function ChecadorClient({
               <th className="eyebrow text-muted px-3 py-3">Sucursal</th>
               <th className="eyebrow text-muted px-3 py-3">Tipo</th>
               <th className="eyebrow text-muted px-3 py-3">Hora</th>
+              <th className="eyebrow text-muted px-3 py-3">Puntualidad</th>
               <th className="eyebrow text-muted px-3 py-3">Origen</th>
               <th className="eyebrow text-muted px-3 py-3">Ubicación</th>
             </tr>
@@ -327,6 +407,20 @@ export default function ChecadorClient({
                   </span>
                 </td>
                 <td className="px-3 py-3 num text-muted capitalize">{c.hora}</td>
+                <td className="px-3 py-3">
+                  {c.clasificacion ? (
+                    <span
+                      title={c.justificada && c.motivo ? `Justificado: ${c.motivo}` : undefined}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-bold ${
+                        c.justificada ? "bg-navy-wash text-navy" : CLASIFICACION[c.clasificacion].clase
+                      }`}
+                    >
+                      {c.justificada ? "Justificado" : CLASIFICACION[c.clasificacion].etiqueta}
+                    </span>
+                  ) : (
+                    <span className="text-muted text-[12px]">—</span>
+                  )}
+                </td>
                 <td className="px-3 py-3 text-muted">{ORIGEN_LABEL[c.origen] ?? c.origen}</td>
                 <td className="px-3 py-3">
                   {c.enSitio ? (
@@ -339,7 +433,7 @@ export default function ChecadorClient({
             ))}
             {checadas.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-muted">
+                <td colSpan={7} className="px-5 py-10 text-center text-muted">
                   Sin checadas en este período.
                 </td>
               </tr>

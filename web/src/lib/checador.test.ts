@@ -6,6 +6,7 @@ import {
   tipoDespuesDe,
   evaluarGeocerca,
   minutosDeHora,
+  clasificarEntrada,
 } from "./checador-regla.ts";
 
 // El slug de la URL /checar/[sucursal] sale del nombre con acentos y espacios.
@@ -34,3 +35,26 @@ assert.equal(evaluarGeocerca(sucursal, null, null, null), "sin_verificar");
 assert.equal(minutosDeHora("09:30"), 570);
 
 console.log("checador: OK");
+
+// --- Reglamento de horario, tolerancias y retardos (17-ago-2026) ---
+// Los umbrales deciden descuentos de salario y, a los cinco retardos mayores,
+// un despido. Vale la pena que las fronteras exactas estén probadas.
+{
+  const entrada = 9 * 60; // 09:00
+
+  assert.strictEqual(clasificarEntrada(9 * 60, entrada), "puntual", "9:00 en punto");
+  assert.strictEqual(clasificarEntrada(9 * 60 + 15, entrada), "puntual", "9:15 sigue dentro del horario");
+  assert.strictEqual(clasificarEntrada(9 * 60 + 16, entrada), "retardo_menor", "9:16 ya es retardo menor");
+  assert.strictEqual(clasificarEntrada(9 * 60 + 31, entrada), "retardo_menor", "9:31 sigue siendo menor");
+  assert.strictEqual(clasificarEntrada(9 * 60 + 32, entrada), "retardo_mayor", "9:32 es retardo mayor");
+  assert.strictEqual(clasificarEntrada(10 * 60, entrada), "retardo_mayor", "10:00 es retardo mayor");
+
+  // Llegar antes de la hora no es retardo.
+  assert.strictEqual(clasificarEntrada(8 * 60 + 40, entrada), "puntual", "llegar temprano");
+
+  // El reglamento se aplica sobre la hora de la sucursal, no sobre las 9:00 fijas.
+  const entradaTarde = 10 * 60; // una plaza que abre a las 10:00
+  assert.strictEqual(clasificarEntrada(10 * 60 + 16, entradaTarde), "retardo_menor");
+  assert.strictEqual(clasificarEntrada(9 * 60 + 16, entradaTarde), "puntual", "9:16 con entrada 10:00 es temprano");
+}
+console.log("ok: clasificacion de retardos segun el reglamento");

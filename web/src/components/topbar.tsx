@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Plus, Menu, FileText, User, X } from "lucide-react";
+import { Search, Bell, Plus, Menu, FileText, User, X, AlertTriangle } from "lucide-react";
 
 type Resultado = {
   tipo: "expediente" | "prospecto";
@@ -54,6 +54,125 @@ function SearchDropdown({
           </span>
         </button>
       ))}
+    </div>
+  );
+}
+
+type Alerta = {
+  id: string;
+  severidad: "critica" | "alta" | "media" | "info";
+  titulo: string;
+  detalle: string;
+  href: string;
+};
+
+const COLOR_SEVERIDAD: Record<string, string> = {
+  critica: "text-danger",
+  alta: "text-amber",
+  media: "text-navy",
+  info: "text-muted",
+};
+
+// Cada 2 minutos: son avisos de expedientes y asistencia, no un chat. Consultar más
+// seguido sólo gasta base de datos.
+const REFRESCO_ALERTAS_MS = 120_000;
+
+function Campana() {
+  const router = useRouter();
+  const [alertas, setAlertas] = useState<Alerta[]>([]);
+  const [abierto, setAbierto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    const cargar = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch("/api/alertas");
+        if (!res.ok) return;
+        const d = await res.json();
+        if (vivo) setAlertas(d.alertas ?? []);
+      } catch {
+        // sin conexión: se reintenta en el siguiente ciclo
+      }
+    };
+    cargar();
+    const id = setInterval(cargar, REFRESCO_ALERTAS_MS);
+    document.addEventListener("visibilitychange", cargar);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", cargar);
+    };
+  }, []);
+
+  useEffect(() => {
+    function fuera(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setAbierto(false);
+    }
+    document.addEventListener("mousedown", fuera);
+    return () => document.removeEventListener("mousedown", fuera);
+  }, []);
+
+  const criticas = alertas.filter((a) => a.severidad === "critica").length;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setAbierto((v) => !v)}
+        className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors"
+        title={alertas.length ? `${alertas.length} alertas` : "Sin alertas"}
+        aria-label="Alertas"
+      >
+        <Bell size={18} strokeWidth={1.75} />
+        {alertas.length > 0 && (
+          <span
+            className={`absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10.5px] font-bold text-white grid place-items-center ${
+              criticas > 0 ? "bg-danger" : "bg-amber"
+            }`}
+          >
+            {alertas.length}
+          </span>
+        )}
+      </button>
+
+      {abierto && (
+        <div className="absolute right-0 top-full mt-1.5 w-[340px] max-w-[calc(100vw-2rem)] bg-white border border-line rounded-xl shadow-xl overflow-hidden z-50">
+          <div className="px-4 py-2.5 border-b border-line bg-paper/60">
+            <p className="text-[13px] font-bold text-ink">
+              {alertas.length > 0 ? `${alertas.length} alerta${alertas.length !== 1 ? "s" : ""}` : "Sin alertas"}
+            </p>
+          </div>
+
+          {alertas.length === 0 ? (
+            <p className="px-4 py-6 text-[13px] text-muted text-center">
+              Nada pendiente por ahora.
+            </p>
+          ) : (
+            <div className="max-h-[380px] overflow-y-auto divide-y divide-line/60">
+              {alertas.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => {
+                    setAbierto(false);
+                    router.push(a.href);
+                  }}
+                  className="w-full text-left px-4 py-2.5 hover:bg-paper transition-colors flex gap-2.5"
+                >
+                  <AlertTriangle
+                    size={14}
+                    className={`shrink-0 mt-0.5 ${COLOR_SEVERIDAD[a.severidad] ?? "text-muted"}`}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-bold text-ink">{a.titulo}</span>
+                    <span className="block text-[12.5px] text-muted">{a.detalle}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -205,13 +324,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           {mobileSearchOpen ? <X size={20} /> : <Search size={20} />}
         </button>
 
-        <button
-          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors"
-          title="Notificaciones"
-          aria-label="Notificaciones"
-        >
-          <Bell size={18} strokeWidth={1.75} />
-        </button>
+        <Campana />
         <Link
           href="/expedientes"
           data-tour="nuevo"

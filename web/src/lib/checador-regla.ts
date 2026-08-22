@@ -60,9 +60,41 @@ export function evaluarGeocerca(
   return distancia <= radioEfectivo ? "dentro" : "fuera";
 }
 
-// Puntualidad: minutos desde medianoche en hora del despacho, para comparar
-// contra `sucursal.horaEntrada` (HH:MM). Tolerancia fija de 10 minutos.
-export const TOLERANCIA_PUNTUALIDAD_MIN = 10;
+// Puntualidad según el "Reglamento de horario, tolerancias y retardos" del despacho,
+// firmado el 17 de agosto de 2026:
+//
+//   hasta +15 min   → dentro del horario laboral
+//   desde +16 min   → retardo menor  (descuento del 50% de un día)
+//   desde +32 min   → retardo mayor  (descuento de un día completo)
+//
+//   5 retardos MENORES en un mes  → descuento de un día completo
+//   5 retardos MAYORES en un mes  → causal de despido
+//
+// Los minutos se cuentan desde la hora de entrada de la sucursal, no desde una hora
+// fija: así una plaza con otro horario usa el mismo reglamento sin tocar código.
+export const TOLERANCIA_PUNTUALIDAD_MIN = 15;
+export const RETARDO_MAYOR_DESDE_MIN = 32;
+export const RETARDOS_PARA_SANCION = 5;
+
+export type Clasificacion = "puntual" | "retardo_menor" | "retardo_mayor";
+
+export const ETIQUETA_CLASIFICACION: Record<Clasificacion, string> = {
+  puntual: "A tiempo",
+  retardo_menor: "Retardo menor",
+  retardo_mayor: "Retardo mayor",
+};
+
+// `minutosEntrada` es la hora de entrada de la sucursal; `minutosChecada`, la de la
+// marca. Ambos en minutos desde medianoche, hora del despacho.
+export function clasificarEntrada(
+  minutosChecada: number,
+  minutosEntrada: number
+): Clasificacion {
+  const retraso = minutosChecada - minutosEntrada;
+  if (retraso <= TOLERANCIA_PUNTUALIDAD_MIN) return "puntual";
+  if (retraso < RETARDO_MAYOR_DESDE_MIN) return "retardo_menor";
+  return "retardo_mayor";
+}
 const TZ = "America/Mexico_City";
 
 export function minutosDesdeMedianoche(fecha: Date): number {
