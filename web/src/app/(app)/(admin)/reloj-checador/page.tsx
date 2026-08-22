@@ -25,7 +25,7 @@ export default async function RelojChecadorPage({
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({
       where: { activo: true, ...(searchParams.sucursal ? { sucursalId: searchParams.sucursal } : {}) },
-      select: { id: true, nombre: true, sucursal: { select: { nombre: true, horaEntrada: true } } },
+      select: { id: true, nombre: true, pin: true, sucursal: { select: { nombre: true, horaEntrada: true } } },
       orderBy: { nombre: "asc" },
     }),
   ]);
@@ -80,6 +80,8 @@ export default async function RelojChecadorPage({
     return {
       id: a.id,
       nombre: a.nombre,
+      // Sin PIN sólo puede checar quien traiga la sesión iniciada en su celular.
+      tienePin: !!a.pin,
       sucursal: a.sucursal?.nombre ?? "—",
       horaEntrada,
       entradas: entradasPropias.length,

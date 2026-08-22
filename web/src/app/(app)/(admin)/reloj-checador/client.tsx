@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, LogIn, LogOut, MapPin, MapPinOff, Pencil, AlertTriangle } from "lucide-react";
+import { Copy, Check, LogIn, LogOut, MapPin, MapPinOff, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Select, Field, Input, Modal } from "@/components/modal";
 import { actualizarGeocercaAction } from "./actions";
@@ -20,6 +20,7 @@ export type ChecadaView = {
 export type AbogadoResumen = {
   id: string;
   nombre: string;
+  tienePin: boolean;
   sucursal: string;
   horaEntrada: string | null;
   entradas: number;
@@ -39,6 +40,7 @@ export type SucursalGeocerca = {
 };
 
 const RANGOS = [7, 30, 90];
+const REFRESCO_MS = 30_000;
 const ORIGEN_LABEL: Record<string, string> = { sesion: "Sesión", pin: "PIN" };
 const ALERTA_DIAS_SIN_CHECAR = 3;
 
@@ -113,6 +115,26 @@ export default function ChecadorClient({
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState<SucursalGeocerca | null>(null);
+  const [ultimaCarga, setUltimaCarga] = useState<Date | null>(null);
+
+  // El panel se queda abierto en recepción mientras la gente va llegando, así que se
+  // refresca solo. Se pausa con la pestaña oculta: sin eso seguiría consultando toda
+  // la noche en la computadora que nadie apagó.
+  useEffect(() => {
+    setUltimaCarga(new Date());
+    const tick = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+        setUltimaCarga(new Date());
+      }
+    };
+    const id = setInterval(tick, REFRESCO_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [router]);
 
   function irCon(nuevoDias: number, nuevaSucursal: string) {
     const p = new URLSearchParams();
@@ -122,6 +144,7 @@ export default function ChecadorClient({
   }
 
   const sucursalIds = Object.fromEntries([["", ""], ...sucursales.map((s) => [s.nombre, s.id])]);
+  const sinPin = resumen.filter((a) => !a.tienePin).length;
 
   return (
     <>
@@ -130,6 +153,16 @@ export default function ChecadorClient({
         title="Reloj checador"
         subtitle={`${checadas.length} checada${checadas.length !== 1 ? "s" : ""} en los últimos ${dias} días`}
       />
+
+      <p className="text-[12.5px] text-muted -mt-3 mb-5 flex items-center gap-1.5">
+        <RefreshCw size={12} />
+        Se actualiza solo cada {REFRESCO_MS / 1000} segundos
+        {ultimaCarga && (
+          <span className="num">
+            · última {ultimaCarga.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </span>
+        )}
+      </p>
 
       <Card className="overflow-hidden mb-5">
         <div className="px-5 py-3.5 border-b border-line">
@@ -201,6 +234,7 @@ export default function ChecadorClient({
             <tr className="border-b border-line text-left">
               <th className="eyebrow text-muted px-5 py-3">Abogado</th>
               <th className="eyebrow text-muted px-3 py-3">Sucursal</th>
+              <th className="eyebrow text-muted px-3 py-3">PIN</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Entradas</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">A tiempo</th>
               <th className="eyebrow text-muted px-3 py-3">Última checada</th>
@@ -211,6 +245,15 @@ export default function ChecadorClient({
               <tr key={a.id} className="hover:bg-paper/60 transition-colors">
                 <td className="px-5 py-3 font-bold">{a.nombre}</td>
                 <td className="px-3 py-3 text-muted">{a.sucursal}</td>
+                <td className="px-3 py-3">
+                  {a.tienePin ? (
+                    <span className="text-[12px] text-success inline-flex items-center gap-1">
+                      <Check size={12} /> Sí
+                    </span>
+                  ) : (
+                    <span className="text-[12px] text-amber font-bold">Sin PIN</span>
+                  )}
+                </td>
                 <td className="px-3 py-3 num text-right">{a.entradas}</td>
                 <td className="px-3 py-3 num text-right">
                   {a.puntual == null ? (
@@ -234,13 +277,23 @@ export default function ChecadorClient({
               </tr>
             ))}
             {resumen.length === 0 && (
-              <tr><td colSpan={5} className="px-5 py-10 text-center text-muted">Sin abogados activos.</td></tr>
+              <tr><td colSpan={6} className="px-5 py-10 text-center text-muted">Sin abogados activos.</td></tr>
             )}
           </tbody>
         </table>
         <p className="text-[12px] text-muted px-5 py-3">
           "A tiempo" solo cuenta en sucursales con hora de entrada configurada (tolerancia {10} min). En rojo, quien no ha checado en {ALERTA_DIAS_SIN_CHECAR}+ días.
         </p>
+        {sinPin > 0 && (
+          <p className="text-[12.5px] px-5 pb-3 -mt-1 flex items-start gap-1.5 text-amber">
+            <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+            <span>
+              <b>{sinPin} persona{sinPin !== 1 ? "s" : ""} sin PIN.</b> Sólo pueden checar desde un
+              celular donde ya tengan la sesión iniciada. Cada quien puede ponerse el suyo en
+              Mi PIN, o cargarlo aquí en Configuración › Usuarios.
+            </span>
+          </p>
+        )}
       </Card>
 
       <Card className="overflow-x-auto">
