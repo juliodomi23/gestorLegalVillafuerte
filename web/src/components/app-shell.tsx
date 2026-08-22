@@ -4,20 +4,20 @@ import { useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
 import { Tour } from "@/components/tour";
-import { AvisoPin } from "@/components/aviso-pin";
+import { AvisoPin, type EstadoPin } from "@/components/aviso-pin";
 import type { Rol } from "@/lib/usuarios";
 
 export function AppShell({
   nombre,
   rol,
   verProductividad = false,
-  pinGenerado = false,
+  estadoPin = "propio",
   children,
 }: {
   nombre: string;
   rol: Rol;
   verProductividad?: boolean;
-  pinGenerado?: boolean;
+  estadoPin?: EstadoPin;
   children: React.ReactNode;
 }) {
   const [drawer, setDrawer] = useState(false);
@@ -38,7 +38,7 @@ export function AppShell({
 
       <div className="flex flex-col min-h-screen">
         <Topbar onMenu={() => setDrawer(true)} />
-        <AvisoPin mostrar={pinGenerado} />
+        <AvisoPin estado={estadoPin} />
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-7">{children}</main>
       </div>
 

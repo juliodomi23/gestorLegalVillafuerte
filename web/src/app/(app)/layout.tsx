@@ -20,7 +20,7 @@ export default async function AppLayout({
     puedeVerProductividad(),
     prisma.usuario.findUnique({
       where: { id: session.user.id },
-      select: { pinGenerado: true },
+      select: { pin: true, pinGenerado: true },
     }),
   ]);
 
@@ -29,7 +29,7 @@ export default async function AppLayout({
       nombre={name ?? "Usuario"}
       rol={rol}
       verProductividad={verProductividad}
-      pinGenerado={!!usuario?.pinGenerado}
+      estadoPin={!usuario?.pin ? "sin_pin" : usuario.pinGenerado ? "generado" : "propio"}
     >
       {children}
     </AppShell>
