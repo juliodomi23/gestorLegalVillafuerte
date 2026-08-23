@@ -118,16 +118,21 @@ function Campana() {
 
   return (
     <div ref={ref} className="relative">
+      {/* Sin caja ni borde: con ellos competía con "Nuevo expediente", que es la
+          acción principal. Un icono con hover basta, y el badge hace el trabajo de
+          llamar la atención sólo cuando hay algo. */}
       <button
         onClick={() => setAbierto((v) => !v)}
-        className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors"
-        title={alertas.length ? `${alertas.length} alertas` : "Sin alertas"}
-        aria-label="Alertas"
+        className={`relative p-2.5 rounded-xl transition-colors ${
+          abierto ? "bg-line/60 text-ink" : "text-muted hover:text-ink hover:bg-line/50"
+        }`}
+        title={alertas.length ? `${alertas.length} alerta${alertas.length !== 1 ? "s" : ""}` : "Sin alertas"}
+        aria-label={alertas.length ? `${alertas.length} alertas` : "Sin alertas"}
       >
-        <Bell size={18} strokeWidth={1.75} />
+        <Bell size={19} strokeWidth={1.75} />
         {alertas.length > 0 && (
           <span
-            className={`absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10.5px] font-bold text-white grid place-items-center ${
+            className={`absolute top-1 right-1 min-w-[17px] h-[17px] px-1 rounded-full text-[10.5px] font-bold text-white grid place-items-center ring-2 ring-paper ${
               criticas > 0 ? "bg-danger" : "bg-amber"
             }`}
           >
@@ -137,15 +142,20 @@ function Campana() {
       </button>
 
       {abierto && (
-        <div className="absolute right-0 top-full mt-1.5 w-[340px] max-w-[calc(100vw-2rem)] bg-white border border-line rounded-xl shadow-xl overflow-hidden z-50">
-          <div className="px-4 py-2.5 border-b border-line bg-paper/60">
-            <p className="text-[13px] font-bold text-ink">
+        <div className="absolute right-0 top-full mt-2 w-[360px] max-w-[calc(100vw-2rem)] bg-surface border border-line rounded-xl shadow-xl overflow-hidden z-50">
+          <div className="px-4 py-3 border-b border-line bg-paper/60 flex items-center justify-between gap-3">
+            <p className="text-[13.5px] font-bold text-ink">
               {alertas.length > 0 ? `${alertas.length} alerta${alertas.length !== 1 ? "s" : ""}` : "Sin alertas"}
             </p>
+            {criticas > 0 && (
+              <span className="text-[11px] font-bold text-danger bg-danger-wash px-2 py-0.5 rounded">
+                {criticas} urgente{criticas !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
 
           {alertas.length === 0 ? (
-            <p className="px-4 py-6 text-[13px] text-muted text-center">
+            <p className="px-4 py-8 text-[13px] text-muted text-center">
               Nada pendiente por ahora.
             </p>
           ) : (
@@ -177,8 +187,18 @@ function Campana() {
   );
 }
 
+// El despacho trabaja en Windows; mostrar ⌘K ahí no le dice nada a nadie.
+function useAtajo() {
+  const [mac, setMac] = useState(false);
+  useEffect(() => {
+    setMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
+  }, []);
+  return mac ? "⌘K" : "Ctrl K";
+}
+
 export function Topbar({ onMenu }: { onMenu?: () => void }) {
   const router = useRouter();
+  const atajo = useAtajo();
   const [query, setQuery] = useState("");
   const [resultados, setResultados] = useState<Resultado[]>([]);
   const [abierto, setAbierto] = useState(false);
@@ -282,24 +302,33 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           <Menu size={20} />
         </button>
 
-        {/* Búsqueda desktop */}
-        <div ref={containerRef} data-tour="buscar" className="relative flex-1 max-w-md hidden sm:block">
-          <Search size={18} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+        {/* Búsqueda: ocupa el ancho que sobra hasta un límite legible. Antes estaba
+            topada en max-w-md sin nada que empujara las acciones a la derecha, y por
+            eso los botones quedaban flotando a media barra. */}
+        <div ref={containerRef} data-tour="buscar" className="relative flex-1 max-w-2xl hidden sm:block">
+          <Search size={18} strokeWidth={1.75} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setAbierto(true); }}
             onFocus={() => setAbierto(true)}
-            placeholder="Buscar expediente, cliente… (⌘K)"
-            className="w-full pl-10 pr-8 py-2 rounded-lg bg-surface border border-line text-[13.5px] placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40 transition"
+            placeholder="Buscar expediente, cliente, prospecto…"
+            className="w-full pl-11 pr-20 py-2.5 rounded-xl bg-surface border border-line text-[14px] placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40 transition"
           />
+
+          {/* El atajo como chip: en el placeholder se cortaba al escribir. */}
+          {!query && (
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:block px-1.5 py-0.5 rounded border border-line bg-paper text-[11px] font-medium text-muted/80 pointer-events-none">
+              {atajo}
+            </kbd>
+          )}
           {query && (
             <button
               onClick={limpiarQuery}
               aria-label="Limpiar búsqueda"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted hover:text-ink hover:bg-line/50 transition-colors"
             >
-              <X size={14} />
+              <X size={15} />
             </button>
           )}
           {mostrarDropdown && (
@@ -312,26 +341,30 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           )}
         </div>
 
-        <span className="flex-1 sm:hidden" />
+        {/* Acciones, siempre pegadas a la derecha */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <button
+            onClick={() => setMobileSearchOpen((v) => !v)}
+            className="sm:hidden p-2 rounded-lg text-ink hover:bg-line/50 transition-colors"
+            title="Buscar"
+            aria-label="Buscar"
+          >
+            {mobileSearchOpen ? <X size={20} /> : <Search size={20} />}
+          </button>
 
-        {/* Botón búsqueda móvil */}
-        <button
-          onClick={() => setMobileSearchOpen((v) => !v)}
-          className="sm:hidden p-2 rounded-lg text-ink hover:bg-line/50 transition-colors"
-          title="Buscar"
-          aria-label="Buscar"
-        >
-          {mobileSearchOpen ? <X size={20} /> : <Search size={20} />}
-        </button>
+          <Campana />
 
-        <Campana />
-        <Link
-          href="/expedientes"
-          data-tour="nuevo"
-          className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors shadow-sm"
-        >
-          <Plus size={18} strokeWidth={1.75} /> <span className="hidden sm:inline">Nuevo expediente</span>
-        </Link>
+          {/* Separador: distingue lo que informa de lo que crea algo. */}
+          <span className="hidden sm:block w-px h-6 bg-line mx-1.5" aria-hidden="true" />
+
+          <Link
+            href="/expedientes"
+            data-tour="nuevo"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-navy text-white text-[13.5px] font-bold hover:bg-navy-deep transition-colors shadow-sm"
+          >
+            <Plus size={18} strokeWidth={2} /> <span className="hidden sm:inline">Nuevo expediente</span>
+          </Link>
+        </div>
       </div>
 
       {/* Búsqueda móvil expandible */}
