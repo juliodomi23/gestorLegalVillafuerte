@@ -105,6 +105,8 @@ export async function crearExpedienteAction(form: FormExpediente) {
 
   await registrarAuditoria(sesion.id, exp.id, "crear", "expediente");
   revalidatePath("/expedientes");
+  revalidatePath("/contratos");
+  return { id: exp.id, numeroInterno: exp.numeroInterno };
 }
 
 export async function editarExpedienteAction(id: string, form: FormExpediente) {

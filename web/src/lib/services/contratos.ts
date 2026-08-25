@@ -38,6 +38,7 @@ export type ContratoView = {
   nombre: string;
   link: string | null;
   subidoEl: string;
+  subidoPor: string | null;
   expedienteId: string;
   numeroExpediente: string;
   cliente: string;
@@ -60,6 +61,7 @@ export async function listarContratos(alcance: Alcance): Promise<ContratoView[]>
       ...(alcance ? { expediente: { abogadoResponsableId: { in: alcance.abogadoIds } } } : {}),
     },
     include: {
+      usuario: { select: { nombre: true } },
       expediente: {
         include: {
           cliente: { select: { nombre: true } },
@@ -83,6 +85,7 @@ export async function listarContratos(alcance: Alcance): Promise<ContratoView[]>
         month: "short",
         year: "numeric",
       }),
+      subidoPor: d.usuario?.nombre ?? null,
       expedienteId: d.expedienteId,
       numeroExpediente: d.expediente.numeroInterno ?? "—",
       cliente: d.expediente.cliente?.nombre ?? "Sin cliente",
