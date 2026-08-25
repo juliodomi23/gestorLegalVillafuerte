@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Check, LogIn, LogOut, MapPin, MapPinOff, Pencil, AlertTriangle, RefreshCw, StickyNote } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Select, Field, Input, Textarea, Modal } from "@/components/modal";
-import { actualizarGeocercaAction, justificarChecadaAction } from "./actions";
+import { actualizarGeocercaAction, actualizarNotaAction, alternarJustificacionAction } from "./actions";
 
 export type ChecadaView = {
   id: string;
@@ -132,7 +132,7 @@ function ModalNota({ checada, onClose }: { checada: ChecadaView; onClose: () => 
     setError("");
     setGuardando(true);
     try {
-      await justificarChecadaAction(checada.id, motivo);
+      await actualizarNotaAction(checada.id, motivo);
       router.refresh();
       onClose();
     } catch (e) {
@@ -143,15 +143,47 @@ function ModalNota({ checada, onClose }: { checada: ChecadaView; onClose: () => 
 
   return (
     <Modal open onClose={onClose} title={`Nota — ${checada.abogado} · ${checada.hora}`} onSubmit={guardar} submitLabel={guardando ? "Guardando…" : "Guardar"}>
-      <Field label="Justificación / nota (salida temprana, audiencia, trámite…)" full>
+      <Field label="Nota (salida temprana, detalle de una audiencia, trámite…)" full>
         <Textarea rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. Salió temprano por audiencia en el Juzgado 3" autoFocus />
       </Field>
       <p className="col-span-full text-[12px] text-muted -mt-2">
-        Dejar vacío quita la justificación. Con texto, la checada cuenta como justificada y no
-        acumula para el reglamento de retardos.
+        Es solo texto libre para contexto. Para marcar un retardo como justificado usa el botón
+        en la columna de Puntualidad — no hace falta escribir nota para eso.
       </p>
       {error && <p className="col-span-full text-[13px] text-danger bg-danger-wash rounded-lg px-3 py-2">{error}</p>}
     </Modal>
+  );
+}
+
+function BadgePuntualidad({ checada }: { checada: ChecadaView }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  if (!checada.clasificacion) return <span className="text-muted text-[12px]">—</span>;
+
+  const clase = checada.justificada ? "bg-navy-wash text-navy" : CLASIFICACION[checada.clasificacion].clase;
+  const etiqueta = checada.justificada ? "Justificado" : CLASIFICACION[checada.clasificacion].etiqueta;
+  const esRetardo = checada.clasificacion === "retardo_menor" || checada.clasificacion === "retardo_mayor";
+
+  if (!esRetardo) {
+    return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-bold ${clase}`}>{etiqueta}</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          await alternarJustificacionAction(checada.id, !checada.justificada);
+          router.refresh();
+        })
+      }
+      title={checada.justificada ? "Clic para quitar la justificación" : "Clic para marcar como justificado"}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-bold transition-opacity hover:opacity-70 disabled:opacity-50 ${clase}`}
+    >
+      {etiqueta}
+    </button>
   );
 }
 
@@ -443,18 +475,7 @@ export default function ChecadorClient({
                 </td>
                 <td className="px-3 py-3 num text-muted capitalize">{c.hora}</td>
                 <td className="px-3 py-3">
-                  {c.clasificacion ? (
-                    <span
-                      title={c.justificada && c.motivo ? `Justificado: ${c.motivo}` : undefined}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-bold ${
-                        c.justificada ? "bg-navy-wash text-navy" : CLASIFICACION[c.clasificacion].clase
-                      }`}
-                    >
-                      {c.justificada ? "Justificado" : CLASIFICACION[c.clasificacion].etiqueta}
-                    </span>
-                  ) : (
-                    <span className="text-muted text-[12px]">—</span>
-                  )}
+                  <BadgePuntualidad checada={c} />
                 </td>
                 <td className="px-3 py-3 text-muted">{ORIGEN_LABEL[c.origen] ?? c.origen}</td>
                 <td className="px-3 py-3">

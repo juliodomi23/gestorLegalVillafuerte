@@ -29,20 +29,28 @@ export async function actualizarGeocercaAction(
   revalidatePath("/reloj-checador");
 }
 
-// Nota/justificación de una checada puntual: salidas tempranas, retardos con
-// audiencia de por medio, etc. Un motivo vacío quita la justificación.
-export async function justificarChecadaAction(checadaId: string, motivo: string) {
+// Justificar/desjustificar un retardo con un clic, sin exigir nota escrita —
+// a fin de mes se revisan muchos retardos y no da tiempo de redactar cada uno.
+export async function alternarJustificacionAction(checadaId: string, justificada: boolean) {
   const sesion = await requireAdmin();
-  const texto = motivo.trim();
-
   await prisma.checada.update({
     where: { id: checadaId },
     data: {
-      motivo: texto || null,
-      justificada: texto !== "",
-      justificadaPor: texto ? sesion.id : null,
-      justificadaEn: texto ? new Date() : null,
+      justificada,
+      justificadaPor: justificada ? sesion.id : null,
+      justificadaEn: justificada ? new Date() : null,
     },
+  });
+  revalidatePath("/reloj-checador");
+}
+
+// Nota libre sobre una checada (salida temprana, detalle de la justificación, etc.).
+// Independiente de si está justificada o no.
+export async function actualizarNotaAction(checadaId: string, motivo: string) {
+  await requireAdmin();
+  await prisma.checada.update({
+    where: { id: checadaId },
+    data: { motivo: motivo.trim() || null },
   });
   revalidatePath("/reloj-checador");
 }
