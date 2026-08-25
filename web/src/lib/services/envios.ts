@@ -154,6 +154,7 @@ export async function destinatarios(tipo?: "sucursal" | "todas"): Promise<Destin
 }
 
 export type NoShow = {
+  id: string;
   hora: string;
   cliente: string;
   telefono: string;
@@ -212,6 +213,7 @@ export async function noShowsDelDia(fechaISO: string): Promise<NoShow[]> {
     .map((c) => {
       const nombre = c.cliente?.nombre ?? c.clienteNombre ?? "Sin nombre";
       return {
+        id: c.id,
         hora: horaLocal(c.fechaHora),
         cliente: nombre,
         telefono: telefonoVisible(c.cliente?.telefono ?? c.telefono, nombre),
