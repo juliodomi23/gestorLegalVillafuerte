@@ -289,7 +289,7 @@ model Cita {
   telefono     String?
   fechaHora    DateTime @map("fecha_hora") @db.Timestamptz
   clienteNombre  String?  @map("cliente_nombre") // nombre extraído cuando no hay cliente vinculado
-  estado         String   @default("agendada") // agendada | confirmada | cancelada | no_show
+  estado         String   @default("agendada") // agendada | confirmada | asesorada | cancelada | no_show
   origen         String   @default("manual") // bot_externo | manual
   googleEventId  String?  @map("google_event_id")
   creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz

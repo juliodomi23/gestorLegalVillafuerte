@@ -6,7 +6,7 @@ import { CalendarPlus, Phone, PhoneCall, Trash2, Pencil, MessageCircle, ChevronL
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
-import { crearCitaAction, editarCitaAction, borrarCitaAction } from "./actions";
+import { crearCitaAction, editarCitaAction, borrarCitaAction, cambiarEstadoCitaAction } from "./actions";
 import { marcarLlamadoAction } from "../seguimientos/actions";
 
 export type CitaView = {
@@ -36,6 +36,13 @@ const VISTAS = ["dia", "semana", "mes"] as const;
 type Vista = (typeof VISTAS)[number];
 
 const vacio = { cliente: "", asunto: "", telefono: "", fecha: "", hora: "", sucursal: "", abogado: "" };
+
+const ESTADOS_CITA = [
+  { valor: "agendada", etiqueta: "Por confirmar", clase: "bg-amber-wash text-amber" },
+  { valor: "confirmada", etiqueta: "Confirmado", clase: "bg-success-wash text-success" },
+  { valor: "asesorada", etiqueta: "Asesorado", clase: "bg-navy/[.08] text-navy" },
+  { valor: "no_show", etiqueta: "No asistió", clase: "bg-danger-wash text-danger" },
+] as const;
 
 function navegarFecha(fechaStr: string, vista: Vista, dir: 1 | -1): string {
   const [y, m, d] = fechaStr.split("-").map(Number);
@@ -75,10 +82,12 @@ function TablaSimple({
   citas,
   onEditar,
   onBorrar,
+  onCambiarEstado,
 }: {
   citas: CitaView[];
   onEditar: (cita: CitaView) => void;
   onBorrar: (id: string) => void;
+  onCambiarEstado: (id: string, estado: string) => void;
 }) {
   return (
     <table className="w-full min-w-[820px] text-[13.5px]">
@@ -107,15 +116,19 @@ function TablaSimple({
             <td className="px-3 py-3.5 text-muted">{c.sucursal}</td>
             <td className="px-3 py-3.5">{c.abogado}</td>
             <td className="px-3 py-3.5">
-              <span
-                className={`px-2 py-0.5 rounded text-[12px] font-bold ${
-                  c.estado === "Confirmada"
-                    ? "bg-success-wash text-success"
-                    : "bg-amber-wash text-amber"
+              <select
+                value={c.estado}
+                onChange={(e) => onCambiarEstado(c.id, e.target.value)}
+                className={`px-2 py-0.5 rounded text-[12px] font-bold border-0 cursor-pointer ${
+                  ESTADOS_CITA.find((e) => e.valor === c.estado)?.clase ?? "bg-amber-wash text-amber"
                 }`}
               >
-                {c.estado}
-              </span>
+                {ESTADOS_CITA.map((e) => (
+                  <option key={e.valor} value={e.valor}>
+                    {e.etiqueta}
+                  </option>
+                ))}
+              </select>
             </td>
             <td className="px-3 py-3.5 text-right whitespace-nowrap">
               <button
@@ -261,6 +274,11 @@ export default function AgendaClient({
     if (await confirmar({ titulo: "¿Cancelar esta cita?", peligro: true, confirmLabel: "Cancelar cita", cancelLabel: "Volver" })) await borrarCitaAction(id);
   }
 
+  async function cambiarEstado(id: string, estado: string) {
+    await cambiarEstadoCitaAction(id, estado);
+    router.refresh();
+  }
+
   async function llamado(id: string) {
     await marcarLlamadoAction(id);
     router.refresh();
@@ -354,7 +372,7 @@ export default function AgendaClient({
 
       {vistaActual === "dia" ? (
         <Card className="overflow-x-auto">
-          <TablaSimple citas={citas} onEditar={abrirEditar} onBorrar={borrar} />
+          <TablaSimple citas={citas} onEditar={abrirEditar} onBorrar={borrar} onCambiarEstado={cambiarEstado} />
         </Card>
       ) : (
         <div className="space-y-4">
@@ -376,7 +394,7 @@ export default function AgendaClient({
                   {citasPorDia[dia].length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <TablaSimple citas={citasPorDia[dia]} onEditar={abrirEditar} onBorrar={borrar} />
+              <TablaSimple citas={citasPorDia[dia]} onEditar={abrirEditar} onBorrar={borrar} onCambiarEstado={cambiarEstado} />
             </Card>
           ))}
         </div>

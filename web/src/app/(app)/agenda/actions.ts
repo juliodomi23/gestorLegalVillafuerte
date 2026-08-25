@@ -116,6 +116,15 @@ export async function editarCitaAction(id: string, form: FormCita) {
   revalidatePath("/agenda");
 }
 
+const ESTADOS_VALIDOS = ["agendada", "confirmada", "asesorada", "no_show"];
+
+export async function cambiarEstadoCitaAction(id: string, estado: string) {
+  await requireSession();
+  if (!ESTADOS_VALIDOS.includes(estado)) throw new Error("Estado inválido");
+  await prisma.cita.update({ where: { id }, data: { estado } });
+  revalidatePath("/agenda");
+}
+
 export async function borrarCitaAction(id: string) {
   await requireSession();
   // Leer el evento ANTES del delete: despues ya no se sabria cual borrar en Calendar.

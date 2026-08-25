@@ -100,7 +100,7 @@ export default async function AgendaPage({
     telefono: c.telefono ?? c.cliente?.telefono ?? "—",
     sucursal: c.sucursal?.nombre ?? "—",
     abogado: c.abogado?.nombre ?? "—",
-    estado: c.estado === "confirmada" ? "Confirmada" : "Por confirmar",
+    estado: c.estado,
   }));
 
   const seguimientos: SeguimientoAgendaView[] = seguimientoRows.map((s) => ({
