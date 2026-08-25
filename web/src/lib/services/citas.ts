@@ -44,7 +44,7 @@ export async function citasDelDia(fecha: string) {
   });
 }
 
-export async function actualizarCita(id: string, estado: "confirmada" | "cancelada") {
+export async function actualizarCita(id: string, estado: "confirmada" | "cancelada" | "no_show") {
   return prisma.cita.update({ where: { id }, data: { estado } });
 }
 
