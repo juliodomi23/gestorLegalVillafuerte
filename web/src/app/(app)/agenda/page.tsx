@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AgendaClient, { type CitaView, type SeguimientoAgendaView } from "./client";
 import { alcanceDe, porAbogado, porAgenda } from "@/lib/alcance";
+import { telefonoVisible } from "@/lib/services/envios";
 
 const TZ = "America/Mexico_City";
 
@@ -97,7 +98,9 @@ export default async function AgendaPage({
     }),
     cliente: c.cliente?.nombre ?? c.clienteNombre ?? "—",
     asunto: c.asunto ?? "—",
-    telefono: c.telefono ?? c.cliente?.telefono ?? "—",
+    telefono:
+      telefonoVisible(c.cliente?.telefono ?? c.telefono, c.cliente?.nombre ?? c.clienteNombre) ||
+      "—",
     sucursal: c.sucursal?.nombre ?? "—",
     abogado: c.abogado?.nombre ?? "—",
     estado: c.estado,
