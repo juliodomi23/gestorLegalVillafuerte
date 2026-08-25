@@ -46,6 +46,15 @@ export async function GET(req: Request) {
       titulo: e.cliente?.nombre ?? "Sin cliente",
       subtitulo: `${e.numeroInterno} · ${e.materia ?? "Sin materia"}`,
       href: `/expedientes/${e.id}`,
+      ficha: {
+        telefono: e.cliente?.telefono ?? null,
+        email: e.cliente?.email ?? null,
+        notas: e.cliente?.notas ?? null,
+        numeroInterno: e.numeroInterno,
+        numeroJudicial: e.numeroJudicial,
+        materia: e.materia,
+        etapaProcesal: e.etapaProcesal,
+      },
     })),
     ...prospectos.map((p) => ({
       tipo: "prospecto" as const,
@@ -53,6 +62,13 @@ export async function GET(req: Request) {
       titulo: p.nombre,
       subtitulo: `${p.telefono ?? "Sin tel."} · ${p.ciudad ?? "Sin ciudad"}`,
       href: `/prospectos`,
+      ficha: {
+        telefono: p.telefono,
+        ciudad: p.ciudad,
+        asunto: p.asunto,
+        estado: p.estado,
+        nota: p.nota,
+      },
     })),
   ];
 

@@ -28,3 +28,21 @@ export async function actualizarGeocercaAction(
   });
   revalidatePath("/reloj-checador");
 }
+
+// Nota/justificación de una checada puntual: salidas tempranas, retardos con
+// audiencia de por medio, etc. Un motivo vacío quita la justificación.
+export async function justificarChecadaAction(checadaId: string, motivo: string) {
+  const sesion = await requireAdmin();
+  const texto = motivo.trim();
+
+  await prisma.checada.update({
+    where: { id: checadaId },
+    data: {
+      motivo: texto || null,
+      justificada: texto !== "",
+      justificadaPor: texto ? sesion.id : null,
+      justificadaEn: texto ? new Date() : null,
+    },
+  });
+  revalidatePath("/reloj-checador");
+}

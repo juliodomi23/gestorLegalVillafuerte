@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, LogIn, LogOut, MapPin, MapPinOff, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
+import { Copy, Check, LogIn, LogOut, MapPin, MapPinOff, Pencil, AlertTriangle, RefreshCw, StickyNote } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
-import { Select, Field, Input, Modal } from "@/components/modal";
-import { actualizarGeocercaAction } from "./actions";
+import { Select, Field, Input, Textarea, Modal } from "@/components/modal";
+import { actualizarGeocercaAction, justificarChecadaAction } from "./actions";
 
 export type ChecadaView = {
   id: string;
@@ -122,6 +122,39 @@ function ModalGeocerca({ sucursal, onClose }: { sucursal: SucursalGeocerca; onCl
   );
 }
 
+function ModalNota({ checada, onClose }: { checada: ChecadaView; onClose: () => void }) {
+  const router = useRouter();
+  const [motivo, setMotivo] = useState(checada.motivo ?? "");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+
+  async function guardar() {
+    setError("");
+    setGuardando(true);
+    try {
+      await justificarChecadaAction(checada.id, motivo);
+      router.refresh();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar");
+    }
+    setGuardando(false);
+  }
+
+  return (
+    <Modal open onClose={onClose} title={`Nota — ${checada.abogado} · ${checada.hora}`} onSubmit={guardar} submitLabel={guardando ? "Guardando…" : "Guardar"}>
+      <Field label="Justificación / nota (salida temprana, audiencia, trámite…)" full>
+        <Textarea rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. Salió temprano por audiencia en el Juzgado 3" autoFocus />
+      </Field>
+      <p className="col-span-full text-[12px] text-muted -mt-2">
+        Dejar vacío quita la justificación. Con texto, la checada cuenta como justificada y no
+        acumula para el reglamento de retardos.
+      </p>
+      {error && <p className="col-span-full text-[13px] text-danger bg-danger-wash rounded-lg px-3 py-2">{error}</p>}
+    </Modal>
+  );
+}
+
 export default function ChecadorClient({
   checadas,
   resumen,
@@ -139,6 +172,7 @@ export default function ChecadorClient({
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState<SucursalGeocerca | null>(null);
+  const [notaEditando, setNotaEditando] = useState<ChecadaView | null>(null);
   const [ultimaCarga, setUltimaCarga] = useState<Date | null>(null);
 
   // El panel se queda abierto en recepción mientras la gente va llegando, así que se
@@ -389,6 +423,7 @@ export default function ChecadorClient({
               <th className="eyebrow text-muted px-3 py-3">Puntualidad</th>
               <th className="eyebrow text-muted px-3 py-3">Origen</th>
               <th className="eyebrow text-muted px-3 py-3">Ubicación</th>
+              <th className="eyebrow text-muted px-3 py-3">Nota</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
@@ -429,11 +464,21 @@ export default function ChecadorClient({
                     <span className="inline-flex items-center gap-1 text-muted text-[12px]"><MapPinOff size={12} /> Sin verificar</span>
                   )}
                 </td>
+                <td className="px-3 py-3 max-w-[220px]">
+                  <button
+                    onClick={() => setNotaEditando(c)}
+                    className={`inline-flex items-start gap-1.5 text-left hover:text-navy transition-colors ${c.motivo ? "text-ink" : "text-muted"}`}
+                    title={c.motivo ?? "Agregar nota"}
+                  >
+                    {c.motivo ? <StickyNote size={13} className="shrink-0 mt-0.5 text-navy" /> : <Pencil size={13} className="shrink-0 mt-0.5" />}
+                    <span className="text-[12.5px] truncate">{c.motivo ?? "Agregar nota"}</span>
+                  </button>
+                </td>
               </tr>
             ))}
             {checadas.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-muted">
+                <td colSpan={8} className="px-5 py-10 text-center text-muted">
                   Sin checadas en este período.
                 </td>
               </tr>
@@ -443,6 +488,7 @@ export default function ChecadorClient({
       </Card>
 
       {editando && <ModalGeocerca sucursal={editando} onClose={() => setEditando(null)} />}
+      {notaEditando && <ModalNota checada={notaEditando} onClose={() => setNotaEditando(null)} />}
     </>
   );
 }

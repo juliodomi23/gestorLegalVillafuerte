@@ -3,26 +3,121 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Plus, Menu, FileText, User, X, AlertTriangle } from "lucide-react";
+import { Search, Bell, Plus, Menu, FileText, User, X, AlertTriangle, Phone, Mail, MapPin, StickyNote } from "lucide-react";
 
-type Resultado = {
-  tipo: "expediente" | "prospecto";
-  id: string;
-  titulo: string;
-  subtitulo: string;
-  href: string;
+type FichaExpediente = {
+  telefono: string | null;
+  email: string | null;
+  notas: string | null;
+  numeroInterno: string | null;
+  numeroJudicial: string | null;
+  materia: string | null;
+  etapaProcesal: string | null;
 };
+
+type FichaProspecto = {
+  telefono: string | null;
+  ciudad: string | null;
+  asunto: string | null;
+  estado: string;
+  nota: string | null;
+};
+
+type Resultado =
+  | { tipo: "expediente"; id: string; titulo: string; subtitulo: string; href: string; ficha: FichaExpediente }
+  | { tipo: "prospecto"; id: string; titulo: string; subtitulo: string; href: string; ficha: FichaProspecto };
+
+const ESTADO_PROSPECTO: Record<string, string> = {
+  por_contactar: "Por contactar",
+  no_contesto: "No contestó",
+  agendo_cita: "Agendó cita",
+  llamar_despues: "Llamar después",
+  convertido: "Convertido",
+  descartado: "Descartado",
+};
+
+function FilaFicha({ icon: Icon, label, valor }: { icon: typeof Phone; label: string; valor: string | null }) {
+  if (!valor) return null;
+  return (
+    <div className="flex items-start gap-2.5 px-6 py-2.5">
+      <Icon size={15} className="text-muted shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <p className="eyebrow text-muted">{label}</p>
+        <p className="text-[13.5px] text-ink break-words">{valor}</p>
+      </div>
+    </div>
+  );
+}
+
+function FichaModal({ resultado, onClose }: { resultado: Resultado; onClose: () => void }) {
+  const router = useRouter();
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm flex items-start justify-center p-4 pt-[8vh]" onClick={onClose}>
+      <div className="bg-surface rounded-xl border border-line shadow-card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line">
+          <div>
+            <p className="eyebrow text-muted">{resultado.tipo === "expediente" ? "Cliente" : "Prospecto"}</p>
+            <h3 className="font-serif text-[19px] text-ink">{resultado.titulo}</h3>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" className="text-muted hover:text-ink transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="divide-y divide-line/60 max-h-[60vh] overflow-y-auto">
+          {resultado.tipo === "expediente" ? (
+            <>
+              <FilaFicha icon={Phone} label="Teléfono" valor={resultado.ficha.telefono} />
+              <FilaFicha icon={Mail} label="Correo" valor={resultado.ficha.email} />
+              <FilaFicha
+                icon={FileText}
+                label="Expediente"
+                valor={`${resultado.ficha.numeroInterno ?? "Sin número"}${resultado.ficha.materia ? ` · ${resultado.ficha.materia}` : ""}`}
+              />
+              <FilaFicha icon={FileText} label="Núm. judicial" valor={resultado.ficha.numeroJudicial} />
+              <FilaFicha icon={FileText} label="Etapa procesal" valor={resultado.ficha.etapaProcesal} />
+              <FilaFicha icon={StickyNote} label="Notas del cliente" valor={resultado.ficha.notas} />
+            </>
+          ) : (
+            <>
+              <FilaFicha icon={Phone} label="Teléfono" valor={resultado.ficha.telefono} />
+              <FilaFicha icon={MapPin} label="Ciudad" valor={resultado.ficha.ciudad} />
+              <FilaFicha icon={FileText} label="Asunto" valor={resultado.ficha.asunto} />
+              <FilaFicha icon={User} label="Estado" valor={ESTADO_PROSPECTO[resultado.ficha.estado] ?? resultado.ficha.estado} />
+              <FilaFicha icon={StickyNote} label="Nota" valor={resultado.ficha.nota} />
+            </>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-line">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-line text-[13px] hover:border-navy/40 transition-colors">
+            Cerrar
+          </button>
+          <button
+            onClick={() => {
+              onClose();
+              router.push(resultado.href);
+            }}
+            className="px-5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors"
+          >
+            {resultado.tipo === "expediente" ? "Ver expediente" : "Ver prospectos"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SearchDropdown({
   resultados,
   cargando,
   query,
-  navegar,
+  onSelect,
 }: {
   resultados: Resultado[];
   cargando: boolean;
   query: string;
-  navegar: (href: string) => void;
+  onSelect: (r: Resultado) => void;
 }) {
   return (
     <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-line rounded-xl shadow-xl overflow-hidden z-50">
@@ -35,7 +130,7 @@ function SearchDropdown({
       {resultados.map((r) => (
         <button
           key={`${r.tipo}-${r.id}`}
-          onMouseDown={() => navegar(r.href)}
+          onMouseDown={() => onSelect(r)}
           className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-paper transition-colors border-b border-line/50 last:border-0"
         >
           <span
@@ -197,13 +292,13 @@ function useAtajo() {
 }
 
 export function Topbar({ onMenu }: { onMenu?: () => void }) {
-  const router = useRouter();
   const atajo = useAtajo();
   const [query, setQuery] = useState("");
   const [resultados, setResultados] = useState<Resultado[]>([]);
   const [abierto, setAbierto] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [ficha, setFicha] = useState<Resultado | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
@@ -275,12 +370,12 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
     }
   }, [mobileSearchOpen]);
 
-  function navegar(href: string) {
+  function seleccionar(r: Resultado) {
     setAbierto(false);
     setMobileSearchOpen(false);
     setQuery("");
     setResultados([]);
-    router.push(href);
+    setFicha(r);
   }
 
   function limpiarQuery() {
@@ -336,7 +431,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
               resultados={resultados}
               cargando={cargando}
               query={query}
-              navegar={navegar}
+              onSelect={seleccionar}
             />
           )}
         </div>
@@ -392,13 +487,15 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
               resultados={resultados}
               cargando={cargando}
               query={query}
-              navegar={navegar}
+              onSelect={seleccionar}
             />
           )}
         </div>
       )}
 
       <div className="h-px bg-gradient-to-r from-amber/60 via-amber/20 to-transparent" />
+
+      {ficha && <FichaModal resultado={ficha} onClose={() => setFicha(null)} />}
     </header>
   );
 }
