@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { FileText, Upload, Loader, Pencil, CalendarClock, ExternalLink, Eye, X, User, StickyNote, Plus } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
@@ -233,14 +234,18 @@ export default function ContratosClient({
               <th className="eyebrow text-muted px-3 py-3">Plan</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Total</th>
               <th className="eyebrow text-muted px-3 py-3">Próximo pago</th>
-              <th className="eyebrow text-muted px-3 py-3">Subido por</th>
+              <th className="eyebrow text-muted px-3 py-3">Abogado</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
             {contratos.map((c) => (
               <tr key={c.documentoId} className="hover:bg-paper/60 transition-colors">
-                <td className="px-5 py-3 num font-bold">{c.numeroExpediente}</td>
+                <td className="px-5 py-3 num font-bold">
+                  <Link href={`/expedientes/${c.expedienteId}`} className="text-navy hover:underline">
+                    {c.numeroExpediente}
+                  </Link>
+                </td>
                 <td className="px-3 py-3">{c.cliente}</td>
                 <td className="px-3 py-3">
                   {c.link ? (
@@ -276,7 +281,7 @@ export default function ContratosClient({
                     "—"
                   )}
                 </td>
-                <td className="px-3 py-3 text-muted">{c.subidoPor ?? "—"}</td>
+                <td className="px-3 py-3 text-muted">{c.abogado}</td>
                 <td className="px-3 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <button
@@ -394,9 +399,7 @@ export default function ContratosClient({
                 <Upload size={15} className="text-muted shrink-0 mt-0.5" />
                 <div>
                   <p className="eyebrow text-muted">Contrato subido</p>
-                  <p className="text-[13.5px] text-ink">
-                    {verDetalle.subidoEl}{verDetalle.subidoPor ? ` · por ${verDetalle.subidoPor}` : ""}
-                  </p>
+                  <p className="text-[13.5px] text-ink">{verDetalle.subidoEl}</p>
                   {verDetalle.link && (
                     <a href={verDetalle.link} target="_blank" rel="noreferrer" className="text-navy hover:underline inline-flex items-center gap-1 text-[12.5px] mt-0.5">
                       Ver PDF <ExternalLink size={11} />
