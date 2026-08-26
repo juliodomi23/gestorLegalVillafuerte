@@ -127,6 +127,9 @@ model Usuario {
   gastos       GastoExpediente[]
   auditorias   Auditoria[]
   checadas     Checada[]
+  // Expedientes que no son suyos ni de su gente, pero el dueño (o un admin) le dio
+  // acceso puntual — p.ej. un abogado que cubre a otro en una audiencia.
+  expedientesCompartidos Expediente[] @relation("ExpedienteCompartido")
 
   @@map("usuarios")
 }
@@ -212,6 +215,8 @@ model Expediente {
   movimientos        MovimientoCaja[]
   gastos             GastoExpediente[]
   planPago           PlanPago?
+  // Acceso puntual además del abogado responsable y sus encargados (ver [[Usuario.expedientesCompartidos]]).
+  compartidoCon      Usuario[] @relation("ExpedienteCompartido")
 
   @@map("expedientes")
 }

@@ -69,3 +69,33 @@ export function porAgenda(a: Alcance) {
     ],
   };
 }
+
+// where para expedientes: los del alcance normal (suyos + su gente) más los que le
+// compartieron puntualmente (ver Expediente.compartidoCon en el schema).
+export function porExpediente(a: Alcance, userId: string | undefined) {
+  if (!a) return {};
+  return {
+    OR: [
+      { abogadoResponsableId: { in: a.abogadoIds } },
+      ...(userId ? [{ compartidoCon: { some: { id: userId } } }] : []),
+    ],
+  };
+}
+
+// ¿Puede este usuario ver/tocar este expediente? Admin, dueño, su encargado, o a
+// quien se le compartió puntualmente.
+export async function tieneAccesoExpediente(
+  expedienteId: string,
+  userId: string,
+  rol: string
+): Promise<boolean> {
+  if (rol === "admin") return true;
+  const e = await prisma.expediente.findUnique({
+    where: { id: expedienteId },
+    select: { abogadoResponsableId: true, compartidoCon: { select: { id: true } } },
+  });
+  if (!e) return false;
+  if (e.compartidoCon.some((u) => u.id === userId)) return true;
+  const alcance = await alcanceDe(userId, rol);
+  return !!alcance && alcance.abogadoIds.includes(e.abogadoResponsableId ?? "");
+}

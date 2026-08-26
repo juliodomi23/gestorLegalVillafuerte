@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { alcanceDe } from "@/lib/alcance";
+import { tieneAccesoExpediente } from "@/lib/alcance";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ArrowLeft, AlarmClock } from "lucide-react";
@@ -56,6 +56,7 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
         movimientos: { orderBy: { fecha: "desc" } },
         gastos: { orderBy: { fecha: "desc" } },
         planPago: true,
+        compartidoCon: { orderBy: { nombre: "asc" } },
       },
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
@@ -64,13 +65,19 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
 
   if (!exp) notFound();
 
-  // Un abogado solo puede abrir sus propios expedientes (o los de su gente, si es
-  // encargado), aunque pegue la URL directa.
-  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
-  if (alcance && !alcance.abogadoIds.includes(exp.abogadoResponsableId ?? "")) notFound();
+  // Un abogado solo puede abrir sus propios expedientes, los de su gente (si es
+  // encargado), o los que le compartieron puntualmente, aunque pegue la URL directa.
+  if (!session?.user?.id || !(await tieneAccesoExpediente(exp.id, session.user.id, session.user.rol))) {
+    notFound();
+  }
+  const esDueno = esAdmin || exp.abogadoResponsableId === session?.user?.id;
 
   const sucursales = sucursalesDb.map((s) => s.nombre);
   const abogados = abogadosDb.map((u) => u.nombre);
+  const usuariosParaCompartir = abogadosDb
+    .filter((u) => u.id !== exp.abogadoResponsableId)
+    .map((u) => ({ id: u.id, nombre: u.nombre }));
+  const compartidoConIds = exp.compartidoCon.map((u) => u.id);
 
   const terminoActivo = exp.terminos.find((t) => !t.cumplido) ?? null;
   const diasTermino = terminoActivo?.vencimientoTermino ? diasHasta(terminoActivo.vencimientoTermino) : null;
@@ -203,6 +210,9 @@ export default async function ExpedienteDetallePage({ params }: { params: { id: 
               <ExpedienteAcciones
                 expedienteId={exp.id}
                 esAdmin={esAdmin}
+                puedeCompartir={esDueno}
+                usuariosParaCompartir={usuariosParaCompartir}
+                compartidoConIds={compartidoConIds}
                 inicial={{
                   clienteId: exp.clienteId ?? "",
                   clienteNombre: exp.cliente?.nombre ?? "",

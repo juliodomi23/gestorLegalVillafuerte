@@ -5,14 +5,15 @@ import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services
 import { requireSession, type Sesion } from "@/lib/guard";
 import { parsear, urlHttpSchema, montoSchema } from "@/lib/validaciones";
 import { registrarAuditoria } from "@/lib/auditoria";
+import { tieneAccesoExpediente } from "@/lib/alcance";
 import { unlink } from "fs/promises";
 import { join } from "path";
 
-// Un expediente es privado: solo su abogado responsable (o un admin) puede tocarlo.
+// Un expediente lo puede tocar su abogado responsable, su encargado, a quien se lo
+// compartieron puntualmente, o un admin (ver lib/alcance.ts).
 async function exigirDuenoExpediente(expedienteId: string, sesion: Sesion) {
-  if (sesion.rol === "admin") return;
-  const e = await prisma.expediente.findUnique({ where: { id: expedienteId }, select: { abogadoResponsableId: true } });
-  if (!e || e.abogadoResponsableId !== sesion.id) throw new Error("Sin permiso sobre este expediente");
+  if (await tieneAccesoExpediente(expedienteId, sesion.id, sesion.rol)) return;
+  throw new Error("Sin permiso sobre este expediente");
 }
 
 // Para registros hijos (actuación, término, parte...) no confiamos en el expedienteId
@@ -137,6 +138,18 @@ export async function editarExpedienteAction(id: string, form: FormExpediente) {
   });
   revalidatePath("/expedientes");
   revalidatePath(`/expedientes/${id}`);
+}
+
+// Reemplaza la lista completa de con quién se comparte el expediente (además del
+// abogado responsable y sus encargados, que ya lo ven sin esto).
+export async function compartirExpedienteAction(expedienteId: string, abogadoIds: string[]) {
+  const sesion = await requireSession();
+  await exigirDuenoExpediente(expedienteId, sesion);
+  await prisma.expediente.update({
+    where: { id: expedienteId },
+    data: { compartidoCon: { set: abogadoIds.map((id) => ({ id })) } },
+  });
+  revalidatePath(`/expedientes/${expedienteId}`);
 }
 
 export type FormActuacion = {

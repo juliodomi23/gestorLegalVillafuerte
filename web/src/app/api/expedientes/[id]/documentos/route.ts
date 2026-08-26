@@ -4,21 +4,15 @@ import { join } from "path";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { tieneAccesoExpediente } from "@/lib/alcance";
 
 const UPLOADS_DIR = join(process.cwd(), "uploads");
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // un PDF legal no debería pasar de esto
 
-// Un expediente es privado: solo su abogado responsable (o un admin) puede ver/subir documentos.
-async function tieneAccesoExpediente(expedienteId: string, session: { user: { id: string; rol: string } }) {
-  if (session.user.rol === "admin") return true;
-  const e = await prisma.expediente.findUnique({ where: { id: expedienteId }, select: { abogadoResponsableId: true } });
-  return !!e && e.abogadoResponsableId === session.user.id;
-}
-
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if (!(await tieneAccesoExpediente(params.id, session))) {
+  if (!(await tieneAccesoExpediente(params.id, session.user.id, session.user.rol))) {
     return NextResponse.json({ error: "Sin permiso sobre este expediente" }, { status: 403 });
   }
 
@@ -38,7 +32,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if (!(await tieneAccesoExpediente(params.id, session))) {
+  if (!(await tieneAccesoExpediente(params.id, session.user.id, session.user.rol))) {
     return NextResponse.json({ error: "Sin permiso sobre este expediente" }, { status: 403 });
   }
 

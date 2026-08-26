@@ -1,16 +1,21 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Pencil, Plus, FileText, Link2, X } from "lucide-react";
+import { Pencil, Plus, FileText, Link2, X, Share2 } from "lucide-react";
 import { Modal, Field, Input, Select } from "@/components/modal";
-import { editarExpedienteAction, crearActuacionAction, agregarDocumentoDriveAction, type FormExpediente } from "@/app/(app)/expedientes/actions";
+import { editarExpedienteAction, crearActuacionAction, agregarDocumentoDriveAction, compartirExpedienteAction, type FormExpediente } from "@/app/(app)/expedientes/actions";
 import { MATERIAS, ETAPAS } from "@/lib/constants";
 
 const TIPOS_ACTUACION = ["promocion", "acuerdo", "notificacion", "audiencia", "nota"];
 
+type UsuarioBasico = { id: string; nombre: string };
+
 type Props = {
   expedienteId: string;
   esAdmin: boolean;
+  puedeCompartir?: boolean;
+  usuariosParaCompartir?: UsuarioBasico[];
+  compartidoConIds?: string[];
   inicial: {
     clienteId: string;
     clienteNombre: string;
@@ -26,9 +31,11 @@ type Props = {
   abogados: string[];
 };
 
-export function ExpedienteAcciones({ expedienteId, esAdmin, inicial, sucursales, abogados }: Props) {
+export function ExpedienteAcciones({ expedienteId, esAdmin, puedeCompartir, usuariosParaCompartir = [], compartidoConIds = [], inicial, sucursales, abogados }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [actOpen, setActOpen] = useState(false);
+  const [compOpen, setCompOpen] = useState(false);
+  const [seleccion, setSeleccion] = useState<string[]>(compartidoConIds);
   const [editForm, setEditForm] = useState<FormExpediente>({ ...inicial, rolCliente: inicial.rolCliente ?? "", cuantia: inicial.cuantia ?? "" });
   const [actForm, setActForm] = useState({ tipo: "", descripcion: "", fecha: hoy() });
   const [saving, setSaving] = useState(false);
@@ -76,6 +83,17 @@ export function ExpedienteAcciones({ expedienteId, esAdmin, inicial, sucursales,
     setArchivoSeleccionado(null);
   }
 
+  async function guardarCompartir() {
+    setSaving(true);
+    await compartirExpedienteAction(expedienteId, seleccion);
+    setSaving(false);
+    setCompOpen(false);
+  }
+
+  function toggleSeleccion(id: string) {
+    setSeleccion((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  }
+
   function cerrarActModal() {
     setActOpen(false);
     setActForm({ tipo: "", descripcion: "", fecha: hoy() });
@@ -93,6 +111,15 @@ export function ExpedienteAcciones({ expedienteId, esAdmin, inicial, sucursales,
       >
         <Pencil size={18} strokeWidth={1.75} /> Editar
       </button>
+
+      {puedeCompartir && (
+        <button
+          onClick={() => setCompOpen(true)}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line bg-surface text-[13px] hover:border-navy/40 transition-colors"
+        >
+          <Share2 size={18} strokeWidth={1.75} /> Compartir
+        </button>
+      )}
 
       <button
         onClick={() => setActOpen(true)}
@@ -127,6 +154,37 @@ export function ExpedienteAcciones({ expedienteId, esAdmin, inicial, sucursales,
           <Input type="number" min="0" step="0.01" value={editForm.cuantia ?? ""} onChange={(e) => setE("cuantia", e.target.value)} placeholder="0.00" />
         </Field>
       </Modal>
+
+      {/* Modal compartir expediente */}
+      {puedeCompartir && (
+        <Modal
+          open={compOpen}
+          onClose={() => setCompOpen(false)}
+          title="Compartir expediente"
+          onSubmit={guardarCompartir}
+          submitLabel={saving ? "Guardando…" : "Guardar"}
+        >
+          <div className="col-span-full space-y-2">
+            <p className="text-[13px] text-muted">
+              Además del abogado responsable, estas personas también podrán ver y editar este expediente.
+            </p>
+            {usuariosParaCompartir.length === 0 && (
+              <p className="text-[13px] text-muted italic">No hay más usuarios activos para compartir.</p>
+            )}
+            {usuariosParaCompartir.map((u) => (
+              <label key={u.id} className="flex items-center gap-2 text-[13.5px] py-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={seleccion.includes(u.id)}
+                  onChange={() => toggleSeleccion(u.id)}
+                  className="accent-navy"
+                />
+                {u.nombre}
+              </label>
+            ))}
+          </div>
+        </Modal>
+      )}
 
       {/* Modal nueva actuación */}
       <Modal open={actOpen} onClose={cerrarActModal} title="Nueva actuación" onSubmit={guardarActuacion} submitLabel={saving ? "Guardando…" : "Registrar"}>
