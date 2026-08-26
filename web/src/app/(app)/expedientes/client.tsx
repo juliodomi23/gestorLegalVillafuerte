@@ -244,7 +244,6 @@ export default function ExpedientesClient({
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return expedientes
-      .filter((e) => esAdmin || e.abogado === sesionNombre)
       .filter((e) => !q || e.cliente.toLowerCase().includes(q) || e.numeroInterno.toLowerCase().includes(q) || e.numeroJudicial.toLowerCase().includes(q))
       .filter((e) => !fMateria || e.materia === fMateria)
       .filter((e) => !fEstado || e.estado.toLowerCase() === fEstado.toLowerCase())
