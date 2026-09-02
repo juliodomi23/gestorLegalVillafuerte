@@ -127,6 +127,7 @@ model Usuario {
   gastos       GastoExpediente[]
   auditorias   Auditoria[]
   checadas     Checada[]
+  actividadRespuestas ActividadRespuesta[]
   // Expedientes que no son suyos ni de su gente, pero el dueño (o un admin) le dio
   // acceso puntual — p.ej. un abogado que cubre a otro en una audiencia.
   expedientesCompartidos Expediente[] @relation("ExpedienteCompartido")
@@ -507,7 +508,8 @@ model ActividadPlantilla {
   activa      Boolean  @default(true)
   creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  registros ActividadRegistro[]
+  registros  ActividadRegistro[]
+  respuestas ActividadRespuesta[]
 
   @@index([diaSemana])
   @@map("actividades_plantilla")
@@ -528,6 +530,26 @@ model ActividadRegistro {
   @@unique([plantillaId, fecha])
   @@index([fecha])
   @@map("actividades_registro")
+}
+
+// Por cada actividad y fecha, qué contestó cada trabajador al que la coordinadora le
+// preguntó (todos los activos, director incluido — no solo a quien le tocaba esa
+// actividad puntual). Aparte de ActividadRegistro porque una actividad puede estar
+// marcada como hecha y aun así faltar por confirmar con alguien.
+model ActividadRespuesta {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plantillaId String   @map("plantilla_id") @db.Uuid
+  fecha       DateTime @db.Date
+  usuarioId   String   @map("usuario_id") @db.Uuid
+  respuesta   String   // "si" | "no" | "sin_respuesta"
+  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  plantilla ActividadPlantilla @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+  usuario   Usuario            @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([plantillaId, fecha, usuarioId])
+  @@index([fecha])
+  @@map("actividades_respuestas")
 }
 
 // Bitácora de los envíos automáticos por WhatsApp. Existe para poder responder

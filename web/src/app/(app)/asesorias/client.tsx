@@ -143,7 +143,14 @@ const vacio = {
   nombre: "", telefono: "", asunto: "", sucursal: "", abogado: "", pago: "No", monto: "", status: "Pendiente",
   edad: "", sexo: "", estadoCivil: "", escolaridad: "", domicilio: "", nacionalidad: "Mexicana", ocupacion: "",
   correo: "", domicilioLaboral: "", hijos: "", nombreHijos: "", presupuestoTexto: "",
+  fecha: "", // yyyy-mm-dd, solo se usa al editar
 };
+
+/** dd/mm/yyyy -> yyyy-mm-dd, para el <input type="date">. */
+function fechaAIso(f: string) {
+  const [d, m, y] = f.split("/");
+  return `${y}-${m}-${d}`;
+}
 
 export default function AsesoriasClient({
   asesorias,
@@ -251,6 +258,7 @@ export default function AsesoriasClient({
       edad: a.edad, sexo: a.sexo, estadoCivil: a.estadoCivil, escolaridad: a.escolaridad, domicilio: a.domicilio,
       nacionalidad: a.nacionalidad, ocupacion: a.ocupacion, correo: a.correo, domicilioLaboral: a.domicilioLaboral,
       hijos: a.hijos, nombreHijos: a.nombreHijos, presupuestoTexto: a.presupuestoTexto,
+      fecha: fechaAIso(a.fecha),
     });
     setFolioHoja(a.folio);
     setFechaHoja(formatFecha(a.fecha));
@@ -284,6 +292,7 @@ export default function AsesoriasClient({
         domicilio: form.domicilio, nacionalidad: form.nacionalidad, ocupacion: form.ocupacion, correo: form.correo,
         domicilioLaboral: form.domicilioLaboral, hijos: form.hijos, nombreHijos: form.nombreHijos,
         presupuestoTexto: form.presupuestoTexto,
+        ...(editId ? { fecha: form.fecha } : {}),
       };
       if (editId) { await editarAsesoriaAction(editId, data); } else { await crearAsesoriaAction(data); }
       setOpen(false);
@@ -409,6 +418,7 @@ export default function AsesoriasClient({
           }
           options={sucursales}
         />
+        {editId && <Campo label="Fecha" col={4} type="date" value={form.fecha} onChange={(v) => set("fecha", v)} />}
         <Area label="Presupuesto" value={form.presupuestoTexto} onChange={(v) => set("presupuestoTexto", v)} placeholder={"Opción A) $15,000 y 10%\nOpción B) …"} />
 
         <Seccion>Cobro y seguimiento</Seccion>

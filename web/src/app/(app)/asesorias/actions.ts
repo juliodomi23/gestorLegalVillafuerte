@@ -26,6 +26,8 @@ export type FormAsesoria = {
   hijos?: string;
   nombreHijos?: string;
   presupuestoTexto?: string;
+  /** yyyy-mm-dd. Solo se manda al editar, para corregir una fecha mal capturada. */
+  fecha?: string;
 };
 
 // Solo recepción y admin asignan la asesoría a otro abogado. Va aquí además del
@@ -85,6 +87,7 @@ export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
     where: { id },
     data: {
       ...reasignar,
+      ...(form.fecha ? { fecha: new Date(form.fecha) } : {}),
       nombre: form.nombre,
       telefono: form.telefono || null,
       tema: form.asunto || null,

@@ -3,6 +3,7 @@ import { requireProductividad } from "@/lib/guard";
 import {
   actividadesDelDia,
   resumenSemana,
+  trabajadoresActivos,
   hoyISO,
   diaSemanaDe,
   DIAS,
@@ -24,9 +25,10 @@ export default async function ProductividadPage({
     ? (searchParams.fecha as string)
     : hoyISO();
 
-  const [actividades, semana] = await Promise.all([
+  const [actividades, semana, trabajadores] = await Promise.all([
     actividadesDelDia(fecha),
     resumenSemana(fecha),
+    trabajadoresActivos(),
   ]);
 
   return (
@@ -36,6 +38,7 @@ export default async function ProductividadPage({
       esHoy={fecha === hoyISO()}
       actividades={actividades}
       semana={semana}
+      trabajadores={trabajadores}
     />
   );
 }

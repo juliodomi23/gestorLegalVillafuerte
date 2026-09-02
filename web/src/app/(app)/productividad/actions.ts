@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireProductividad } from "@/lib/guard";
-import { marcarActividad } from "@/lib/services/productividad";
+import { marcarActividad, marcarRespuesta, type Respuesta } from "@/lib/services/productividad";
 
 export type ResultadoMarca = { ok: true } | { ok: false; error: string };
 
@@ -17,6 +17,22 @@ export async function marcarActividadAction(
   try {
     await requireProductividad();
     await marcarActividad(plantillaId, fechaISO, realizada, observaciones);
+    revalidatePath("/productividad");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "No se pudo guardar" };
+  }
+}
+
+export async function marcarRespuestaAction(
+  plantillaId: string,
+  fechaISO: string,
+  usuarioId: string,
+  respuesta: Respuesta
+): Promise<ResultadoMarca> {
+  try {
+    await requireProductividad();
+    await marcarRespuesta(plantillaId, fechaISO, usuarioId, respuesta);
     revalidatePath("/productividad");
     return { ok: true };
   } catch (e) {

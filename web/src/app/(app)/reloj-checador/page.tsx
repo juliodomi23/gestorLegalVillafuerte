@@ -1,8 +1,10 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { slugSucursal } from "@/lib/checador";
 import { resumenMensual, clasificarChecada } from "@/lib/services/asistencia";
 import { hoyDespacho } from "@/lib/fecha";
+import { requireProductividad } from "@/lib/guard";
 import ChecadorClient, { type ChecadaView, type AbogadoResumen } from "./client";
 
 export default async function RelojChecadorPage({
@@ -10,6 +12,14 @@ export default async function RelojChecadorPage({
 }: {
   searchParams: { dias?: string; sucursal?: string };
 }) {
+  // Antes vivía bajo /(admin): ahora también entra la coordinadora de operaciones
+  // (mismo permiso que Productividad), sin hacerla admin.
+  try {
+    await requireProductividad();
+  } catch {
+    redirect("/inicio");
+  }
+
   const dias = Math.min(Math.max(Number(searchParams.dias) || 7, 1), 90);
   const desde = new Date();
   desde.setDate(desde.getDate() - dias);

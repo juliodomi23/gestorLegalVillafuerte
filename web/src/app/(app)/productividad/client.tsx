@@ -2,10 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, CircleDot, Loader, MessageSquare } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, CircleDot, Loader, MessageSquare, Users, X, HelpCircle } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
-import { marcarActividadAction } from "./actions";
-import type { ActividadDelDia, DiaResumen } from "@/lib/services/productividad";
+import { marcarActividadAction, marcarRespuestaAction } from "./actions";
+import type { ActividadDelDia, DiaResumen, Respuesta, Trabajador } from "@/lib/services/productividad";
+
+const RESPUESTA_INFO: Record<Respuesta, { label: string; cls: string; icon: typeof Check }> = {
+  si: { label: "Sí", cls: "bg-success text-white border-success", icon: Check },
+  no: { label: "No", cls: "bg-danger text-white border-danger", icon: X },
+  sin_respuesta: { label: "Sin respuesta", cls: "bg-line text-muted border-line", icon: HelpCircle },
+};
 
 function sumarDias(fechaISO: string, dias: number): string {
   const [y, m, d] = fechaISO.split("-").map(Number);
@@ -29,25 +35,42 @@ export default function ProductividadClient({
   esHoy,
   actividades,
   semana,
+  trabajadores,
 }: {
   fecha: string;
   nombreDia: string;
   esHoy: boolean;
   actividades: ActividadDelDia[];
   semana: DiaResumen[];
+  trabajadores: Trabajador[];
 }) {
   const router = useRouter();
   const [pendiente, startTransition] = useTransition();
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
   const [notaAbierta, setNotaAbierta] = useState<string | null>(null);
+  const [equipoAbierto, setEquipoAbierto] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   // Optimista: la casilla responde al instante y se corrige sola si el guardado falla.
   const [marcadas, setMarcadas] = useState<Record<string, boolean>>({});
   const [notas, setNotas] = useState<Record<string, string>>({});
+  // Por actividad, respuesta de cada trabajador. Arranca con lo que ya venía guardado.
+  const [respuestas, setRespuestas] = useState<Record<string, Record<string, Respuesta>>>({});
 
   const estaMarcada = (a: ActividadDelDia) => marcadas[a.plantillaId] ?? a.realizada;
   const notaDe = (a: ActividadDelDia) => notas[a.plantillaId] ?? a.observaciones;
+  const respuestasDe = (a: ActividadDelDia) => respuestas[a.plantillaId] ?? a.respuestas;
+
+  async function marcarRespuesta(a: ActividadDelDia, usuarioId: string, respuesta: Respuesta) {
+    setError("");
+    setRespuestas((r) => ({
+      ...r,
+      [a.plantillaId]: { ...respuestasDe(a), [usuarioId]: respuesta },
+    }));
+    const r = await marcarRespuestaAction(a.plantillaId, fecha, usuarioId, respuesta);
+    if (!r.ok) setError(r.error);
+    else startTransition(() => router.refresh());
+  }
 
   async function alternar(a: ActividadDelDia) {
     const nuevo = !estaMarcada(a);
@@ -194,6 +217,19 @@ export default function ProductividadClient({
                   </p>
 
                   <button
+                    onClick={() => setEquipoAbierto(equipoAbierto === a.plantillaId ? null : a.plantillaId)}
+                    title="Respuesta por trabajador"
+                    aria-label="Respuesta por trabajador"
+                    className={`p-1.5 rounded-md shrink-0 transition-colors ${
+                      Object.keys(respuestasDe(a)).length > 0
+                        ? "text-navy hover:bg-navy/[.06]"
+                        : "text-muted/60 hover:text-navy hover:bg-navy/[.06]"
+                    }`}
+                  >
+                    <Users size={15} />
+                  </button>
+
+                  <button
                     onClick={() => setNotaAbierta(notaAbierta === a.plantillaId ? null : a.plantillaId)}
                     title="Observaciones"
                     aria-label="Observaciones"
@@ -204,6 +240,43 @@ export default function ProductividadClient({
                     <MessageSquare size={15} />
                   </button>
                 </div>
+
+                {equipoAbierto === a.plantillaId && (
+                  <div className="ml-[70px] mt-2.5 max-w-[calc(100%-70px)] rounded-lg border border-line bg-paper/50 p-3">
+                    <p className="text-[11.5px] text-muted mb-2">
+                      Quién ya dijo si hizo esta actividad (director incluido):
+                    </p>
+                    <div className="grid gap-1.5">
+                      {trabajadores.map((t) => {
+                        const actual = respuestasDe(a)[t.id];
+                        return (
+                          <div key={t.id} className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[12.5px] text-ink flex-1 min-w-[120px]">{t.nombre}</span>
+                            <div className="flex gap-1">
+                              {(Object.entries(RESPUESTA_INFO) as [Respuesta, typeof RESPUESTA_INFO["si"]][]).map(
+                                ([key, info]) => (
+                                  <button
+                                    key={key}
+                                    onClick={() => marcarRespuesta(a, t.id, key)}
+                                    title={info.label}
+                                    className={`px-2 py-1 rounded text-[11px] font-bold border transition-colors ${
+                                      actual === key ? info.cls : "border-line text-muted hover:border-navy/40"
+                                    }`}
+                                  >
+                                    {info.label}
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {trabajadores.length === 0 && (
+                        <p className="text-[12px] text-muted">No hay trabajadores activos.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {a.senal && (
                   <p

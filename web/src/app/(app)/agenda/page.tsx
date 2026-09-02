@@ -50,7 +50,19 @@ export default async function AgendaPage({
   searchParams: { fecha?: string; vista?: string };
 }) {
   const session = await getServerSession(authOptions);
-  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+  let alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+
+  // La coordinadora de operaciones (mismo permiso que Productividad) da seguimiento a
+  // citas y llamadas de TODAS las sucursales, no solo la suya — por eso ve la Agenda
+  // completa igual que un admin, aunque su alcance normal (clientes, expedientes) siga
+  // limitado a lo suyo.
+  if (alcance && session?.user?.id) {
+    const u = await prisma.usuario.findUnique({
+      where: { id: session.user.id },
+      select: { verProductividad: true },
+    });
+    if (u?.verProductividad) alcance = null;
+  }
 
   const vista = searchParams.vista ?? "dia";
   const fechaStr =

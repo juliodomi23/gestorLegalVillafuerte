@@ -9,6 +9,8 @@ import { hoyDespacho, TZ_DESPACHO } from "@/lib/fecha";
 
 export const DIAS = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
+export type Respuesta = "si" | "no" | "sin_respuesta";
+
 export type ActividadDelDia = {
   plantillaId: string;
   hora: string;
@@ -18,7 +20,12 @@ export type ActividadDelDia = {
   observaciones: string;
   // Lo que el gestor ya sabe al respecto, si esta actividad tiene una señal ligada.
   senal: Senal | null;
+  // Qué contestó cada trabajador activo (incluido el director) al preguntarle por
+  // esta actividad. Solo trae a quien ya se le preguntó; el resto se asume sin marcar.
+  respuestas: Record<string, Respuesta>;
 };
+
+export type Trabajador = { id: string; nombre: string };
 
 export type DiaResumen = {
   fechaISO: string;
@@ -57,12 +64,13 @@ export function sumarDiasISO(fechaISO: string, dias: number): string {
 
 export async function actividadesDelDia(fechaISO: string): Promise<ActividadDelDia[]> {
   const diaSemana = diaSemanaDe(fechaISO);
-  const [plantillas, registros] = await Promise.all([
+  const [plantillas, registros, respuestas] = await Promise.all([
     prisma.actividadPlantilla.findMany({
       where: { diaSemana, activa: true },
       orderBy: [{ hora: "asc" }, { orden: "asc" }],
     }),
     prisma.actividadRegistro.findMany({ where: { fecha: new Date(fechaISO) } }),
+    prisma.actividadRespuesta.findMany({ where: { fecha: new Date(fechaISO) } }),
   ]);
 
   const porPlantilla = new Map(registros.map((r) => [r.plantillaId, r]));
@@ -70,6 +78,13 @@ export async function actividadesDelDia(fechaISO: string): Promise<ActividadDelD
     plantillas.map((p) => p.senal).filter((s): s is string => !!s),
     fechaISO
   );
+
+  const respuestasPorPlantilla = new Map<string, Record<string, Respuesta>>();
+  for (const r of respuestas) {
+    const mapa = respuestasPorPlantilla.get(r.plantillaId) ?? {};
+    mapa[r.usuarioId] = r.respuesta as Respuesta;
+    respuestasPorPlantilla.set(r.plantillaId, mapa);
+  }
 
   return plantillas.map((p) => {
     const r = porPlantilla.get(p.id);
@@ -81,8 +96,18 @@ export async function actividadesDelDia(fechaISO: string): Promise<ActividadDelD
       realizada: r?.realizada ?? false,
       observaciones: r?.observaciones ?? "",
       senal: p.senal ? senales[p.senal] ?? null : null,
+      respuestas: respuestasPorPlantilla.get(p.id) ?? {},
     };
   });
+}
+
+export async function trabajadoresActivos(): Promise<Trabajador[]> {
+  const usuarios = await prisma.usuario.findMany({
+    where: { activo: true },
+    select: { id: true, nombre: true },
+    orderBy: { nombre: "asc" },
+  });
+  return usuarios;
 }
 
 // Los siete días de la semana que contiene `fechaISO`, con su avance.
@@ -139,5 +164,19 @@ export async function marcarActividad(
     where: { plantillaId_fecha: { plantillaId, fecha } },
     create: { plantillaId, fecha, realizada, observaciones: observaciones || null },
     update: { realizada, ...(observaciones !== undefined ? { observaciones: observaciones || null } : {}) },
+  });
+}
+
+export async function marcarRespuesta(
+  plantillaId: string,
+  fechaISO: string,
+  usuarioId: string,
+  respuesta: Respuesta
+) {
+  const fecha = new Date(fechaISO);
+  await prisma.actividadRespuesta.upsert({
+    where: { plantillaId_fecha_usuarioId: { plantillaId, fecha, usuarioId } },
+    create: { plantillaId, fecha, usuarioId, respuesta },
+    update: { respuesta },
   });
 }
