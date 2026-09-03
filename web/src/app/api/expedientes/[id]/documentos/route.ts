@@ -7,7 +7,7 @@ import { authOptions } from "@/lib/auth";
 import { tieneAccesoExpediente } from "@/lib/alcance";
 
 const UPLOADS_DIR = join(process.cwd(), "uploads");
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // un PDF legal no debería pasar de esto
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024; // un PDF legal no debería pasar de esto
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "Sin archivo" }, { status: 400 });
   if (file.type !== "application/pdf") return NextResponse.json({ error: "Solo PDF" }, { status: 400 });
-  if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: "Máximo 25 MB" }, { status: 400 });
+  if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: "Máximo 100 MB" }, { status: 400 });
 
   await mkdir(UPLOADS_DIR, { recursive: true });
   const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;

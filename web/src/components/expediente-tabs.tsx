@@ -623,7 +623,7 @@ function Documentos({ expedienteId, inicial }: { expedienteId: string; inicial: 
         <p className="text-[14px] font-bold text-ink mt-3">
           Arrastra un PDF aquí o <span className="text-navy underline decoration-amber/60 underline-offset-2">haz clic para seleccionar</span>
         </p>
-        <p className="text-[12px] text-muted mt-1">Solo archivos PDF · máximo 500 MB</p>
+        <p className="text-[12px] text-muted mt-1">Solo archivos PDF · máximo 100 MB</p>
         <input ref={inputRef} type="file" accept="application/pdf" multiple className="hidden"
           onChange={(e) => { manejar(e.target.files); e.target.value = ""; }} />
       </div>
