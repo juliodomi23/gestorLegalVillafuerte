@@ -29,7 +29,18 @@ function calcLlamoEstaSemana(ultimoContacto: Date | null): boolean {
 
 export default async function SeguimientosPage() {
   const session = await getServerSession(authOptions);
-  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+  let alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+
+  // Mismo criterio que Agenda: la coordinadora de operaciones (permiso
+  // verProductividad) da seguimiento a llamadas de todos los abogados, no solo
+  // las suyas.
+  if (alcance && session?.user?.id) {
+    const u = await prisma.usuario.findUnique({
+      where: { id: session.user.id },
+      select: { verProductividad: true },
+    });
+    if (u?.verProductividad) alcance = null;
+  }
 
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.seguimiento.findMany({
