@@ -45,6 +45,7 @@ model Sucursal {
   seguimientos Seguimiento[]
   citas        Cita[]
   checadas     Checada[]
+  diligencias  Diligencia[]
 
   @@map("sucursales")
 }
@@ -127,6 +128,7 @@ model Usuario {
   gastos       GastoExpediente[]
   auditorias   Auditoria[]
   checadas     Checada[]
+  diligencias  Diligencia[]
   actividadRespuestas ActividadRespuesta[]
   // Expedientes que no son suyos ni de su gente, pero el dueño (o un admin) le dio
   // acceso puntual — p.ej. un abogado que cubre a otro en una audiencia.
@@ -180,6 +182,7 @@ model Cliente {
   asesorias    Asesoria[]
   llamadas     Llamada[]
   seguimientos Seguimiento[]
+  diligencias  Diligencia[]
 
   @@map("clientes")
 }
@@ -369,6 +372,44 @@ model Seguimiento {
   sucursal Sucursal? @relation(fields: [sucursalId], references: [id])
 
   @@map("seguimientos")
+}
+
+// Diligencias de campo (juzgado, notificaciones, trámites) con folio por sucursal,
+// digitalizando la hoja de factura que llenaba cada abogado a mano. No requiere
+// expediente: a veces la diligencia es previa a abrir uno.
+model Diligencia {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  folio         String?
+  sucursalId    String?  @map("sucursal_id") @db.Uuid
+  abogadoId     String?  @map("abogado_id") @db.Uuid
+  clienteId     String?  @map("cliente_id") @db.Uuid
+  // Fallback cuando no hay cliente vinculado (mismo patrón que Cita.clienteNombre).
+  clienteNombre String?  @map("cliente_nombre")
+  fecha         DateTime @default(now()) @db.Date
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  sucursal  Sucursal?           @relation(fields: [sucursalId], references: [id])
+  abogado   Usuario?            @relation(fields: [abogadoId], references: [id])
+  cliente   Cliente?            @relation(fields: [clienteId], references: [id])
+  renglones DiligenciaRenglon[]
+
+  @@map("diligencias")
+}
+
+// Renglones de la diligencia (FECHA/DESCRIPCIÓN/ASUNTO/IMPORTE en la hoja de papel).
+// El total no se guarda: se suma al leer, igual que `recaudado` en resumenDiario().
+model DiligenciaRenglon {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diligenciaId String    @map("diligencia_id") @db.Uuid
+  fecha        DateTime? @db.Date
+  descripcion  String?
+  asunto       String?
+  importe      Decimal   @db.Decimal(14, 2)
+  creadoEn     DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+
+  diligencia Diligencia @relation(fields: [diligenciaId], references: [id], onDelete: Cascade)
+
+  @@map("diligencia_renglones")
 }
 
 model Documento {

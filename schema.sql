@@ -307,6 +307,34 @@ CREATE INDEX idx_seguimientos_proximo
 
 
 -- =====================================================================
+-- 11c. DILIGENCIAS (digitaliza la hoja de factura del bufete; folio por
+--      sucursal vía sucursales.ultimo_folio, igual que asesorías)
+-- =====================================================================
+
+CREATE TABLE diligencias (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  folio          text,
+  sucursal_id    uuid REFERENCES sucursales(id) ON DELETE SET NULL,
+  abogado_id     uuid REFERENCES usuarios(id) ON DELETE SET NULL,
+  cliente_id     uuid REFERENCES clientes(id) ON DELETE SET NULL,
+  cliente_nombre text,                  -- fallback cuando no hay cliente vinculado
+  fecha          date NOT NULL DEFAULT CURRENT_DATE,
+  creado_en      timestamptz NOT NULL DEFAULT now()
+);
+
+-- Renglones de la diligencia (FECHA/DESCRIPCIÓN/ASUNTO/IMPORTE de la hoja de papel).
+CREATE TABLE diligencia_renglones (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  diligencia_id uuid NOT NULL REFERENCES diligencias(id) ON DELETE CASCADE,
+  fecha         date,
+  descripcion   text,
+  asunto        text,
+  importe       numeric(14,2) NOT NULL,
+  creado_en     timestamptz NOT NULL DEFAULT now()
+);
+
+
+-- =====================================================================
 -- 12. DOCUMENTOS (metadatos; el archivo vive en Google Drive)
 -- =====================================================================
 
