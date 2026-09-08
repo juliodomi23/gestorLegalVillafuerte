@@ -1,3 +1,6 @@
+-- Contador propio (no comparte ultimo_folio con asesorías); empieza en 001.
+ALTER TABLE sucursales ADD COLUMN IF NOT EXISTS ultimo_folio_diligencia integer NOT NULL DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS diligencias (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   folio          text,

@@ -28,6 +28,10 @@ model Sucursal {
   direccion  String?
   telefono   String?
   ultimoFolio Int     @default(0) @map("ultimo_folio")
+  // Contador propio para diligencias: comparte sucursal con asesorías pero NO el
+  // consecutivo — si usara ultimo_folio, el primer folio de diligencias arrancaría
+  // donde iban las asesorías en vez de en 001.
+  ultimoFolioDiligencia Int @default(0) @map("ultimo_folio_diligencia")
   // Geocerca del reloj checador: sin lat/lon, esta sucursal no valida ubicación al checar.
   lat         Float?
   lon         Float?

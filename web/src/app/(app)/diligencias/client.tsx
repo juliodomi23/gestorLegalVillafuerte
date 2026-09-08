@@ -11,6 +11,7 @@ import {
   borrarDiligenciaAction,
   agregarRenglonAction,
   borrarRenglonAction,
+  type FormRenglon,
 } from "./actions";
 
 export type DiligenciaView = {
@@ -31,8 +32,50 @@ function totalDe(d: DiligenciaView) {
   return d.renglones.reduce((s, r) => s + r.importe, 0);
 }
 
-const vacioNueva = { cliente: "", sucursal: "", abogado: "" };
-const vacioRenglon = { fecha: hoy(), descripcion: "", asunto: "", importe: "" };
+const vacioRenglon: FormRenglon = { fecha: hoy(), descripcion: "", asunto: "", importe: "" };
+const vacioNueva = { cliente: "", sucursal: "", abogado: "", renglones: [{ ...vacioRenglon }] };
+
+// Renglones dentro del formulario de "Nueva diligencia" (fila editable, sin guardar
+// hasta enviar el formulario completo — a diferencia de FilaRenglones, que sí guarda
+// al vuelo porque edita una diligencia que ya existe).
+function RenglonesForm({ renglones, onChange }: { renglones: FormRenglon[]; onChange: (r: FormRenglon[]) => void }) {
+  function set(i: number, campo: keyof FormRenglon, v: string) {
+    onChange(renglones.map((r, idx) => (idx === i ? { ...r, [campo]: v } : r)));
+  }
+  function quitar(i: number) {
+    onChange(renglones.filter((_, idx) => idx !== i));
+  }
+  const total = renglones.reduce((s, r) => s + (parseFloat(r.importe) || 0), 0);
+
+  return (
+    <div className="col-span-full">
+      <span className="eyebrow text-muted block mb-1.5">Conceptos</span>
+      <div className="space-y-2">
+        {renglones.map((r, i) => (
+          <div key={i} className="grid grid-cols-[1fr_1fr_110px_28px] gap-1.5 items-center">
+            <Input value={r.descripcion} onChange={(e) => set(i, "descripcion", e.target.value)} placeholder="Se fue al juzgado a..." autoFocus={i === 0} />
+            <Input value={r.asunto} onChange={(e) => set(i, "asunto", e.target.value)} placeholder="Copias, viáticos..." />
+            <Input type="number" min="0" step="0.01" value={r.importe} onChange={(e) => set(i, "importe", e.target.value)} placeholder="$0.00" />
+            <button
+              type="button"
+              onClick={() => quitar(i)}
+              disabled={renglones.length === 1}
+              className="text-muted hover:text-danger disabled:opacity-30 transition-colors"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between mt-2">
+        <button type="button" onClick={() => onChange([...renglones, { ...vacioRenglon }])} className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-navy hover:text-navy-deep transition-colors">
+          <Plus size={14} strokeWidth={2} /> Agregar otro concepto
+        </button>
+        <span className="text-[13px] font-bold text-ink">Total: ${total.toLocaleString("es-MX")}</span>
+      </div>
+    </div>
+  );
+}
 
 function FilaRenglones({ diligencia }: { diligencia: DiligenciaView }) {
   const [openForm, setOpenForm] = useState(false);
@@ -158,7 +201,7 @@ export default function DiligenciasClient({
   const totalGeneral = useMemo(() => filtradas.reduce((s, d) => s + totalDe(d), 0), [filtradas]);
 
   function abrirNuevo() {
-    setForm({ ...vacioNueva, abogado: puedeAsignar ? "" : sesionNombre });
+    setForm({ ...vacioNueva, renglones: [{ ...vacioRenglon }], abogado: puedeAsignar ? "" : sesionNombre });
     setOpen(true);
   }
 
@@ -273,6 +316,7 @@ export default function DiligenciasClient({
             <Input value={sesionNombre} disabled />
           </Field>
         )}
+        <RenglonesForm renglones={form.renglones} onChange={(renglones) => setForm((f) => ({ ...f, renglones }))} />
       </Modal>
     </>
   );

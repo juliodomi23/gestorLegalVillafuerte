@@ -1,22 +1,23 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { resolverAbogado, resolverSucursal, asignarFolio } from "@/lib/services/resolvers";
+import { resolverAbogado, resolverSucursal, asignarFolioDiligencia } from "@/lib/services/resolvers";
 import { requireSession, type Sesion } from "@/lib/guard";
 import { parsear, montoSchema } from "@/lib/validaciones";
-
-export type FormDiligencia = {
-  cliente: string;
-  sucursal: string;
-  abogado: string;
-  fecha?: string; // yyyy-mm-dd
-};
 
 export type FormRenglon = {
   fecha: string;
   descripcion: string;
   asunto: string;
   importe: string;
+};
+
+export type FormDiligencia = {
+  cliente: string;
+  sucursal: string;
+  abogado: string;
+  fecha?: string; // yyyy-mm-dd
+  renglones: FormRenglon[];
 };
 
 // Solo recepción y admin asignan la diligencia a otro abogado, igual que en asesorías:
@@ -33,7 +34,8 @@ export async function crearDiligenciaAction(form: FormDiligencia) {
     resolverAbogado(abogado),
     resolverSucursal(form.sucursal),
   ]);
-  const folio = await asignarFolio(sucursalId);
+  const folio = await asignarFolioDiligencia(sucursalId);
+  const renglones = form.renglones.filter((r) => r.importe);
   const diligencia = await prisma.diligencia.create({
     data: {
       folio,
@@ -41,6 +43,14 @@ export async function crearDiligenciaAction(form: FormDiligencia) {
       abogadoId,
       sucursalId,
       ...(form.fecha ? { fecha: new Date(form.fecha) } : {}),
+      renglones: {
+        create: renglones.map((r) => ({
+          descripcion: r.descripcion.trim() || null,
+          asunto: r.asunto.trim() || null,
+          importe: parsear(montoSchema, r.importe),
+          fecha: r.fecha ? new Date(r.fecha) : new Date(),
+        })),
+      },
     },
   });
   revalidatePath("/diligencias");

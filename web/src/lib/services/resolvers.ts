@@ -22,6 +22,16 @@ export async function asignarFolio(sucursalId?: string | null): Promise<string |
   return rows[0] ? String(rows[0].ultimo_folio).padStart(5, "0") : null;
 }
 
+// Folio de diligencias: contador propio por sucursal (no comparte ultimo_folio con
+// asesorías), empieza en 001.
+export async function asignarFolioDiligencia(sucursalId?: string | null): Promise<string | null> {
+  if (!sucursalId) return null;
+  const rows = await prisma.$queryRaw<{ ultimo_folio_diligencia: number }[]>`
+    UPDATE sucursales SET ultimo_folio_diligencia = ultimo_folio_diligencia + 1 WHERE id = ${sucursalId}::uuid RETURNING ultimo_folio_diligencia
+  `;
+  return rows[0] ? String(rows[0].ultimo_folio_diligencia).padStart(3, "0") : null;
+}
+
 export async function resolverAbogado(nombreOTelefono?: string): Promise<string | null> {
   if (!nombreOTelefono) return null;
   const u = await prisma.usuario.findFirst({
