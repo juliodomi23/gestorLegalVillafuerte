@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS diligencias (
   cliente_id     uuid REFERENCES clientes(id) ON DELETE SET NULL,
   cliente_nombre text,
   fecha          date NOT NULL DEFAULT CURRENT_DATE,
+  estado_pago    text NOT NULL DEFAULT 'pendiente', -- pendiente | reembolsado | en_nomina
   creado_en      timestamptz NOT NULL DEFAULT now()
 );
 

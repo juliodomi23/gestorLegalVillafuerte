@@ -390,6 +390,9 @@ model Diligencia {
   // Fallback cuando no hay cliente vinculado (mismo patrón que Cita.clienteNombre).
   clienteNombre String?  @map("cliente_nombre")
   fecha         DateTime @default(now()) @db.Date
+  // Reembolso al abogado del total que adelantó: pendiente | reembolsado | en_nomina
+  // (se le da junto con su pago del mes). Aplica a la diligencia completa, no por renglón.
+  estadoPago    String   @default("pendiente") @map("estado_pago")
   creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   sucursal  Sucursal?           @relation(fields: [sucursalId], references: [id])

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { alcanceDe, porAbogado } from "@/lib/alcance";
 import DiligenciasClient, { type DiligenciaView } from "./client";
+import type { EstadoPagoDiligencia } from "./actions";
 
 export default async function DiligenciasPage() {
   const session = await getServerSession(authOptions);
@@ -31,6 +32,7 @@ export default async function DiligenciasPage() {
       cliente: d.cliente?.nombre ?? d.clienteNombre ?? "Sin cliente",
       sucursal: d.sucursal?.nombre ?? "",
       abogado: d.abogado?.nombre ?? "",
+      estadoPago: (d.estadoPago as EstadoPagoDiligencia) ?? "pendiente",
       renglones: d.renglones.map((r) => ({
         id: r.id,
         fecha: r.fecha ? r.fecha.toISOString().split("T")[0] : "",

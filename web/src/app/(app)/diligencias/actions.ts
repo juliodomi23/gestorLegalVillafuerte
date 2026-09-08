@@ -20,6 +20,8 @@ export type FormDiligencia = {
   renglones: FormRenglon[];
 };
 
+export type EstadoPagoDiligencia = "pendiente" | "reembolsado" | "en_nomina";
+
 // Solo recepción y admin asignan la diligencia a otro abogado, igual que en asesorías:
 // un server action es un endpoint HTTP y cualquiera con sesión puede invocarlo con el
 // payload que quiera.
@@ -55,6 +57,12 @@ export async function crearDiligenciaAction(form: FormDiligencia) {
   });
   revalidatePath("/diligencias");
   return diligencia.id;
+}
+
+export async function cambiarEstadoPagoAction(id: string, estadoPago: EstadoPagoDiligencia) {
+  await requireSession();
+  await prisma.diligencia.update({ where: { id }, data: { estadoPago } });
+  revalidatePath("/diligencias");
 }
 
 export async function borrarDiligenciaAction(id: string) {

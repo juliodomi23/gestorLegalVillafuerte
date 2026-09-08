@@ -11,7 +11,9 @@ import {
   borrarDiligenciaAction,
   agregarRenglonAction,
   borrarRenglonAction,
+  cambiarEstadoPagoAction,
   type FormRenglon,
+  type EstadoPagoDiligencia,
 } from "./actions";
 
 export type DiligenciaView = {
@@ -21,7 +23,14 @@ export type DiligenciaView = {
   cliente: string;
   sucursal: string;
   abogado: string;
+  estadoPago: EstadoPagoDiligencia;
   renglones: { id: string; fecha: string; descripcion: string; asunto: string; importe: number }[];
+};
+
+const estadoPagoInfo: Record<EstadoPagoDiligencia, { label: string; cls: string }> = {
+  pendiente:   { label: "Por regresarle", cls: "bg-amber-wash text-amber" },
+  reembolsado: { label: "Ya se le regresó", cls: "bg-success-wash text-success" },
+  en_nomina:   { label: "En su nómina", cls: "bg-line/60 text-muted" },
 };
 
 function hoy() {
@@ -102,7 +111,7 @@ function FilaRenglones({ diligencia }: { diligencia: DiligenciaView }) {
 
   return (
     <tr>
-      <td colSpan={8} className="bg-paper/40 px-5 py-4">
+      <td colSpan={9} className="bg-paper/40 px-5 py-4">
         {diligencia.renglones.length > 0 && (
           <table className="w-full text-[12.5px] mb-3">
             <thead>
@@ -264,6 +273,7 @@ export default function DiligenciasClient({
                   <th className="eyebrow text-muted px-3 py-2.5">Sucursal</th>
                   <th className="eyebrow text-muted px-3 py-2.5">Abogado</th>
                   <th className="eyebrow text-muted px-3 py-2.5 text-right">Total</th>
+                  <th className="eyebrow text-muted px-3 py-2.5">Reembolso</th>
                   <th className="px-3 py-2.5 w-10" />
                 </tr>
               </thead>
@@ -284,6 +294,24 @@ export default function DiligenciasClient({
                         <td className="px-3 py-3 text-muted">{d.sucursal || "—"}</td>
                         <td className="px-3 py-3 text-muted">{d.abogado || "—"}</td>
                         <td className="px-3 py-3 num text-right font-bold">${totalDe(d).toLocaleString("es-MX")}</td>
+                        <td className="px-3 py-3">
+                          <div className="relative group/pago inline-block">
+                            <button className={`px-2 py-0.5 rounded text-[11.5px] font-bold cursor-pointer hover:opacity-80 transition-opacity ${estadoPagoInfo[d.estadoPago].cls}`}>
+                              {estadoPagoInfo[d.estadoPago].label}
+                            </button>
+                            <div className="absolute left-0 top-full mt-1 z-20 hidden group-hover/pago:block bg-white border border-line rounded-lg shadow-lg py-1 min-w-[170px]">
+                              {(Object.entries(estadoPagoInfo) as [EstadoPagoDiligencia, { label: string; cls: string }][]).map(([key, info]) => (
+                                <button
+                                  key={key}
+                                  onMouseDown={() => cambiarEstadoPagoAction(d.id, key)}
+                                  className={`w-full text-left px-3 py-1.5 text-[12px] font-bold hover:bg-paper transition-colors ${key === d.estadoPago ? "opacity-50 cursor-default" : ""}`}
+                                >
+                                  <span className={`px-1.5 py-0.5 rounded ${info.cls}`}>{info.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
                         <td className="px-3 py-3">
                           <button onClick={() => borrar(d.id)} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash opacity-0 group-hover:opacity-100 transition-colors">
                             <Trash2 size={14} />
