@@ -7,6 +7,7 @@ export type DatosProspecto = {
   ciudad?: string;
   asunto?: string;
   fechaLlamada?: string;
+  conversationId?: string;
 };
 
 // Dedup: si el mismo teléfono ya existe como prospecto en los últimos 30 días → actualiza.
@@ -32,6 +33,7 @@ export async function upsertProspecto(d: DatosProspecto) {
           ciudad: d.ciudad ?? existente.ciudad,
           asunto: d.asunto ?? existente.asunto,
           fechaLlamada: d.fechaLlamada ? new Date(d.fechaLlamada) : existente.fechaLlamada,
+          conversationId: d.conversationId ?? existente.conversationId,
         },
       });
     }
@@ -44,7 +46,24 @@ export async function upsertProspecto(d: DatosProspecto) {
       ciudad: d.ciudad ?? null,
       asunto: d.asunto ?? null,
       fechaLlamada: d.fechaLlamada ? new Date(d.fechaLlamada) : new Date(),
+      conversationId: d.conversationId ?? null,
     },
+  });
+}
+
+// Prospectos del bot de WhatsApp (tienen conversationId) que llevan entre 24 y 72 horas
+// sin avanzar de estado. El CRON de seguimiento revisa las etiquetas de Chatwoot antes de
+// escribirles: si ya agendaron, solo actualiza el estado sin mandar el mensaje de nuevo.
+export async function listarProspectosPendientes24h() {
+  const desde = new Date(Date.now() - 72 * 60 * 60 * 1000);
+  const hasta = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  return prisma.prospecto.findMany({
+    where: {
+      estado: "por_contactar",
+      conversationId: { not: null },
+      creadoEn: { gte: desde, lte: hasta },
+    },
+    orderBy: { creadoEn: "asc" },
   });
 }
 

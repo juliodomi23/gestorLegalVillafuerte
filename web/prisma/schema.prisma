@@ -534,6 +534,9 @@ model Prospecto {
   estado       String    @default("por_contactar")
   nota         String?
   fechaLlamada DateTime? @map("fecha_llamada") @db.Date
+  // Conversación de Chatwoot que originó el prospecto (solo bot de WhatsApp). Permite
+  // al CRON de seguimiento 24h revisar si ya se agendó (etiqueta cita/llamada) antes de escribir.
+  conversationId String? @map("conversation_id")
   creadoEn     DateTime  @default(now()) @map("creado_en") @db.Timestamptz
   actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
 
