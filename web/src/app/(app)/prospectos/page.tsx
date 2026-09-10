@@ -44,11 +44,14 @@ export default async function ProspectosPage({
     asunto: p.asunto ?? "—",
     estado: p.estado,
     nota: p.nota ?? "",
+    // p.fecha viene de columnas @db.Date (fechaLlamada / Asesoria.fecha): son fecha
+    // pura sin hora, Prisma las devuelve como medianoche UTC. Formatear con TZ México
+    // les resta 6h y las manda al día anterior — deben mostrarse en UTC tal cual.
     fechaLlamada: p.fecha
       ? p.fecha.toLocaleDateString("es-MX", {
           day: "numeric",
           month: "short",
-          timeZone: TZ,
+          timeZone: "UTC",
         })
       : "—",
   }));
