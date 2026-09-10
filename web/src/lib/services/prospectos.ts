@@ -10,6 +10,15 @@ export type DatosProspecto = {
   conversationId?: string;
 };
 
+// El bot (n8n) calcula "hoy" con el reloj UTC del servidor, no con hora de México:
+// después de las 6pm en Chiapas, UTC ya cambió de día y el bot manda la fecha de
+// "mañana". No hay forma de reconstruir el día correcto a partir de ese valor, así
+// que se ignora y se calcula aquí mismo con la hora real del servidor.
+function fechaHoyMexico(): Date {
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  return new Date(`${hoy}T00:00:00.000Z`);
+}
+
 // Dedup: si el mismo teléfono ya existe como prospecto en los últimos 30 días → actualiza.
 // Evita duplicados cuando el cron manda el mismo lote varias veces.
 export async function upsertProspecto(d: DatosProspecto) {
@@ -32,7 +41,7 @@ export async function upsertProspecto(d: DatosProspecto) {
           nombre: d.nombre,
           ciudad: d.ciudad ?? existente.ciudad,
           asunto: d.asunto ?? existente.asunto,
-          fechaLlamada: d.fechaLlamada ? new Date(d.fechaLlamada) : existente.fechaLlamada,
+          fechaLlamada: fechaHoyMexico(),
           conversationId: d.conversationId ?? existente.conversationId,
         },
       });
@@ -45,7 +54,7 @@ export async function upsertProspecto(d: DatosProspecto) {
       telefono: d.telefono ?? null,
       ciudad: d.ciudad ?? null,
       asunto: d.asunto ?? null,
-      fechaLlamada: d.fechaLlamada ? new Date(d.fechaLlamada) : new Date(),
+      fechaLlamada: fechaHoyMexico(),
       conversationId: d.conversationId ?? null,
     },
   });
