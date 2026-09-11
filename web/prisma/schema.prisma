@@ -534,9 +534,12 @@ model Prospecto {
   // por_contactar | no_contesto | agendo_cita | llamar_despues | convertido | descartado
   estado       String    @default("por_contactar")
   nota         String?
+  // Fecha de registro: la pone el bot al crear/actualizar el prospecto. No se edita aquí.
   fechaLlamada DateTime? @map("fecha_llamada") @db.Date
-  // Quién hizo la llamada. Se llena/edita desde la pantalla de Prospectos para llevar
-  // el control de llamadas por abogado en Reportes; el bot no lo manda.
+  // Fecha en que el abogado efectivamente hizo la llamada. Se llena/edita desde la
+  // pantalla de Prospectos, junto con abogadoId, para el control de llamadas en Reportes.
+  fechaContacto DateTime? @map("fecha_contacto") @db.Date
+  // Quién hizo la llamada. Vacío hasta que alguien lo cambie en la pantalla.
   abogadoId    String?   @map("abogado_id") @db.Uuid
   // Conversación de Chatwoot que originó el prospecto (solo bot de WhatsApp). Permite
   // al CRON de seguimiento 24h revisar si ya se agendó (etiqueta cita/llamada) antes de escribir.

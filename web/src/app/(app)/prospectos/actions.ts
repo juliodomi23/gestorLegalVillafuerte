@@ -8,7 +8,7 @@ export async function actualizarProspectoAction(
   id: string,
   estado: string,
   nota?: string,
-  opts?: { fechaLlamada?: string; abogadoId?: string | null }
+  opts?: { fechaContacto?: string; abogadoId?: string | null }
 ) {
   await requireSession();
   await actualizarEstadoProspecto(id, estado, nota, opts);

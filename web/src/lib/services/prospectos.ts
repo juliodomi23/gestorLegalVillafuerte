@@ -80,14 +80,14 @@ export async function actualizarEstadoProspecto(
   id: string,
   estado: string,
   nota?: string,
-  opts?: { fechaLlamada?: string; abogadoId?: string | null }
+  opts?: { fechaContacto?: string; abogadoId?: string | null }
 ) {
   return prisma.prospecto.update({
     where: { id },
     data: {
       estado,
       ...(nota !== undefined && { nota }),
-      ...(opts?.fechaLlamada !== undefined && { fechaLlamada: new Date(`${opts.fechaLlamada}T00:00:00.000Z`) }),
+      ...(opts?.fechaContacto !== undefined && { fechaContacto: new Date(`${opts.fechaContacto}T00:00:00.000Z`) }),
       ...(opts?.abogadoId !== undefined && { abogadoId: opts.abogadoId }),
     },
   });
@@ -146,6 +146,7 @@ export type FilaProspectoUnificada = {
   estado: string;
   nota: string | null;
   fecha: Date | null;
+  fechaContacto: Date | null;
   abogadoId: string | null;
   abogadoNombre: string | null;
 };
@@ -202,6 +203,7 @@ export async function listarProspectosUnificados(
       estado: p.estado,
       nota: p.nota,
       fecha: p.fechaLlamada,
+      fechaContacto: p.fechaContacto,
       abogadoId: p.abogadoId,
       abogadoNombre: p.abogado?.nombre ?? null,
     })),
@@ -216,6 +218,7 @@ export async function listarProspectosUnificados(
       estado: STATUS_ASESORIA_A_ESTADO[a.status] ?? "por_contactar",
       nota: a.seguimiento ?? a.resumen,
       fecha: a.fecha,
+      fechaContacto: null,
       abogadoId: null,
       abogadoNombre: null,
     })),

@@ -56,10 +56,11 @@ export default async function ProspectosPage({
     // p.fecha viene de columnas @db.Date (fechaLlamada / Asesoria.fecha): son fecha
     // pura sin hora, Prisma las devuelve como medianoche UTC. Formatear con TZ México
     // les resta 6h y las manda al día anterior — deben mostrarse en UTC tal cual.
-    fechaLlamada: p.fecha
-      ? p.fecha.toISOString().split("T")[0]
-      : hoy,
-    abogadoId: p.abogadoId ?? (p.origen === "llamada" ? session?.user?.id ?? null : null),
+    fechaRegistro: p.fecha
+      ? p.fecha.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" })
+      : "—",
+    fechaContacto: p.fechaContacto ? p.fechaContacto.toISOString().split("T")[0] : hoy,
+    abogadoId: p.abogadoId,
   }));
 
   const ciudades = [...new Set(rows.map((p) => p.ciudad).filter(Boolean))] as string[];

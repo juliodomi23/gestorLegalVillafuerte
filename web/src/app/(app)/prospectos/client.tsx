@@ -18,7 +18,8 @@ export type ProspectoView = {
   asunto: string;
   estado: string;
   nota: string;
-  fechaLlamada: string; // yyyy-mm-dd
+  fechaRegistro: string; // ya formateada, no editable
+  fechaContacto: string; // yyyy-mm-dd, editable
   abogadoId: string | null;
 };
 
@@ -42,14 +43,6 @@ const ESTADO_ESTILOS: Record<string, string> = {
   descartado: "bg-danger-wash text-danger",
 };
 
-function formatearFecha(yyyyMmDd: string): string {
-  return new Date(`${yyyyMmDd}T00:00:00.000Z`).toLocaleDateString("es-MX", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
-}
-
 function FilaProspecto({
   p,
   esAdmin,
@@ -63,7 +56,7 @@ function FilaProspecto({
   const [estado, setEstado] = useState(p.estado);
   const [nota, setNota] = useState(p.nota);
   const [notaGuardada, setNotaGuardada] = useState(p.nota);
-  const [fecha, setFecha] = useState(p.fechaLlamada);
+  const [fechaContacto, setFechaContacto] = useState(p.fechaContacto);
   const [abogadoId, setAbogadoId] = useState(p.abogadoId ?? "");
   const [pending, startTransition] = useTransition();
   const confirmar = useConfirm();
@@ -71,7 +64,7 @@ function FilaProspecto({
   function cambiarEstado(nuevoEstado: string) {
     setEstado(nuevoEstado);
     startTransition(() => {
-      actualizarProspectoAction(p.id, nuevoEstado, nota, { fechaLlamada: fecha, abogadoId: abogadoId || null });
+      actualizarProspectoAction(p.id, nuevoEstado, nota, { fechaContacto, abogadoId: abogadoId || null });
     });
   }
 
@@ -79,21 +72,21 @@ function FilaProspecto({
     if (nota === notaGuardada) return;
     setNotaGuardada(nota);
     startTransition(() => {
-      actualizarProspectoAction(p.id, estado, nota, { fechaLlamada: fecha, abogadoId: abogadoId || null });
+      actualizarProspectoAction(p.id, estado, nota, { fechaContacto, abogadoId: abogadoId || null });
     });
   }
 
-  function cambiarFecha(nuevaFecha: string) {
-    setFecha(nuevaFecha);
+  function cambiarFechaContacto(nuevaFecha: string) {
+    setFechaContacto(nuevaFecha);
     startTransition(() => {
-      actualizarProspectoAction(p.id, estado, nota, { fechaLlamada: nuevaFecha, abogadoId: abogadoId || null });
+      actualizarProspectoAction(p.id, estado, nota, { fechaContacto: nuevaFecha, abogadoId: abogadoId || null });
     });
   }
 
   function cambiarAbogado(nuevoAbogadoId: string) {
     setAbogadoId(nuevoAbogadoId);
     startTransition(() => {
-      actualizarProspectoAction(p.id, estado, nota, { fechaLlamada: fecha, abogadoId: nuevoAbogadoId || null });
+      actualizarProspectoAction(p.id, estado, nota, { fechaContacto, abogadoId: nuevoAbogadoId || null });
     });
   }
 
@@ -124,21 +117,7 @@ function FilaProspecto({
   return (
     <tr className={`hover:bg-paper/60 transition-colors ${pending ? "opacity-60" : ""}`}>
       <td className="px-4 py-3 text-[12px] text-muted whitespace-nowrap num">
-        {esAsesoria ? (
-          formatearFecha(p.fechaLlamada)
-        ) : (
-          <input
-            type="date"
-            value={fecha}
-            onChange={(e) => cambiarFecha(e.target.value)}
-            className="bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none rounded px-1 py-0.5 text-[12px] text-muted"
-          />
-        )}
-      </td>
-      <td className="px-3 py-3">
-        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${esAsesoria ? "bg-navy/[.08] text-navy" : "bg-line/60 text-muted"}`}>
-          {esAsesoria ? "Asesoría" : "Llamada"}
-        </span>
+        {p.fechaRegistro}
       </td>
       <td className="px-3 py-3 font-bold text-ink">{p.nombre}</td>
       <td className="px-3 py-3 text-[13px] text-muted whitespace-nowrap">
@@ -157,6 +136,18 @@ function FilaProspecto({
         </span>
       </td>
       <td className="px-3 py-3 text-[13px]">{p.asunto}</td>
+      <td className="px-3 py-3 text-[12px] text-muted whitespace-nowrap num">
+        {esAsesoria ? (
+          "—"
+        ) : (
+          <input
+            type="date"
+            value={fechaContacto}
+            onChange={(e) => cambiarFechaContacto(e.target.value)}
+            className="bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none rounded px-1 py-0.5 text-[12px] text-muted"
+          />
+        )}
+      </td>
       <td className="px-3 py-3">
         {esAsesoria ? (
           <span className="text-[12.5px] text-muted">—</span>
@@ -283,14 +274,14 @@ export default function ProspectosClient({
   const mesLabel = MESES.find((m) => m.num === filtroMes)?.label ?? "—";
 
   function exportarCSV() {
-    const encabezado = ["Fecha", "Origen", "Nombre", "Teléfono", "Ciudad", "Asunto", "Abogado", "Estado", "Nota"];
+    const encabezado = ["Fecha de registro", "Nombre", "Teléfono", "Ciudad", "Asunto", "Fecha de llamada", "Abogado", "Estado", "Nota"];
     const filas = prospectos.map((p) => [
-      p.fechaLlamada,
-      p.origen === "asesoria" ? "Asesoría" : "Llamada",
+      p.fechaRegistro,
       p.nombre,
       p.telefono,
       p.ciudad,
       p.asunto,
+      p.origen === "llamada" ? p.fechaContacto : "",
       abogados.find((a) => a.id === p.abogadoId)?.nombre ?? "",
       ESTADOS.find((e) => e.value === p.estado)?.label ?? p.estado,
       p.nota,
@@ -378,15 +369,15 @@ export default function ProspectosClient({
       </div>
 
       <Card className="overflow-x-auto">
-        <table className="w-full min-w-[1040px] text-[13.5px]">
+        <table className="w-full min-w-[1080px] text-[13.5px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="eyebrow text-muted px-4 py-3">Fecha</th>
-              <th className="eyebrow text-muted px-3 py-3">Origen</th>
+              <th className="eyebrow text-muted px-4 py-3">Fecha de registro</th>
               <th className="eyebrow text-muted px-3 py-3">Nombre</th>
               <th className="eyebrow text-muted px-3 py-3">Teléfono</th>
               <th className="eyebrow text-muted px-3 py-3">Ciudad</th>
               <th className="eyebrow text-muted px-3 py-3">Asunto</th>
+              <th className="eyebrow text-muted px-3 py-3">Fecha de llamada</th>
               <th className="eyebrow text-muted px-3 py-3">Abogado</th>
               <th className="eyebrow text-muted px-3 py-3">Estado</th>
               <th className="eyebrow text-muted px-3 py-3">Nota</th>
