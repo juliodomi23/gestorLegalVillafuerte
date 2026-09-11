@@ -151,10 +151,23 @@ export type FilaProspectoUnificada = {
   abogadoNombre: string | null;
 };
 
+// Antes, "fecha de llamada" vacía solo se mostraba como hoy en pantalla (sin guardar);
+// para Reportes eso no sirve porque en la BD seguía en null. Se le pone la fecha de
+// hoy en firme la primera vez que se carga la pantalla; ya con fecha, se vuelve a
+// editar/guardar normal como cualquier fila. ponytail: WHERE hace el updateMany
+// no-op después de la primera vez, no hace falta guardarlo como "ya corrió".
+async function backfillFechaContactoInicial() {
+  await prisma.prospecto.updateMany({
+    where: { fechaContacto: null },
+    data: { fechaContacto: fechaHoyMexico() },
+  });
+}
+
 export async function listarProspectosUnificados(
   filtros: { ciudad?: string; estado?: string; mes?: number; anio?: number },
   alcance: Alcance,
 ) {
+  await backfillFechaContactoInicial();
   const anio = filtros.anio ?? new Date().getFullYear();
   const mes = filtros.mes;
   const rango =
