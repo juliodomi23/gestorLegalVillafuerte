@@ -14,10 +14,6 @@ function mesActualMX(): number {
   );
 }
 
-function hoyMX(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: TZ }); // yyyy-mm-dd
-}
-
 export default async function ProspectosPage({
   searchParams,
 }: {
@@ -42,7 +38,6 @@ export default async function ProspectosPage({
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
   ]);
 
-  const hoy = hoyMX();
   const prospectos: ProspectoView[] = rows.map((p) => ({
     id: p.id,
     origen: p.origen,
@@ -59,7 +54,7 @@ export default async function ProspectosPage({
     fechaRegistro: p.fecha
       ? p.fecha.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" })
       : "—",
-    fechaContacto: p.fechaContacto ? p.fechaContacto.toISOString().split("T")[0] : hoy,
+    fechaContacto: p.fechaContacto ? p.fechaContacto.toISOString().split("T")[0] : "",
     abogadoId: p.abogadoId,
   }));
 

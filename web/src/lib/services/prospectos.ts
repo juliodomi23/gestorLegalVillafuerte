@@ -87,7 +87,9 @@ export async function actualizarEstadoProspecto(
     data: {
       estado,
       ...(nota !== undefined && { nota }),
-      ...(opts?.fechaContacto !== undefined && { fechaContacto: new Date(`${opts.fechaContacto}T00:00:00.000Z`) }),
+      ...(opts?.fechaContacto !== undefined && {
+        fechaContacto: opts.fechaContacto ? new Date(`${opts.fechaContacto}T00:00:00.000Z`) : null,
+      }),
       ...(opts?.abogadoId !== undefined && { abogadoId: opts.abogadoId }),
     },
   });
@@ -151,16 +153,25 @@ export type FilaProspectoUnificada = {
   abogadoNombre: string | null;
 };
 
-// Antes, "fecha de llamada" vacía solo se mostraba como hoy en pantalla (sin guardar);
-// para Reportes eso no sirve porque en la BD seguía en null. Se le pone la fecha de
-// hoy en firme la primera vez que se carga la pantalla; ya con fecha, se vuelve a
-// editar/guardar normal como cualquier fila. ponytail: WHERE hace el updateMany
-// no-op después de la primera vez, no hace falta guardarlo como "ya corrió".
+// Del 10-sep-2026 para atrás: se les pone su propia fecha de registro como fecha de
+// llamada (ya se llamó, solo que no había dónde anotarlo). De ahí en adelante se deja
+// vacía a propósito, el abogado la anota cuando llama — nada que "adivinar".
+// El segundo UPDATE deshace el backfill anterior (a "hoy" para todos) que sí alcanzó
+// a desplegarse; se distingue por fecha_contacto = fecha_llamada, coincidencia que
+// nadie más pudo capturar a mano en los minutos que llevaba desplegado.
 async function backfillFechaContactoInicial() {
-  await prisma.prospecto.updateMany({
-    where: { fechaContacto: null },
-    data: { fechaContacto: fechaHoyMexico() },
-  });
+  await prisma.$executeRaw`
+    UPDATE prospectos
+    SET fecha_contacto = fecha_llamada
+    WHERE fecha_llamada <= '2026-09-10'
+      AND fecha_contacto IS NULL
+  `;
+  await prisma.$executeRaw`
+    UPDATE prospectos
+    SET fecha_contacto = NULL
+    WHERE fecha_llamada > '2026-09-10'
+      AND fecha_contacto = fecha_llamada
+  `;
 }
 
 export async function listarProspectosUnificados(
