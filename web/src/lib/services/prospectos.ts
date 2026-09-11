@@ -153,25 +153,31 @@ export type FilaProspectoUnificada = {
   abogadoNombre: string | null;
 };
 
-// Del 10-sep-2026 para atrás: se les pone su propia fecha de registro como fecha de
-// llamada (ya se llamó, solo que no había dónde anotarlo). De ahí en adelante se deja
-// vacía a propósito, el abogado la anota cuando llama — nada que "adivinar".
-// El segundo UPDATE deshace el backfill anterior (a "hoy" para todos) que sí alcanzó
-// a desplegarse; se distingue por fecha_contacto = fecha_llamada, coincidencia que
-// nadie más pudo capturar a mano en los minutos que llevaba desplegado.
+// Una sola vez: del 10-sep-2026 para atrás, fecha de llamada = fecha de registro. Un
+// backfill anterior les puso 2026-09-11 a todas; eso también se corrige aquí. Del 11
+// en adelante se queda vacía hasta que el abogado la anote. Se marca en
+// Configuracion.preferencias para no volver a correr y no pisar capturas reales.
+// ponytail: borrar esta función cuando ya haya corrido en producción.
+const MARCA_BACKFILL = "backfillFechaContacto20260910";
+
 async function backfillFechaContactoInicial() {
-  await prisma.$executeRaw`
-    UPDATE prospectos
-    SET fecha_contacto = fecha_llamada
-    WHERE fecha_llamada <= '2026-09-10'
-      AND fecha_contacto IS NULL
-  `;
-  await prisma.$executeRaw`
-    UPDATE prospectos
-    SET fecha_contacto = NULL
-    WHERE fecha_llamada > '2026-09-10'
-      AND fecha_contacto = fecha_llamada
-  `;
+  const config = await prisma.configuracion.findUnique({ where: { id: 1 } });
+  const prefs = (config?.preferencias ?? {}) as Record<string, unknown>;
+  if (prefs[MARCA_BACKFILL]) return;
+
+  await prisma.$transaction([
+    prisma.$executeRaw`
+      UPDATE prospectos
+      SET fecha_contacto = fecha_llamada
+      WHERE fecha_llamada <= '2026-09-10'
+        AND (fecha_contacto IS NULL OR fecha_contacto = '2026-09-11')
+    `,
+    prisma.configuracion.upsert({
+      where: { id: 1 },
+      create: { id: 1, nombreDespacho: "Villafuerte y Asociados", preferencias: { [MARCA_BACKFILL]: true } },
+      update: { preferencias: { ...prefs, [MARCA_BACKFILL]: true } },
+    }),
+  ]);
 }
 
 export async function listarProspectosUnificados(
