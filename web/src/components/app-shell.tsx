@@ -36,7 +36,7 @@ export function AppShell({
       {/* Overlay del drawer en móvil */}
       {drawer && <div className="fixed inset-0 z-30 bg-ink/40 lg:hidden" onClick={() => setDrawer(false)} />}
 
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen min-w-0">
         <Topbar onMenu={() => setDrawer(true)} />
         <AvisoPin estado={estadoPin} />
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-7">{children}</main>

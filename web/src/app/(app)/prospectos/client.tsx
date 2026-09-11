@@ -119,8 +119,8 @@ function FilaProspecto({
       <td className="px-4 py-3 text-[12px] text-muted whitespace-nowrap num">
         {p.fechaRegistro}
       </td>
-      <td className="px-3 py-3 font-bold text-ink">{p.nombre}</td>
-      <td className="px-3 py-3 text-[13px] text-muted whitespace-nowrap">
+      <td className="px-2 py-3 font-bold text-ink">{p.nombre}</td>
+      <td className="px-2 py-3 text-[13px] text-muted whitespace-nowrap">
         <a
           href={`tel:${p.telefono}`}
           className="flex items-center gap-1 hover:text-navy transition-colors"
@@ -129,14 +129,14 @@ function FilaProspecto({
           {p.telefono}
         </a>
       </td>
-      <td className="px-3 py-3 text-[13px] text-muted">
+      <td className="px-2 py-3 text-[13px] text-muted">
         <span className="flex items-center gap-1">
           <MapPin size={12} />
           {p.ciudad}
         </span>
       </td>
-      <td className="px-3 py-3 text-[13px]">{p.asunto}</td>
-      <td className="px-3 py-3 text-[12px] text-muted whitespace-nowrap num">
+      <td className="px-2 py-3 text-[13px]">{p.asunto}</td>
+      <td className="px-2 py-3 text-[12px] text-muted whitespace-nowrap num">
         {esAsesoria ? (
           "—"
         ) : (
@@ -148,14 +148,14 @@ function FilaProspecto({
           />
         )}
       </td>
-      <td className="px-3 py-3">
+      <td className="px-2 py-3">
         {esAsesoria ? (
           <span className="text-[12.5px] text-muted">—</span>
         ) : (
           <select
             value={abogadoId}
             onChange={(e) => cambiarAbogado(e.target.value)}
-            className="px-2 py-1 rounded text-[12.5px] bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none cursor-pointer"
+            className="w-36 px-2 py-1 rounded text-[12.5px] bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none cursor-pointer"
           >
             <option value="">—</option>
             {abogados.map((a) => (
@@ -166,7 +166,7 @@ function FilaProspecto({
           </select>
         )}
       </td>
-      <td className="px-3 py-3">
+      <td className="px-2 py-3">
         {esAsesoria ? (
           <span className={`px-2 py-1 rounded text-[12px] font-bold ${estiloEstado}`}>
             {ESTADOS.find((e) => e.value === estado)?.label ?? estado}
@@ -185,7 +185,7 @@ function FilaProspecto({
         </select>
         )}
       </td>
-      <td className="px-3 py-3 min-w-[180px]">
+      <td className="px-2 py-3 min-w-[160px]">
         {esAsesoria ? (
           <span className="text-[12.5px] text-muted">{nota || "—"}</span>
         ) : (
@@ -199,7 +199,7 @@ function FilaProspecto({
         />
         )}
       </td>
-      <td className="px-3 py-3 text-right">
+      <td className="px-2 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
           <button
             onClick={esAsesoria ? irAExpediente : convertir}
@@ -369,19 +369,19 @@ export default function ProspectosClient({
       </div>
 
       <Card className="overflow-x-auto">
-        <table className="w-full min-w-[1080px] text-[13.5px]">
+        <table className="w-full min-w-[1000px] text-[13.5px]">
           <thead>
             <tr className="border-b border-line text-left">
               <th className="eyebrow text-muted px-4 py-3">Fecha de registro</th>
-              <th className="eyebrow text-muted px-3 py-3">Nombre</th>
-              <th className="eyebrow text-muted px-3 py-3">Teléfono</th>
-              <th className="eyebrow text-muted px-3 py-3">Ciudad</th>
-              <th className="eyebrow text-muted px-3 py-3">Asunto</th>
-              <th className="eyebrow text-muted px-3 py-3">Fecha de llamada</th>
-              <th className="eyebrow text-muted px-3 py-3">Abogado</th>
-              <th className="eyebrow text-muted px-3 py-3">Estado</th>
-              <th className="eyebrow text-muted px-3 py-3">Nota</th>
-              <th className="eyebrow text-muted px-3 py-3 text-right">–</th>
+              <th className="eyebrow text-muted px-2 py-3">Nombre</th>
+              <th className="eyebrow text-muted px-2 py-3">Teléfono</th>
+              <th className="eyebrow text-muted px-2 py-3">Ciudad</th>
+              <th className="eyebrow text-muted px-2 py-3">Asunto</th>
+              <th className="eyebrow text-muted px-2 py-3">Fecha de llamada</th>
+              <th className="eyebrow text-muted px-2 py-3">Abogado</th>
+              <th className="eyebrow text-muted px-2 py-3">Estado</th>
+              <th className="eyebrow text-muted px-2 py-3">Nota</th>
+              <th className="eyebrow text-muted px-2 py-3 text-right">–</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
