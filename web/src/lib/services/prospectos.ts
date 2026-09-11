@@ -79,13 +79,16 @@ export async function listarProspectosPendientes24h() {
 export async function actualizarEstadoProspecto(
   id: string,
   estado: string,
-  nota?: string
+  nota?: string,
+  opts?: { fechaLlamada?: string; abogadoId?: string | null }
 ) {
   return prisma.prospecto.update({
     where: { id },
     data: {
       estado,
       ...(nota !== undefined && { nota }),
+      ...(opts?.fechaLlamada !== undefined && { fechaLlamada: new Date(`${opts.fechaLlamada}T00:00:00.000Z`) }),
+      ...(opts?.abogadoId !== undefined && { abogadoId: opts.abogadoId }),
     },
   });
 }
@@ -116,6 +119,7 @@ export async function listarProspectos(filtros?: {
       ...(filtros?.estado && { estado: filtros.estado }),
       ...(fechaFiltro && { fechaLlamada: fechaFiltro }),
     },
+    include: { abogado: { select: { id: true, nombre: true } } },
     orderBy: [{ fechaLlamada: "desc" }, { creadoEn: "desc" }],
   });
 }
@@ -142,6 +146,8 @@ export type FilaProspectoUnificada = {
   estado: string;
   nota: string | null;
   fecha: Date | null;
+  abogadoId: string | null;
+  abogadoNombre: string | null;
 };
 
 export async function listarProspectosUnificados(
@@ -196,6 +202,8 @@ export async function listarProspectosUnificados(
       estado: p.estado,
       nota: p.nota,
       fecha: p.fechaLlamada,
+      abogadoId: p.abogadoId,
+      abogadoNombre: p.abogado?.nombre ?? null,
     })),
     ...asesorias.map((a) => ({
       id: a.id,
@@ -208,6 +216,8 @@ export async function listarProspectosUnificados(
       estado: STATUS_ASESORIA_A_ESTADO[a.status] ?? "por_contactar",
       nota: a.seguimiento ?? a.resumen,
       fecha: a.fecha,
+      abogadoId: null,
+      abogadoNombre: null,
     })),
   ];
 

@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { listarProspectosUnificados } from "@/lib/services/prospectos";
 import { alcanceDe } from "@/lib/alcance";
 import ProspectosClient, { type ProspectoView } from "./client";
@@ -13,6 +14,10 @@ function mesActualMX(): number {
   );
 }
 
+function hoyMX(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: TZ }); // yyyy-mm-dd
+}
+
 export default async function ProspectosPage({
   searchParams,
 }: {
@@ -24,16 +29,20 @@ export default async function ProspectosPage({
   const mes = searchParams.mes ? parseInt(searchParams.mes) : mesActualMX();
 
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
-  const rows = await listarProspectosUnificados(
-    {
-      ciudad: searchParams.ciudad || undefined,
-      estado: searchParams.estado || undefined,
-      mes,
-      anio: ANIO,
-    },
-    alcance,
-  );
+  const [rows, abogadosDb] = await Promise.all([
+    listarProspectosUnificados(
+      {
+        ciudad: searchParams.ciudad || undefined,
+        estado: searchParams.estado || undefined,
+        mes,
+        anio: ANIO,
+      },
+      alcance,
+    ),
+    prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+  ]);
 
+  const hoy = hoyMX();
   const prospectos: ProspectoView[] = rows.map((p) => ({
     id: p.id,
     origen: p.origen,
@@ -48,12 +57,9 @@ export default async function ProspectosPage({
     // pura sin hora, Prisma las devuelve como medianoche UTC. Formatear con TZ México
     // les resta 6h y las manda al día anterior — deben mostrarse en UTC tal cual.
     fechaLlamada: p.fecha
-      ? p.fecha.toLocaleDateString("es-MX", {
-          day: "numeric",
-          month: "short",
-          timeZone: "UTC",
-        })
-      : "—",
+      ? p.fecha.toISOString().split("T")[0]
+      : hoy,
+    abogadoId: p.abogadoId ?? (p.origen === "llamada" ? session?.user?.id ?? null : null),
   }));
 
   const ciudades = [...new Set(rows.map((p) => p.ciudad).filter(Boolean))] as string[];
@@ -62,6 +68,7 @@ export default async function ProspectosPage({
     <ProspectosClient
       prospectos={prospectos}
       ciudades={ciudades}
+      abogados={abogadosDb.map((u) => ({ id: u.id, nombre: u.nombre }))}
       esAdmin={esAdmin}
       filtroEstado={searchParams.estado ?? ""}
       filtroCiudad={searchParams.ciudad ?? ""}

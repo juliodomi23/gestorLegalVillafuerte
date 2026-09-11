@@ -4,9 +4,14 @@ import { actualizarEstadoProspecto, borrarProspecto } from "@/lib/services/prosp
 import { upsertCliente } from "@/lib/services/resolvers";
 import { requireSession } from "@/lib/guard";
 
-export async function actualizarProspectoAction(id: string, estado: string, nota?: string) {
+export async function actualizarProspectoAction(
+  id: string,
+  estado: string,
+  nota?: string,
+  opts?: { fechaLlamada?: string; abogadoId?: string | null }
+) {
   await requireSession();
-  await actualizarEstadoProspecto(id, estado, nota);
+  await actualizarEstadoProspecto(id, estado, nota, opts);
   // Sin revalidatePath: la fila queda en su lugar al cambiar estado.
 }
 

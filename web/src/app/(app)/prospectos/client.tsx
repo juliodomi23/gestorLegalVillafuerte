@@ -18,8 +18,11 @@ export type ProspectoView = {
   asunto: string;
   estado: string;
   nota: string;
-  fechaLlamada: string;
+  fechaLlamada: string; // yyyy-mm-dd
+  abogadoId: string | null;
 };
+
+export type Abogado = { id: string; nombre: string };
 
 const ESTADOS = [
   { value: "por_contactar", label: "Por contactar" },
@@ -39,24 +42,36 @@ const ESTADO_ESTILOS: Record<string, string> = {
   descartado: "bg-danger-wash text-danger",
 };
 
+function formatearFecha(yyyyMmDd: string): string {
+  return new Date(`${yyyyMmDd}T00:00:00.000Z`).toLocaleDateString("es-MX", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+}
+
 function FilaProspecto({
   p,
   esAdmin,
+  abogados,
 }: {
   p: ProspectoView;
   esAdmin: boolean;
+  abogados: Abogado[];
 }) {
   const router = useRouter();
   const [estado, setEstado] = useState(p.estado);
   const [nota, setNota] = useState(p.nota);
   const [notaGuardada, setNotaGuardada] = useState(p.nota);
+  const [fecha, setFecha] = useState(p.fechaLlamada);
+  const [abogadoId, setAbogadoId] = useState(p.abogadoId ?? "");
   const [pending, startTransition] = useTransition();
   const confirmar = useConfirm();
 
   function cambiarEstado(nuevoEstado: string) {
     setEstado(nuevoEstado);
     startTransition(() => {
-      actualizarProspectoAction(p.id, nuevoEstado, nota);
+      actualizarProspectoAction(p.id, nuevoEstado, nota, { fechaLlamada: fecha, abogadoId: abogadoId || null });
     });
   }
 
@@ -64,7 +79,21 @@ function FilaProspecto({
     if (nota === notaGuardada) return;
     setNotaGuardada(nota);
     startTransition(() => {
-      actualizarProspectoAction(p.id, estado, nota);
+      actualizarProspectoAction(p.id, estado, nota, { fechaLlamada: fecha, abogadoId: abogadoId || null });
+    });
+  }
+
+  function cambiarFecha(nuevaFecha: string) {
+    setFecha(nuevaFecha);
+    startTransition(() => {
+      actualizarProspectoAction(p.id, estado, nota, { fechaLlamada: nuevaFecha, abogadoId: abogadoId || null });
+    });
+  }
+
+  function cambiarAbogado(nuevoAbogadoId: string) {
+    setAbogadoId(nuevoAbogadoId);
+    startTransition(() => {
+      actualizarProspectoAction(p.id, estado, nota, { fechaLlamada: fecha, abogadoId: nuevoAbogadoId || null });
     });
   }
 
@@ -95,7 +124,16 @@ function FilaProspecto({
   return (
     <tr className={`hover:bg-paper/60 transition-colors ${pending ? "opacity-60" : ""}`}>
       <td className="px-4 py-3 text-[12px] text-muted whitespace-nowrap num">
-        {p.fechaLlamada}
+        {esAsesoria ? (
+          formatearFecha(p.fechaLlamada)
+        ) : (
+          <input
+            type="date"
+            value={fecha}
+            onChange={(e) => cambiarFecha(e.target.value)}
+            className="bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none rounded px-1 py-0.5 text-[12px] text-muted"
+          />
+        )}
       </td>
       <td className="px-3 py-3">
         <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${esAsesoria ? "bg-navy/[.08] text-navy" : "bg-line/60 text-muted"}`}>
@@ -119,6 +157,24 @@ function FilaProspecto({
         </span>
       </td>
       <td className="px-3 py-3 text-[13px]">{p.asunto}</td>
+      <td className="px-3 py-3">
+        {esAsesoria ? (
+          <span className="text-[12.5px] text-muted">—</span>
+        ) : (
+          <select
+            value={abogadoId}
+            onChange={(e) => cambiarAbogado(e.target.value)}
+            className="px-2 py-1 rounded text-[12.5px] bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none cursor-pointer"
+          >
+            <option value="">—</option>
+            {abogados.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nombre}
+              </option>
+            ))}
+          </select>
+        )}
+      </td>
       <td className="px-3 py-3">
         {esAsesoria ? (
           <span className={`px-2 py-1 rounded text-[12px] font-bold ${estiloEstado}`}>
@@ -194,6 +250,7 @@ const MESES = [
 export default function ProspectosClient({
   prospectos,
   ciudades,
+  abogados,
   esAdmin,
   filtroEstado,
   filtroCiudad,
@@ -201,6 +258,7 @@ export default function ProspectosClient({
 }: {
   prospectos: ProspectoView[];
   ciudades: string[];
+  abogados: Abogado[];
   esAdmin: boolean;
   filtroEstado: string;
   filtroCiudad: string;
@@ -225,7 +283,7 @@ export default function ProspectosClient({
   const mesLabel = MESES.find((m) => m.num === filtroMes)?.label ?? "—";
 
   function exportarCSV() {
-    const encabezado = ["Fecha", "Origen", "Nombre", "Teléfono", "Ciudad", "Asunto", "Estado", "Nota"];
+    const encabezado = ["Fecha", "Origen", "Nombre", "Teléfono", "Ciudad", "Asunto", "Abogado", "Estado", "Nota"];
     const filas = prospectos.map((p) => [
       p.fechaLlamada,
       p.origen === "asesoria" ? "Asesoría" : "Llamada",
@@ -233,6 +291,7 @@ export default function ProspectosClient({
       p.telefono,
       p.ciudad,
       p.asunto,
+      abogados.find((a) => a.id === p.abogadoId)?.nombre ?? "",
       ESTADOS.find((e) => e.value === p.estado)?.label ?? p.estado,
       p.nota,
     ]);
@@ -319,7 +378,7 @@ export default function ProspectosClient({
       </div>
 
       <Card className="overflow-x-auto">
-        <table className="w-full min-w-[940px] text-[13.5px]">
+        <table className="w-full min-w-[1040px] text-[13.5px]">
           <thead>
             <tr className="border-b border-line text-left">
               <th className="eyebrow text-muted px-4 py-3">Fecha</th>
@@ -328,6 +387,7 @@ export default function ProspectosClient({
               <th className="eyebrow text-muted px-3 py-3">Teléfono</th>
               <th className="eyebrow text-muted px-3 py-3">Ciudad</th>
               <th className="eyebrow text-muted px-3 py-3">Asunto</th>
+              <th className="eyebrow text-muted px-3 py-3">Abogado</th>
               <th className="eyebrow text-muted px-3 py-3">Estado</th>
               <th className="eyebrow text-muted px-3 py-3">Nota</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">–</th>
@@ -335,12 +395,12 @@ export default function ProspectosClient({
           </thead>
           <tbody className="divide-y divide-line/70">
             {prospectos.map((p) => (
-              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} />
+              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} />
             ))}
             {prospectos.length === 0 && (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={10}
                   className="px-4 py-10 text-center text-muted"
                 >
                   No hay prospectos con estos filtros.

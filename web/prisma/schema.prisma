@@ -133,6 +133,7 @@ model Usuario {
   auditorias   Auditoria[]
   checadas     Checada[]
   diligencias  Diligencia[]
+  prospectos   Prospecto[]
   actividadRespuestas ActividadRespuesta[]
   // Expedientes que no son suyos ni de su gente, pero el dueño (o un admin) le dio
   // acceso puntual — p.ej. un abogado que cubre a otro en una audiencia.
@@ -534,11 +535,16 @@ model Prospecto {
   estado       String    @default("por_contactar")
   nota         String?
   fechaLlamada DateTime? @map("fecha_llamada") @db.Date
+  // Quién hizo la llamada. Se llena/edita desde la pantalla de Prospectos para llevar
+  // el control de llamadas por abogado en Reportes; el bot no lo manda.
+  abogadoId    String?   @map("abogado_id") @db.Uuid
   // Conversación de Chatwoot que originó el prospecto (solo bot de WhatsApp). Permite
   // al CRON de seguimiento 24h revisar si ya se agendó (etiqueta cita/llamada) antes de escribir.
   conversationId String? @map("conversation_id")
   creadoEn     DateTime  @default(now()) @map("creado_en") @db.Timestamptz
   actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  abogado Usuario? @relation(fields: [abogadoId], references: [id])
 
   @@map("prospectos")
 }
