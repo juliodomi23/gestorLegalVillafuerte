@@ -30,14 +30,61 @@ const alertaInfo = {
 
 const vacio = { cliente: "", tipoCaso: "", abogado: "", sucursal: "", telefono: "", frecuencia: "7", notas: "" };
 
+export type ResumenAbogadoSeguimiento = {
+  abogadoId: string;
+  nombre: string;
+  expedientesActivos: number;
+  carteraSeguimiento: number;
+  llamadosSemana: number;
+  faltanSemana: number;
+};
+
+function ResumenPorAbogado({ resumen }: { resumen: ResumenAbogadoSeguimiento[] }) {
+  if (resumen.length === 0) return null;
+  return (
+    <div className="bg-surface rounded-xl border border-line shadow-card overflow-hidden mb-5">
+      <div className="px-5 py-3.5 border-b border-line">
+        <h3 className="font-serif text-[17px] text-ink">Por abogado</h3>
+        <p className="text-[12px] text-muted mt-0.5">Expedientes activos y llamadas de seguimiento de esta semana</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-[13px]">
+          <thead>
+            <tr className="border-b border-line text-left bg-paper/50">
+              <th className="eyebrow text-muted px-4 py-2">Abogado</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Expedientes activos</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Clientes en seguimiento</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Llamó esta semana</th>
+              <th className="eyebrow text-muted px-4 py-2 text-right">Le faltó llamar</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/60">
+            {resumen.map((r) => (
+              <tr key={r.abogadoId}>
+                <td className="px-4 py-2.5 font-bold text-ink">{r.nombre}</td>
+                <td className="px-2 py-2.5 num text-right">{r.expedientesActivos}</td>
+                <td className="px-2 py-2.5 num text-right">{r.carteraSeguimiento}</td>
+                <td className="px-2 py-2.5 num text-right text-success font-bold">{r.llamadosSemana}</td>
+                <td className={`px-4 py-2.5 num text-right font-bold ${r.faltanSemana > 0 ? "text-danger" : "text-muted"}`}>{r.faltanSemana}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function SeguimientosClient({
   seguimientos,
   sucursales,
   abogados,
+  resumenAbogados,
 }: {
   seguimientos: SeguimientoView[];
   sucursales: string[];
   abogados: string[];
+  resumenAbogados: ResumenAbogadoSeguimiento[];
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [fAbogado, setFAbogado] = useState("");
@@ -96,6 +143,8 @@ export default function SeguimientosClient({
   return (
     <>
       <PageTitle eyebrow="Clientes" title="Seguimientos" subtitle="Llamadas recurrentes por abogado — para que ningún cliente se enfríe" />
+
+      <ResumenPorAbogado resumen={resumenAbogados} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[

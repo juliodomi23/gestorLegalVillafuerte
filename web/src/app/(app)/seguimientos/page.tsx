@@ -42,7 +42,9 @@ export default async function SeguimientosPage() {
     if (u?.verProductividad) alcance = null;
   }
 
-  const [rows, sucursalesDb, abogadosDb] = await Promise.all([
+  const verResumen = alcance === null;
+
+  const [rows, sucursalesDb, abogadosDb, expedientesPorAbogado] = await Promise.all([
     prisma.seguimiento.findMany({
       where: { estado: "activo", ...porSeguimiento(alcance) },
       include: { cliente: true, abogado: true, sucursal: true },
@@ -50,7 +52,28 @@ export default async function SeguimientosPage() {
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    verResumen
+      ? prisma.expediente.groupBy({ by: ["abogadoResponsableId"], where: { estado: "activo" }, _count: { id: true } })
+      : Promise.resolve([]),
   ]);
+
+  // Para que el Lic. Christian vea de un vistazo quién está llamando y quién no:
+  // expedientes activos (cartera) + de los seguimientos ya filtrados, cuántos se
+  // llamaron esta semana y cuántos se quedaron sin llamar.
+  const resumenAbogados = verResumen
+    ? abogadosDb.map((u) => {
+        const propios = rows.filter((s) => s.abogadoId === u.id);
+        const llamadosSemana = propios.filter((s) => calcLlamoEstaSemana(s.ultimoContacto)).length;
+        return {
+          abogadoId: u.id,
+          nombre: u.nombre,
+          expedientesActivos: expedientesPorAbogado.find((e) => e.abogadoResponsableId === u.id)?._count.id ?? 0,
+          carteraSeguimiento: propios.length,
+          llamadosSemana,
+          faltanSemana: propios.length - llamadosSemana,
+        };
+      })
+    : [];
 
   const seguimientos: SeguimientoView[] = rows.map((s) => ({
     id: s.id,
@@ -75,6 +98,7 @@ export default async function SeguimientosPage() {
       seguimientos={seguimientos}
       sucursales={sucursales}
       abogados={abogados}
+      resumenAbogados={resumenAbogados}
     />
   );
 }
