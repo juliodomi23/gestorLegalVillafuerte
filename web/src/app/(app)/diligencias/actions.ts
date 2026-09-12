@@ -4,14 +4,7 @@ import { revalidatePath } from "next/cache";
 import { resolverAbogado, resolverSucursal, asignarFolioDiligencia } from "@/lib/services/resolvers";
 import { requireSession, type Sesion } from "@/lib/guard";
 import { parsear, montoSchema } from "@/lib/validaciones";
-import { hoyDespacho } from "@/lib/fecha";
-import { diaSemanaDe } from "@/lib/services/productividad";
-
-// Solo de lunes (1) a jueves (4). El Lic. pidió que no se puedan registrar diligencias
-// viernes/sábado/domingo.
-export function diligenciasHabilitadoHoy(): boolean {
-  return diaSemanaDe(hoyDespacho()) <= 4;
-}
+import { diligenciasHabilitadoHoy } from "@/lib/fecha";
 
 export type FormRenglon = {
   fecha: string;

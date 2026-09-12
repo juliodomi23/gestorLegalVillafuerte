@@ -39,3 +39,19 @@ export function sumarDias(base: Date, dias: number): Date {
   d.setDate(d.getDate() + dias);
   return d;
 }
+
+// "2026-08-21" → 1..7 (lunes..domingo), sin depender de la zona del servidor.
+// Duplicado de productividad.ts: ese archivo no se puede importar aquí (crearía un
+// ciclo con lib/prisma) y esto no puede vivir en un "use server" (diligencias/actions.ts)
+// porque ahí todo export debe ser async.
+function diaSemanaDe(fechaISO: string): number {
+  const [y, m, d] = fechaISO.split("-").map(Number);
+  const dom0 = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return dom0 === 0 ? 7 : dom0;
+}
+
+// Solo de lunes (1) a jueves (4). El Lic. pidió que no se puedan registrar diligencias
+// viernes/sábado/domingo.
+export function diligenciasHabilitadoHoy(): boolean {
+  return diaSemanaDe(hoyDespacho()) <= 4;
+}
