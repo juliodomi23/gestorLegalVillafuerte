@@ -6,6 +6,7 @@ import { Phone, Trash2, MapPin, ArrowUpRight, Download } from "lucide-react";
 import { PageTitle, Card, FilterSelect } from "@/components/ui";
 import { useConfirm } from "@/components/confirm";
 import { actualizarProspectoAction, borrarProspectoAction, convertirProspectoAction } from "./actions";
+import type { ResumenAbogado } from "@/lib/services/prospectos";
 
 export type ProspectoView = {
   id: string;
@@ -238,11 +239,52 @@ const MESES = [
   { num: 12, label: "Diciembre" },
 ];
 
+function ResumenLlamadas({ resumen }: { resumen: ResumenAbogado[] }) {
+  if (resumen.length === 0) return null;
+  return (
+    <div className="bg-surface rounded-xl border border-line shadow-card overflow-hidden mb-5">
+      <div className="px-5 py-3.5 border-b border-line">
+        <h3 className="font-serif text-[17px] text-ink">Llamadas por abogado</h3>
+        <p className="text-[12px] text-muted mt-0.5">Semana en curso y mes en curso</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-[13px]">
+          <thead>
+            <tr className="border-b border-line text-left bg-paper/50">
+              <th className="eyebrow text-muted px-4 py-2">Abogado</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Llamadas semana</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Agendaron semana</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Llegaron semana</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Llamadas mes</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Agendaron mes</th>
+              <th className="eyebrow text-muted px-4 py-2 text-right">Llegaron mes</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/60">
+            {resumen.map((r) => (
+              <tr key={r.abogadoId}>
+                <td className="px-4 py-2.5 font-bold text-ink">{r.nombre}</td>
+                <td className="px-2 py-2.5 num text-right">{r.llamadasSemana}</td>
+                <td className="px-2 py-2.5 num text-right">{r.agendadasSemana}</td>
+                <td className="px-2 py-2.5 num text-right">{r.citasSemana}</td>
+                <td className="px-2 py-2.5 num text-right">{r.llamadasMes}</td>
+                <td className="px-2 py-2.5 num text-right">{r.agendadasMes}</td>
+                <td className="px-4 py-2.5 num text-right">{r.citasMes}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function ProspectosClient({
   prospectos,
   ciudades,
   abogados,
   esAdmin,
+  resumenAbogados,
   filtroEstado,
   filtroCiudad,
   filtroMes,
@@ -251,6 +293,7 @@ export default function ProspectosClient({
   ciudades: string[];
   abogados: Abogado[];
   esAdmin: boolean;
+  resumenAbogados: ResumenAbogado[];
   filtroEstado: string;
   filtroCiudad: string;
   filtroMes: number;
@@ -305,6 +348,8 @@ export default function ProspectosClient({
         title="Prospectos"
         subtitle={`${prospectos.length} en ${mesLabel} 2026`}
       />
+
+      {esAdmin && <ResumenLlamadas resumen={resumenAbogados} />}
 
       {/* Selector de mes */}
       <div className="flex flex-wrap items-center gap-1.5 mb-4">

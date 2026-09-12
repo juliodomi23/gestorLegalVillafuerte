@@ -2,12 +2,13 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Trash2, Pencil } from "lucide-react";
 import { PageTitle, Card, SearchBox, FilterSelect } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
 import {
   crearDiligenciaAction,
+  editarDiligenciaAction,
   borrarDiligenciaAction,
   agregarRenglonAction,
   borrarRenglonAction,
@@ -19,6 +20,7 @@ import {
 export type DiligenciaView = {
   id: string;
   fecha: string; // dd/mm/yyyy
+  fechaISO: string; // yyyy-mm-dd, para editar
   folio: string | null;
   cliente: string;
   sucursal: string;
@@ -42,7 +44,7 @@ function totalDe(d: DiligenciaView) {
 }
 
 const vacioRenglon: FormRenglon = { fecha: hoy(), descripcion: "", asunto: "", importe: "" };
-const vacioNueva = { cliente: "", sucursal: "", abogado: "", renglones: [{ ...vacioRenglon }] };
+const vacioNueva = { cliente: "", sucursal: "", abogado: "", fecha: hoy(), renglones: [{ ...vacioRenglon }] };
 
 // Renglones dentro del formulario de "Nueva diligencia" (fila editable, sin guardar
 // hasta enviar el formulario completo — a diferencia de FilaRenglones, que sí guarda
@@ -181,18 +183,21 @@ export default function DiligenciasClient({
   abogados,
   sesionNombre,
   sesionRol,
+  puedeCrearHoy,
 }: {
   diligencias: DiligenciaView[];
   sucursales: string[];
   abogados: string[];
   sesionNombre: string;
   sesionRol: string;
+  puedeCrearHoy: boolean;
 }) {
   const puedeAsignar = sesionRol === "asistente" || sesionRol === "admin";
   const [busqueda, setBusqueda] = useState("");
   const [fSucursal, setFSucursal] = useState("");
   const [fAbogado, setFAbogado] = useState("");
   const [open, setOpen] = useState(false);
+  const [editando, setEditando] = useState<string | null>(null);
   const [expandido, setExpandido] = useState<string | null>(null);
   const [form, setForm] = useState(vacioNueva);
   const [saving, setSaving] = useState(false);
@@ -210,16 +215,28 @@ export default function DiligenciasClient({
   const totalGeneral = useMemo(() => filtradas.reduce((s, d) => s + totalDe(d), 0), [filtradas]);
 
   function abrirNuevo() {
+    setEditando(null);
     setForm({ ...vacioNueva, renglones: [{ ...vacioRenglon }], abogado: puedeAsignar ? "" : sesionNombre });
+    setOpen(true);
+  }
+
+  function abrirEditar(d: DiligenciaView) {
+    setEditando(d.id);
+    setForm({ cliente: d.cliente, sucursal: d.sucursal, abogado: d.abogado, fecha: d.fechaISO, renglones: [{ ...vacioRenglon }] });
     setOpen(true);
   }
 
   async function guardar() {
     setSaving(true);
     try {
-      const id = await crearDiligenciaAction(form);
-      setOpen(false);
-      setExpandido(id);
+      if (editando) {
+        await editarDiligenciaAction(editando, { cliente: form.cliente, sucursal: form.sucursal, abogado: form.abogado, fecha: form.fecha ?? hoy() });
+        setOpen(false);
+      } else {
+        const id = await crearDiligenciaAction(form);
+        setOpen(false);
+        setExpandido(id);
+      }
       router.refresh();
     } finally {
       setSaving(false);
@@ -253,9 +270,15 @@ export default function DiligenciasClient({
         <FilterSelect label="Sucursal" value={fSucursal} onChange={setFSucursal} options={sucursales} />
         <FilterSelect label="Abogado" value={fAbogado} onChange={setFAbogado} options={abogados} />
         <span className="flex-1" />
-        <button onClick={abrirNuevo} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
-          <Plus size={18} strokeWidth={1.75} /> Nueva diligencia
-        </button>
+        {puedeCrearHoy ? (
+          <button onClick={abrirNuevo} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
+            <Plus size={18} strokeWidth={1.75} /> Nueva diligencia
+          </button>
+        ) : (
+          <span className="text-[12.5px] text-muted italic px-1">
+            Las diligencias solo se registran de lunes a jueves. Hasta la próxima semana.
+          </span>
+        )}
       </div>
 
       {filtradas.length === 0 ? (
@@ -312,9 +335,14 @@ export default function DiligenciasClient({
                           </select>
                         </td>
                         <td className="px-3 py-3">
-                          <button onClick={() => borrar(d.id)} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash opacity-0 group-hover:opacity-100 transition-colors">
-                            <Trash2 size={14} />
-                          </button>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-colors">
+                            <button onClick={() => abrirEditar(d)} className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors">
+                              <Pencil size={14} />
+                            </button>
+                            <button onClick={() => borrar(d.id)} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {abierto && <FilaRenglones diligencia={d} />}
@@ -327,9 +355,12 @@ export default function DiligenciasClient({
         </Card>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Nueva diligencia" onSubmit={guardar} submitLabel={saving ? "Guardando…" : "Registrar"}>
+      <Modal open={open} onClose={() => setOpen(false)} title={editando ? "Editar diligencia" : "Nueva diligencia"} onSubmit={guardar} submitLabel={saving ? "Guardando…" : editando ? "Guardar cambios" : "Registrar"}>
         <Field label="Cliente" full>
           <Input value={form.cliente} onChange={(e) => setForm((f) => ({ ...f, cliente: e.target.value }))} placeholder="Nombre del cliente" autoFocus required />
+        </Field>
+        <Field label="Fecha">
+          <Input type="date" value={form.fecha ?? hoy()} onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))} required />
         </Field>
         <Field label="Sucursal">
           <Select options={sucursales} value={form.sucursal} onChange={(e) => setForm((f) => ({ ...f, sucursal: e.target.value }))} required />
@@ -343,7 +374,9 @@ export default function DiligenciasClient({
             <Input value={sesionNombre} disabled />
           </Field>
         )}
-        <RenglonesForm renglones={form.renglones} onChange={(renglones) => setForm((f) => ({ ...f, renglones }))} />
+        {!editando && (
+          <RenglonesForm renglones={form.renglones} onChange={(renglones) => setForm((f) => ({ ...f, renglones }))} />
+        )}
       </Modal>
     </>
   );

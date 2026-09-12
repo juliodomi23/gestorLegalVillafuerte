@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { listarProspectosUnificados } from "@/lib/services/prospectos";
+import { listarProspectosUnificados, resumenLlamadasPorAbogado } from "@/lib/services/prospectos";
 import { alcanceDe } from "@/lib/alcance";
 import ProspectosClient, { type ProspectoView } from "./client";
 
@@ -25,7 +25,7 @@ export default async function ProspectosPage({
   const mes = searchParams.mes ? parseInt(searchParams.mes) : mesActualMX();
 
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
-  const [rows, abogadosDb] = await Promise.all([
+  const [rows, abogadosDb, resumenAbogados] = await Promise.all([
     listarProspectosUnificados(
       {
         ciudad: searchParams.ciudad || undefined,
@@ -36,6 +36,7 @@ export default async function ProspectosPage({
       alcance,
     ),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    esAdmin ? resumenLlamadasPorAbogado() : Promise.resolve([]),
   ]);
 
   const prospectos: ProspectoView[] = rows.map((p) => ({
@@ -66,6 +67,7 @@ export default async function ProspectosPage({
       ciudades={ciudades}
       abogados={abogadosDb.map((u) => ({ id: u.id, nombre: u.nombre }))}
       esAdmin={esAdmin}
+      resumenAbogados={resumenAbogados}
       filtroEstado={searchParams.estado ?? ""}
       filtroCiudad={searchParams.ciudad ?? ""}
       filtroMes={mes}

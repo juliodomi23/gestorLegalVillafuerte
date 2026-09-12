@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { alcanceDe, porAbogado } from "@/lib/alcance";
 import DiligenciasClient, { type DiligenciaView } from "./client";
-import type { EstadoPagoDiligencia } from "./actions";
+import { diligenciasHabilitadoHoy, type EstadoPagoDiligencia } from "./actions";
 
 export default async function DiligenciasPage() {
   const session = await getServerSession(authOptions);
@@ -28,6 +28,7 @@ export default async function DiligenciasPage() {
     return {
       id: d.id,
       fecha: `${dd}/${mm}/${yyyy}`,
+      fechaISO: `${yyyy}-${mm}-${dd}`,
       folio: d.folio ?? null,
       cliente: d.cliente?.nombre ?? d.clienteNombre ?? "Sin cliente",
       sucursal: d.sucursal?.nombre ?? "",
@@ -50,6 +51,7 @@ export default async function DiligenciasPage() {
       abogados={abogadosDb.map((u) => u.nombre)}
       sesionNombre={session?.user?.name ?? ""}
       sesionRol={session?.user?.rol ?? ""}
+      puedeCrearHoy={diligenciasHabilitadoHoy()}
     />
   );
 }

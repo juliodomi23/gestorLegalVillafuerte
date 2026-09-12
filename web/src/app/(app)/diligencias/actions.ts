@@ -4,6 +4,14 @@ import { revalidatePath } from "next/cache";
 import { resolverAbogado, resolverSucursal, asignarFolioDiligencia } from "@/lib/services/resolvers";
 import { requireSession, type Sesion } from "@/lib/guard";
 import { parsear, montoSchema } from "@/lib/validaciones";
+import { hoyDespacho } from "@/lib/fecha";
+import { diaSemanaDe } from "@/lib/services/productividad";
+
+// Solo de lunes (1) a jueves (4). El Lic. pidió que no se puedan registrar diligencias
+// viernes/sábado/domingo.
+export function diligenciasHabilitadoHoy(): boolean {
+  return diaSemanaDe(hoyDespacho()) <= 4;
+}
 
 export type FormRenglon = {
   fecha: string;
@@ -31,6 +39,9 @@ function puedeAsignar(sesion: Sesion) {
 
 export async function crearDiligenciaAction(form: FormDiligencia) {
   const sesion = await requireSession();
+  if (!diligenciasHabilitadoHoy()) {
+    throw new Error("Las diligencias solo se registran de lunes a jueves. Vuelve la próxima semana.");
+  }
   const abogado = puedeAsignar(sesion) ? form.abogado || sesion.nombre : sesion.nombre;
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(abogado),
@@ -57,6 +68,34 @@ export async function crearDiligenciaAction(form: FormDiligencia) {
   });
   revalidatePath("/diligencias");
   return diligencia.id;
+}
+
+export type FormEdicionDiligencia = {
+  cliente: string;
+  sucursal: string;
+  abogado: string;
+  fecha: string;
+};
+
+// Editar una diligencia ya registrada (por si faltó algo). Sin restricción de día:
+// la regla de lunes-jueves es solo para el alta.
+export async function editarDiligenciaAction(id: string, form: FormEdicionDiligencia) {
+  const sesion = await requireSession();
+  const abogado = puedeAsignar(sesion) ? form.abogado || sesion.nombre : sesion.nombre;
+  const [abogadoId, sucursalId] = await Promise.all([
+    resolverAbogado(abogado),
+    resolverSucursal(form.sucursal),
+  ]);
+  await prisma.diligencia.update({
+    where: { id },
+    data: {
+      clienteNombre: form.cliente.trim() || null,
+      abogadoId,
+      sucursalId,
+      ...(form.fecha ? { fecha: new Date(form.fecha) } : {}),
+    },
+  });
+  revalidatePath("/diligencias");
 }
 
 export async function cambiarEstadoPagoAction(id: string, estadoPago: EstadoPagoDiligencia) {

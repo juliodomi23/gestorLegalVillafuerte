@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { porAbogado, type Alcance } from "@/lib/alcance";
+import { hoyDespacho, OFFSET_DESPACHO } from "@/lib/fecha";
+import { lunesDe } from "@/lib/services/productividad";
 
 export type DatosProspecto = {
   nombre: string;
@@ -97,6 +99,83 @@ export async function actualizarEstadoProspecto(
 
 export async function borrarProspecto(id: string) {
   return prisma.prospecto.delete({ where: { id } });
+}
+
+export type ResumenAbogado = {
+  abogadoId: string;
+  nombre: string;
+  llamadasMes: number;
+  agendadasMes: number;
+  citasMes: number;
+  llamadasSemana: number;
+  agendadasSemana: number;
+  citasSemana: number;
+};
+
+// Cuánto está llamando cada abogado a partir de que empezaron el lunes las llamadas
+// a prospectos: llamadas hechas (fechaContacto), cuántas agendaron cita, y cuántas de
+// esas citas realmente se dieron (Cita.estado = "asesorada"; no hay liga directa
+// prospecto→cita, así que la cita cuenta por su propio abogadoId, no por el del
+// prospecto — es una aproximación, no un cruce exacto por persona).
+export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
+  const hoy = hoyDespacho();
+  const inicioMes = `${hoy.slice(0, 7)}-01`;
+  const inicioSemana = lunesDe(hoy);
+  const inicioSemanaUTC = new Date(`${inicioSemana}T00:00:00.000Z`);
+  const inicioSemanaMx = new Date(`${inicioSemana}T00:00:00${OFFSET_DESPACHO}`);
+
+  const [abogados, prospectosMes, citasMes] = await Promise.all([
+    prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    prisma.prospecto.findMany({
+      where: { abogadoId: { not: null }, fechaContacto: { gte: new Date(`${inicioMes}T00:00:00.000Z`) } },
+      select: { abogadoId: true, estado: true, fechaContacto: true },
+    }),
+    prisma.cita.findMany({
+      where: { abogadoId: { not: null }, estado: "asesorada", fechaHora: { gte: new Date(`${inicioMes}T00:00:00${OFFSET_DESPACHO}`) } },
+      select: { abogadoId: true, fechaHora: true },
+    }),
+  ]);
+
+  const porAbogadoId = new Map<string, ResumenAbogado>(
+    abogados.map((a) => [
+      a.id,
+      { abogadoId: a.id, nombre: a.nombre, llamadasMes: 0, agendadasMes: 0, citasMes: 0, llamadasSemana: 0, agendadasSemana: 0, citasSemana: 0 },
+    ]),
+  );
+
+  for (const p of prospectosMes) {
+    const r = p.abogadoId ? porAbogadoId.get(p.abogadoId) : undefined;
+    if (!r) continue;
+    r.llamadasMes++;
+    if (p.estado === "agendo_cita") r.agendadasMes++;
+    if (p.fechaContacto && p.fechaContacto >= inicioSemanaUTC) {
+      r.llamadasSemana++;
+      if (p.estado === "agendo_cita") r.agendadasSemana++;
+    }
+  }
+
+  for (const c of citasMes) {
+    const r = c.abogadoId ? porAbogadoId.get(c.abogadoId) : undefined;
+    if (!r) continue;
+    r.citasMes++;
+    if (c.fechaHora >= inicioSemanaMx) r.citasSemana++;
+  }
+
+  return Array.from(porAbogadoId.values());
+}
+
+// Para el bot externo: prospectos marcados "no contestó" a los que aún no se les
+// mandó la plantilla de reintento. Se marca reutilizando `nota` (sin migración): el
+// CRON, tras enviar el WhatsApp, hace PATCH con nota += "[plantilla_enviada]".
+export async function listarProspectosNoContestoSinPlantilla() {
+  return prisma.prospecto.findMany({
+    where: {
+      estado: "no_contesto",
+      telefono: { not: null },
+      NOT: { nota: { contains: "[plantilla_enviada]" } },
+    },
+    orderBy: { creadoEn: "asc" },
+  });
 }
 
 export async function listarProspectos(filtros?: {
