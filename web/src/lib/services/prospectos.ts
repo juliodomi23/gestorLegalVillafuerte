@@ -101,6 +101,18 @@ export async function borrarProspecto(id: string) {
   return prisma.prospecto.delete({ where: { id } });
 }
 
+// Se llama justo cuando el bot agenda una cita presencial, para que el estado se
+// refleje al instante y el CRON de 24h (o el abogado revisando la lista) no le
+// llame a alguien que ya tiene cita. Antes solo se marcaba al día siguiente.
+export async function marcarAgendoCitaPorConversacion(conversationId: string) {
+  const p = await prisma.prospecto.findFirst({
+    where: { conversationId },
+    orderBy: { creadoEn: "desc" },
+  });
+  if (!p || p.estado === "convertido") return p;
+  return actualizarEstadoProspecto(p.id, "agendo_cita");
+}
+
 export type ResumenAbogado = {
   abogadoId: string;
   nombre: string;
