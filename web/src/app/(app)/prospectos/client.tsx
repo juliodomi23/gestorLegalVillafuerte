@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Phone, Trash2, MapPin, ArrowUpRight, Download } from "lucide-react";
 import { PageTitle, Card, FilterSelect } from "@/components/ui";
@@ -61,6 +61,20 @@ function FilaProspecto({
   const [abogadoId, setAbogadoId] = useState(p.abogadoId ?? "");
   const [pending, startTransition] = useTransition();
   const confirmar = useConfirm();
+  const notaEnfocada = useRef(false);
+
+  // El refresco automático (otra persona registró una llamada, el bot cambió el
+  // estado, etc.) trae props nuevos, pero useState solo lee el valor inicial: sin
+  // este efecto la fila se quedaría mostrando el dato viejo hasta recargar la página.
+  useEffect(() => { setEstado(p.estado); }, [p.estado]);
+  useEffect(() => { setFechaContacto(p.fechaContacto); }, [p.fechaContacto]);
+  useEffect(() => { setAbogadoId(p.abogadoId ?? ""); }, [p.abogadoId]);
+  useEffect(() => {
+    // No pisar lo que el abogado está escribiendo ahora mismo.
+    if (notaEnfocada.current) return;
+    setNota(p.nota);
+    setNotaGuardada(p.nota);
+  }, [p.nota]);
 
   function cambiarEstado(nuevoEstado: string) {
     setEstado(nuevoEstado);
@@ -194,7 +208,8 @@ function FilaProspecto({
           type="text"
           value={nota}
           onChange={(e) => setNota(e.target.value)}
-          onBlur={guardarNota}
+          onFocus={() => { notaEnfocada.current = true; }}
+          onBlur={() => { notaEnfocada.current = false; guardarNota(); }}
           placeholder="Añadir nota…"
           className="w-full px-2 py-1 rounded bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none text-[12.5px] text-ink placeholder:text-muted/60 transition-colors"
         />
@@ -299,6 +314,21 @@ export default function ProspectosClient({
   filtroMes: number;
 }) {
   const router = useRouter();
+
+  // El bot y otros abogados cambian estados de prospectos en tiempo real (llamadas,
+  // citas agendadas); sin esto solo se ve al recargar. Cada 20s, y solo con la
+  // pestaña visible para no gastar consultas de más en segundo plano.
+  useEffect(() => {
+    const refrescar = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    const id = setInterval(refrescar, 20_000);
+    document.addEventListener("visibilitychange", refrescar);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", refrescar);
+    };
+  }, [router]);
 
   function setFiltro(key: string, value: string) {
     const params = new URLSearchParams();

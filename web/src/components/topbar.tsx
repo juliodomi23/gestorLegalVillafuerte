@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Bell, Plus, Menu, FileText, User, X, AlertTriangle, Phone, Mail, MapPin, StickyNote } from "lucide-react";
+import { actualizarProspectoAction } from "@/app/(app)/prospectos/actions";
 
 type FichaExpediente = {
   telefono: string | null;
@@ -36,6 +37,8 @@ const ESTADO_PROSPECTO: Record<string, string> = {
   descartado: "Descartado",
 };
 
+const ESTADOS_PROSPECTO_OPCIONES = Object.entries(ESTADO_PROSPECTO);
+
 function FilaFicha({ icon: Icon, label, valor }: { icon: typeof Phone; label: string; valor: string | null }) {
   if (!valor) return null;
   return (
@@ -46,6 +49,63 @@ function FilaFicha({ icon: Icon, label, valor }: { icon: typeof Phone; label: st
         <p className="text-[13.5px] text-ink break-words">{valor}</p>
       </div>
     </div>
+  );
+}
+
+function FichaProspectoEditable({ resultado }: { resultado: Extract<Resultado, { tipo: "prospecto" }> }) {
+  const router = useRouter();
+  const [estado, setEstado] = useState(resultado.ficha.estado);
+  const [nota, setNota] = useState(resultado.ficha.nota ?? "");
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar(cambios: { estado?: string; nota?: string }) {
+    setGuardando(true);
+    await actualizarProspectoAction(resultado.id, cambios.estado ?? estado, cambios.nota ?? nota);
+    router.refresh();
+    setGuardando(false);
+  }
+
+  function cambiarEstado(v: string) {
+    setEstado(v);
+    guardar({ estado: v });
+  }
+
+  return (
+    <>
+      <FilaFicha icon={Phone} label="Teléfono" valor={resultado.ficha.telefono} />
+      <FilaFicha icon={MapPin} label="Ciudad" valor={resultado.ficha.ciudad} />
+      <FilaFicha icon={FileText} label="Asunto" valor={resultado.ficha.asunto} />
+      <div className="flex items-start gap-2.5 px-6 py-2.5">
+        <User size={15} className="text-muted shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow text-muted mb-1">Estado</p>
+          <select
+            value={estado}
+            onChange={(e) => cambiarEstado(e.target.value)}
+            disabled={guardando}
+            className="w-full px-2 py-1.5 rounded-md border border-line bg-surface text-[13.5px] text-ink focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40"
+          >
+            {ESTADOS_PROSPECTO_OPCIONES.map(([v, label]) => (
+              <option key={v} value={v}>{label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="flex items-start gap-2.5 px-6 py-2.5">
+        <StickyNote size={15} className="text-muted shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow text-muted mb-1">Nota</p>
+          <textarea
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            onBlur={() => guardar({ nota })}
+            rows={3}
+            placeholder="Añadir nota…"
+            className="w-full px-2 py-1.5 rounded-md border border-line bg-surface text-[13.5px] text-ink placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40 resize-none"
+          />
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -79,13 +139,7 @@ function FichaModal({ resultado, onClose }: { resultado: Resultado; onClose: () 
               <FilaFicha icon={StickyNote} label="Notas del cliente" valor={resultado.ficha.notas} />
             </>
           ) : (
-            <>
-              <FilaFicha icon={Phone} label="Teléfono" valor={resultado.ficha.telefono} />
-              <FilaFicha icon={MapPin} label="Ciudad" valor={resultado.ficha.ciudad} />
-              <FilaFicha icon={FileText} label="Asunto" valor={resultado.ficha.asunto} />
-              <FilaFicha icon={User} label="Estado" valor={ESTADO_PROSPECTO[resultado.ficha.estado] ?? resultado.ficha.estado} />
-              <FilaFicha icon={StickyNote} label="Nota" valor={resultado.ficha.nota} />
-            </>
+            <FichaProspectoEditable resultado={resultado} />
           )}
         </div>
 

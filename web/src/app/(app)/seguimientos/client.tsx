@@ -45,15 +45,19 @@ function ResumenPorAbogado({ resumen }: { resumen: ResumenAbogadoSeguimiento[] }
     <div className="bg-surface rounded-xl border border-line shadow-card overflow-hidden mb-5">
       <div className="px-5 py-3.5 border-b border-line">
         <h3 className="font-serif text-[17px] text-ink">Por abogado</h3>
-        <p className="text-[12px] text-muted mt-0.5">Expedientes activos y llamadas de seguimiento de esta semana</p>
+        <p className="text-[12px] text-muted mt-0.5">
+          Son dos conteos distintos: <b>expedientes</b> son casos legales abiertos; <b>clientes en
+          seguimiento</b> son personas a las que hay que volver a llamar (con o sin expediente). No
+          tienen por qué coincidir.
+        </p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-[13px]">
           <thead>
             <tr className="border-b border-line text-left bg-paper/50">
               <th className="eyebrow text-muted px-4 py-2">Abogado</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right">Expedientes activos</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right">Clientes en seguimiento</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right" title="Casos legales abiertos asignados a este abogado (tabla Expedientes)">Expedientes activos</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right" title="Personas con llamada de seguimiento activa asignadas a este abogado (tabla Seguimientos, independiente de si tienen expediente)">Clientes en seguimiento</th>
               <th className="eyebrow text-muted px-2 py-2 text-right">Llamó esta semana</th>
               <th className="eyebrow text-muted px-4 py-2 text-right">Le faltó llamar</th>
             </tr>
@@ -148,7 +152,7 @@ export default function SeguimientosClient({
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Casos activos",        valor: String(activos),              color: "text-ink"    },
+          { label: "Seguimientos activos", valor: String(activos),              color: "text-ink"    },
           { label: "Por llamar hoy",       valor: String(porLlamarHoy),         color: "text-amber"  },
           { label: "Atrasados",            valor: String(atrasados),            color: "text-danger" },
           { label: "Abogados con cartera", valor: String(abogadosConCartera),   color: "text-ink"    },
