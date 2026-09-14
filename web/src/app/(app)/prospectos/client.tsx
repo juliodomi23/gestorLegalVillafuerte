@@ -6,23 +6,9 @@ import { Phone, Trash2, MapPin, ArrowUpRight, Download } from "lucide-react";
 import { PageTitle, Card, FilterSelect } from "@/components/ui";
 import { useConfirm } from "@/components/confirm";
 import { actualizarProspectoAction, borrarProspectoAction, convertirProspectoAction } from "./actions";
-import type { ResumenAbogado } from "@/lib/services/prospectos";
+import type { ResumenAbogado, ProspectoRow } from "@/lib/services/prospectos";
 
-export type ProspectoView = {
-  id: string;
-  /** llamada = tabla prospectos (editable aquí). asesoria = se edita en Asesorías. */
-  origen: "llamada" | "asesoria";
-  clienteId: string | null;
-  nombre: string;
-  telefono: string;
-  ciudad: string;
-  asunto: string;
-  estado: string;
-  nota: string;
-  fechaRegistro: string; // ya formateada, no editable
-  fechaContacto: string; // yyyy-mm-dd, editable
-  abogadoId: string | null;
-};
+export type ProspectoView = ProspectoRow;
 
 export type Abogado = { id: string; nombre: string };
 
@@ -302,11 +288,11 @@ function ResumenLlamadas({ resumen, hoyLabel }: { resumen: ResumenAbogado[]; hoy
 }
 
 export default function ProspectosClient({
-  prospectos,
+  prospectos: prospectosIniciales,
   ciudades,
   abogados,
   esAdmin,
-  resumenAbogados,
+  resumenAbogados: resumenAbogadosIniciales,
   hoyLabel,
   filtroEstado,
   filtroCiudad,
@@ -323,21 +309,47 @@ export default function ProspectosClient({
   filtroMes: number;
 }) {
   const router = useRouter();
+  const [prospectos, setProspectos] = useState(prospectosIniciales);
+  const [resumenAbogados, setResumenAbogados] = useState(resumenAbogadosIniciales);
+
+  // Cambiar de filtro (mes/estado/ciudad) navega de verdad, con datos frescos del server.
+  useEffect(() => setProspectos(prospectosIniciales), [prospectosIniciales]);
+  useEffect(() => setResumenAbogados(resumenAbogadosIniciales), [resumenAbogadosIniciales]);
 
   // El bot y otros abogados cambian estados de prospectos en tiempo real (llamadas,
   // citas agendadas); sin esto solo se ve al recargar. Cada 20s, y solo con la
   // pestaña visible para no gastar consultas de más en segundo plano.
+  //
+  // No usa router.refresh(): esa ruta interna de Next (petición RSC con "_rsc" en la
+  // URL) devuelve 503 de forma consistente en este servidor aunque la página normal
+  // cargue bien, así que el polling se hizo con fetch normal a /api/prospectos/live
+  // (mismo patrón que /api/alertas para la campana del topbar).
   useEffect(() => {
-    const refrescar = () => {
-      if (document.visibilityState === "visible") router.refresh();
+    let vivo = true;
+    const refrescar = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const params = new URLSearchParams({ mes: String(filtroMes) });
+        if (filtroCiudad) params.set("ciudad", filtroCiudad);
+        if (filtroEstado) params.set("estado", filtroEstado);
+        const res = await fetch(`/api/prospectos/live?${params}`);
+        if (!res.ok || !vivo) return;
+        const d = await res.json();
+        if (!vivo) return;
+        setProspectos(d.prospectos ?? []);
+        if (esAdmin) setResumenAbogados(d.resumenAbogados ?? []);
+      } catch {
+        // sin conexión: se reintenta en el siguiente ciclo
+      }
     };
     const id = setInterval(refrescar, 20_000);
     document.addEventListener("visibilitychange", refrescar);
     return () => {
+      vivo = false;
       clearInterval(id);
       document.removeEventListener("visibilitychange", refrescar);
     };
-  }, [router]);
+  }, [filtroCiudad, filtroEstado, filtroMes, esAdmin]);
 
   function setFiltro(key: string, value: string) {
     const params = new URLSearchParams();

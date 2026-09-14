@@ -3,6 +3,14 @@ import { porAbogado, type Alcance } from "@/lib/alcance";
 import { hoyDespacho, OFFSET_DESPACHO } from "@/lib/fecha";
 import { lunesDe } from "@/lib/services/productividad";
 
+export const ANIO_PROSPECTOS = 2026;
+
+export function mesActualMX(): number {
+  return parseInt(
+    new Date().toLocaleString("en-US", { month: "numeric", timeZone: "America/Mexico_City" })
+  );
+}
+
 export type DatosProspecto = {
   nombre: string;
   telefono?: string;
@@ -380,4 +388,43 @@ export async function listarProspectosUnificados(
   ];
 
   return filas.sort((x, y) => (y.fecha?.getTime() ?? 0) - (x.fecha?.getTime() ?? 0));
+}
+
+export type ProspectoRow = {
+  id: string;
+  origen: "llamada" | "asesoria";
+  clienteId: string | null;
+  nombre: string;
+  telefono: string;
+  ciudad: string;
+  asunto: string;
+  estado: string;
+  nota: string;
+  fechaRegistro: string;
+  fechaContacto: string;
+  abogadoId: string | null;
+};
+
+// Usado tanto por la carga inicial (page.tsx) como por el polling en vivo (api/prospectos/live):
+// misma forma de fila para los dos, para no tener dos lugares donde se pueda desalinear el formato.
+export function mapProspectosRows(rows: FilaProspectoUnificada[]): ProspectoRow[] {
+  return rows.map((p) => ({
+    id: p.id,
+    origen: p.origen,
+    clienteId: p.clienteId,
+    nombre: p.nombre,
+    telefono: p.telefono ?? "—",
+    ciudad: p.ciudad ?? "—",
+    asunto: p.asunto ?? "—",
+    estado: p.estado,
+    nota: p.nota ?? "",
+    // p.fecha viene de columnas @db.Date (fechaLlamada / Asesoria.fecha): son fecha
+    // pura sin hora, Prisma las devuelve como medianoche UTC. Formatear con TZ México
+    // les resta 6h y las manda al día anterior — deben mostrarse en UTC tal cual.
+    fechaRegistro: p.fecha
+      ? p.fecha.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" })
+      : "—",
+    fechaContacto: p.fechaContacto ? p.fechaContacto.toISOString().split("T")[0] : "",
+    abogadoId: p.abogadoId,
+  }));
 }
