@@ -122,6 +122,7 @@ export type ResumenAbogado = {
   llamadasSemana: number;
   agendadasSemana: number;
   citasSemana: number;
+  llamadasHoy: number;
 };
 
 // Cuánto está llamando cada abogado a partir de que empezaron el lunes las llamadas
@@ -135,6 +136,9 @@ export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
   const inicioSemana = lunesDe(hoy);
   const inicioSemanaUTC = new Date(`${inicioSemana}T00:00:00.000Z`);
   const inicioSemanaMx = new Date(`${inicioSemana}T00:00:00${OFFSET_DESPACHO}`);
+  // fechaContacto se guarda como fecha pura (medianoche UTC, ver el input <input type="date">
+  // en client.tsx), así que "hoy" se compara igual, no con hora de México.
+  const hoyUTC = new Date(`${hoy}T00:00:00.000Z`);
 
   const [abogados, prospectosMes, citasMes] = await Promise.all([
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
@@ -151,7 +155,7 @@ export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
   const porAbogadoId = new Map<string, ResumenAbogado>(
     abogados.map((a) => [
       a.id,
-      { abogadoId: a.id, nombre: a.nombre, llamadasMes: 0, agendadasMes: 0, citasMes: 0, llamadasSemana: 0, agendadasSemana: 0, citasSemana: 0 },
+      { abogadoId: a.id, nombre: a.nombre, llamadasMes: 0, agendadasMes: 0, citasMes: 0, llamadasSemana: 0, agendadasSemana: 0, citasSemana: 0, llamadasHoy: 0 },
     ]),
   );
 
@@ -163,6 +167,9 @@ export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
     if (p.fechaContacto && p.fechaContacto >= inicioSemanaUTC) {
       r.llamadasSemana++;
       if (p.estado === "agendo_cita") r.agendadasSemana++;
+    }
+    if (p.fechaContacto && p.fechaContacto.getTime() === hoyUTC.getTime()) {
+      r.llamadasHoy++;
     }
   }
 
@@ -271,11 +278,38 @@ async function backfillFechaContactoInicial() {
   ]);
 }
 
+// Una sola vez: prospectos con abogado ya asignado pero fecha de llamada vacía (el
+// abogado se autoasignó desde el selector antes de que ese selector pusiera la fecha
+// sola, ver el fix en client.tsx) no contaban en "Llamadas por abogado" aunque ya
+// estuvieran atendidos. Se les pone la fecha de hoy para que empiecen a contar.
+// ponytail: borrar esta función cuando ya haya corrido en producción.
+const MARCA_BACKFILL_ABOGADO_SIN_FECHA = "backfillFechaContactoAbogadoSinFecha20260914";
+
+async function backfillFechaContactoAbogadoSinFecha() {
+  const config = await prisma.configuracion.findUnique({ where: { id: 1 } });
+  const prefs = (config?.preferencias ?? {}) as Record<string, unknown>;
+  if (prefs[MARCA_BACKFILL_ABOGADO_SIN_FECHA]) return;
+
+  await prisma.$transaction([
+    prisma.$executeRaw`
+      UPDATE prospectos
+      SET fecha_contacto = ${hoyDespacho()}::date
+      WHERE abogado_id IS NOT NULL AND fecha_contacto IS NULL
+    `,
+    prisma.configuracion.upsert({
+      where: { id: 1 },
+      create: { id: 1, nombreDespacho: "Villafuerte y Asociados", preferencias: { [MARCA_BACKFILL_ABOGADO_SIN_FECHA]: true } },
+      update: { preferencias: { ...prefs, [MARCA_BACKFILL_ABOGADO_SIN_FECHA]: true } },
+    }),
+  ]);
+}
+
 export async function listarProspectosUnificados(
   filtros: { ciudad?: string; estado?: string; mes?: number; anio?: number },
   alcance: Alcance,
 ) {
   await backfillFechaContactoInicial();
+  await backfillFechaContactoAbogadoSinFecha();
   const anio = filtros.anio ?? new Date().getFullYear();
   const mes = filtros.mes;
   const rango =

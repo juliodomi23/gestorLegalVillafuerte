@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hoyDespacho } from "@/lib/fecha";
 import { listarProspectosUnificados, resumenLlamadasPorAbogado } from "@/lib/services/prospectos";
 import { alcanceDe } from "@/lib/alcance";
 import ProspectosClient, { type ProspectoView } from "./client";
@@ -60,6 +61,11 @@ export default async function ProspectosPage({
   }));
 
   const ciudades = [...new Set(rows.map((p) => p.ciudad).filter(Boolean))] as string[];
+  const hoyLabel = new Date(`${hoyDespacho()}T00:00:00.000Z`).toLocaleDateString("es-MX", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
 
   return (
     <ProspectosClient
@@ -68,6 +74,7 @@ export default async function ProspectosPage({
       abogados={abogadosDb.map((u) => ({ id: u.id, nombre: u.nombre }))}
       esAdmin={esAdmin}
       resumenAbogados={resumenAbogados}
+      hoyLabel={hoyLabel}
       filtroEstado={searchParams.estado ?? ""}
       filtroCiudad={searchParams.ciudad ?? ""}
       filtroMes={mes}

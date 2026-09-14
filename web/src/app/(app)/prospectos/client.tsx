@@ -100,8 +100,13 @@ function FilaProspecto({
 
   function cambiarAbogado(nuevoAbogadoId: string) {
     setAbogadoId(nuevoAbogadoId);
+    // El conteo de "Llamadas por abogado" solo cuenta filas con fecha de llamada puesta.
+    // Sin este default, asignarse una llamada no mueve el contador hasta que alguien
+    // también llene la fecha a mano — eso es lo que se reportó como "no se actualiza".
+    const nuevaFecha = nuevoAbogadoId && !fechaContacto ? new Date().toLocaleDateString("en-CA") : fechaContacto;
+    setFechaContacto(nuevaFecha);
     startTransition(() => {
-      actualizarProspectoAction(p.id, estado, nota, { fechaContacto, abogadoId: nuevoAbogadoId || null });
+      actualizarProspectoAction(p.id, estado, nota, { fechaContacto: nuevaFecha, abogadoId: nuevoAbogadoId || null });
     });
   }
 
@@ -254,19 +259,20 @@ const MESES = [
   { num: 12, label: "Diciembre" },
 ];
 
-function ResumenLlamadas({ resumen }: { resumen: ResumenAbogado[] }) {
+function ResumenLlamadas({ resumen, hoyLabel }: { resumen: ResumenAbogado[]; hoyLabel: string }) {
   if (resumen.length === 0) return null;
   return (
     <div className="bg-surface rounded-xl border border-line shadow-card overflow-hidden mb-5">
       <div className="px-5 py-3.5 border-b border-line">
         <h3 className="font-serif text-[17px] text-ink">Llamadas por abogado</h3>
-        <p className="text-[12px] text-muted mt-0.5">Semana en curso y mes en curso</p>
+        <p className="text-[12px] text-muted mt-0.5">Hoy ({hoyLabel}), semana en curso y mes en curso</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-[13px]">
+        <table className="w-full min-w-[720px] text-[13px]">
           <thead>
             <tr className="border-b border-line text-left bg-paper/50">
               <th className="eyebrow text-muted px-4 py-2">Abogado</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Llamadas hoy</th>
               <th className="eyebrow text-muted px-2 py-2 text-right">Llamadas semana</th>
               <th className="eyebrow text-muted px-2 py-2 text-right">Agendaron semana</th>
               <th className="eyebrow text-muted px-2 py-2 text-right">Llegaron semana</th>
@@ -279,6 +285,7 @@ function ResumenLlamadas({ resumen }: { resumen: ResumenAbogado[] }) {
             {resumen.map((r) => (
               <tr key={r.abogadoId}>
                 <td className="px-4 py-2.5 font-bold text-ink">{r.nombre}</td>
+                <td className="px-2 py-2.5 num text-right">{r.llamadasHoy}</td>
                 <td className="px-2 py-2.5 num text-right">{r.llamadasSemana}</td>
                 <td className="px-2 py-2.5 num text-right">{r.agendadasSemana}</td>
                 <td className="px-2 py-2.5 num text-right">{r.citasSemana}</td>
@@ -300,6 +307,7 @@ export default function ProspectosClient({
   abogados,
   esAdmin,
   resumenAbogados,
+  hoyLabel,
   filtroEstado,
   filtroCiudad,
   filtroMes,
@@ -309,6 +317,7 @@ export default function ProspectosClient({
   abogados: Abogado[];
   esAdmin: boolean;
   resumenAbogados: ResumenAbogado[];
+  hoyLabel: string;
   filtroEstado: string;
   filtroCiudad: string;
   filtroMes: number;
@@ -379,7 +388,7 @@ export default function ProspectosClient({
         subtitle={`${prospectos.length} en ${mesLabel} 2026`}
       />
 
-      {esAdmin && <ResumenLlamadas resumen={resumenAbogados} />}
+      {esAdmin && <ResumenLlamadas resumen={resumenAbogados} hoyLabel={hoyLabel} />}
 
       {/* Selector de mes */}
       <div className="flex flex-wrap items-center gap-1.5 mb-4">
