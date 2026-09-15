@@ -245,43 +245,27 @@ const MESES = [
   { num: 12, label: "Diciembre" },
 ];
 
-function ResumenLlamadas({ resumen, hoyLabel }: { resumen: ResumenAbogado[]; hoyLabel: string }) {
-  if (resumen.length === 0) return null;
+// Mis propias llamadas (hoy/semana/mes): cada abogado ve nada más su fila. La tabla
+// de todos los abogados junta vive en /reportes, solo para admins.
+function MisLlamadas({ resumen, hoyLabel }: { resumen: ResumenAbogado | null; hoyLabel: string }) {
+  if (!resumen) return null;
+  const numeros = [
+    { label: `Hoy (${hoyLabel})`, valor: resumen.llamadasHoy },
+    { label: "Esta semana", valor: resumen.llamadasSemana },
+    { label: "Este mes", valor: resumen.llamadasMes },
+  ];
   return (
     <div className="bg-surface rounded-xl border border-line shadow-card overflow-hidden mb-5">
       <div className="px-5 py-3.5 border-b border-line">
-        <h3 className="font-serif text-[17px] text-ink">Llamadas por abogado</h3>
-        <p className="text-[12px] text-muted mt-0.5">Hoy ({hoyLabel}), semana en curso y mes en curso</p>
+        <h3 className="font-serif text-[17px] text-ink">Mis llamadas</h3>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-[13px]">
-          <thead>
-            <tr className="border-b border-line text-left bg-paper/50">
-              <th className="eyebrow text-muted px-4 py-2">Abogado</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right">Llamadas hoy</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right">Llamadas semana</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right">Agendaron semana</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right">Llegaron semana</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right">Llamadas mes</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right">Agendaron mes</th>
-              <th className="eyebrow text-muted px-4 py-2 text-right">Llegaron mes</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line/60">
-            {resumen.map((r) => (
-              <tr key={r.abogadoId}>
-                <td className="px-4 py-2.5 font-bold text-ink">{r.nombre}</td>
-                <td className="px-2 py-2.5 num text-right">{r.llamadasHoy}</td>
-                <td className="px-2 py-2.5 num text-right">{r.llamadasSemana}</td>
-                <td className="px-2 py-2.5 num text-right">{r.agendadasSemana}</td>
-                <td className="px-2 py-2.5 num text-right">{r.citasSemana}</td>
-                <td className="px-2 py-2.5 num text-right">{r.llamadasMes}</td>
-                <td className="px-2 py-2.5 num text-right">{r.agendadasMes}</td>
-                <td className="px-4 py-2.5 num text-right">{r.citasMes}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-3 divide-x divide-line">
+        {numeros.map((n) => (
+          <div key={n.label} className="px-5 py-4 text-center">
+            <div className="text-[24px] font-bold text-ink num">{n.valor}</div>
+            <div className="text-[12px] text-muted mt-1">{n.label}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -292,7 +276,7 @@ export default function ProspectosClient({
   ciudades,
   abogados,
   esAdmin,
-  resumenAbogados: resumenAbogadosIniciales,
+  miResumen: miResumenInicial,
   hoyLabel,
   filtroEstado,
   filtroCiudad,
@@ -302,7 +286,7 @@ export default function ProspectosClient({
   ciudades: string[];
   abogados: Abogado[];
   esAdmin: boolean;
-  resumenAbogados: ResumenAbogado[];
+  miResumen: ResumenAbogado | null;
   hoyLabel: string;
   filtroEstado: string;
   filtroCiudad: string;
@@ -310,11 +294,11 @@ export default function ProspectosClient({
 }) {
   const router = useRouter();
   const [prospectos, setProspectos] = useState(prospectosIniciales);
-  const [resumenAbogados, setResumenAbogados] = useState(resumenAbogadosIniciales);
+  const [miResumen, setMiResumen] = useState(miResumenInicial);
 
   // Cambiar de filtro (mes/estado/ciudad) navega de verdad, con datos frescos del server.
   useEffect(() => setProspectos(prospectosIniciales), [prospectosIniciales]);
-  useEffect(() => setResumenAbogados(resumenAbogadosIniciales), [resumenAbogadosIniciales]);
+  useEffect(() => setMiResumen(miResumenInicial), [miResumenInicial]);
 
   // El bot y otros abogados cambian estados de prospectos en tiempo real (llamadas,
   // citas agendadas); sin esto solo se ve al recargar. Cada 20s, y solo con la
@@ -337,7 +321,7 @@ export default function ProspectosClient({
         const d = await res.json();
         if (!vivo) return;
         setProspectos(d.prospectos ?? []);
-        if (esAdmin) setResumenAbogados(d.resumenAbogados ?? []);
+        setMiResumen(d.miResumen ?? null);
       } catch {
         // sin conexión: se reintenta en el siguiente ciclo
       }
@@ -349,7 +333,7 @@ export default function ProspectosClient({
       clearInterval(id);
       document.removeEventListener("visibilitychange", refrescar);
     };
-  }, [filtroCiudad, filtroEstado, filtroMes, esAdmin]);
+  }, [filtroCiudad, filtroEstado, filtroMes]);
 
   function setFiltro(key: string, value: string) {
     const params = new URLSearchParams();
@@ -400,7 +384,7 @@ export default function ProspectosClient({
         subtitle={`${prospectos.length} en ${mesLabel} 2026`}
       />
 
-      {esAdmin && <ResumenLlamadas resumen={resumenAbogados} hoyLabel={hoyLabel} />}
+      <MisLlamadas resumen={miResumen} hoyLabel={hoyLabel} />
 
       {/* Selector de mes */}
       <div className="flex flex-wrap items-center gap-1.5 mb-4">

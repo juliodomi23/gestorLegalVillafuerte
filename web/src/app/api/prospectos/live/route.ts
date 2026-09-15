@@ -22,11 +22,10 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const esAdmin = session.user.rol === "admin";
   const mes = searchParams.get("mes") ? parseInt(searchParams.get("mes")!) : mesActualMX();
 
   const alcance = await alcanceDe(session.user.id, session.user.rol);
-  const [rows, resumenAbogados] = await Promise.all([
+  const [rows, resumen] = await Promise.all([
     listarProspectosUnificados(
       {
         ciudad: searchParams.get("ciudad") || undefined,
@@ -36,8 +35,9 @@ export async function GET(req: Request) {
       },
       alcance,
     ),
-    esAdmin ? resumenLlamadasPorAbogado() : Promise.resolve([]),
+    resumenLlamadasPorAbogado(),
   ]);
 
-  return Response.json({ prospectos: mapProspectosRows(rows), resumenAbogados });
+  const miResumen = resumen.find((r) => r.abogadoId === session.user.id) ?? null;
+  return Response.json({ prospectos: mapProspectosRows(rows), miResumen });
 }

@@ -131,6 +131,8 @@ export type ResumenAbogado = {
   agendadasSemana: number;
   citasSemana: number;
   llamadasHoy: number;
+  agendadasHoy: number;
+  citasHoy: number;
 };
 
 // Cuánto está llamando cada abogado a partir de que empezaron el lunes las llamadas
@@ -147,6 +149,7 @@ export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
   // fechaContacto se guarda como fecha pura (medianoche UTC, ver el input <input type="date">
   // en client.tsx), así que "hoy" se compara igual, no con hora de México.
   const hoyUTC = new Date(`${hoy}T00:00:00.000Z`);
+  const hoyInicioMx = new Date(`${hoy}T00:00:00${OFFSET_DESPACHO}`);
 
   const [abogados, prospectosMes, citasMes] = await Promise.all([
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
@@ -163,7 +166,19 @@ export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
   const porAbogadoId = new Map<string, ResumenAbogado>(
     abogados.map((a) => [
       a.id,
-      { abogadoId: a.id, nombre: a.nombre, llamadasMes: 0, agendadasMes: 0, citasMes: 0, llamadasSemana: 0, agendadasSemana: 0, citasSemana: 0, llamadasHoy: 0 },
+      {
+        abogadoId: a.id,
+        nombre: a.nombre,
+        llamadasMes: 0,
+        agendadasMes: 0,
+        citasMes: 0,
+        llamadasSemana: 0,
+        agendadasSemana: 0,
+        citasSemana: 0,
+        llamadasHoy: 0,
+        agendadasHoy: 0,
+        citasHoy: 0,
+      },
     ]),
   );
 
@@ -178,6 +193,7 @@ export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
     }
     if (p.fechaContacto && p.fechaContacto.getTime() === hoyUTC.getTime()) {
       r.llamadasHoy++;
+      if (p.estado === "agendo_cita") r.agendadasHoy++;
     }
   }
 
@@ -186,6 +202,7 @@ export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
     if (!r) continue;
     r.citasMes++;
     if (c.fechaHora >= inicioSemanaMx) r.citasSemana++;
+    if (c.fechaHora >= hoyInicioMx) r.citasHoy++;
   }
 
   return Array.from(porAbogadoId.values());

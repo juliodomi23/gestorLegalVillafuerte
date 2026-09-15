@@ -23,7 +23,7 @@ export default async function ProspectosPage({
   const mes = searchParams.mes ? parseInt(searchParams.mes) : mesActualMX();
 
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
-  const [rows, abogadosDb, resumenAbogados] = await Promise.all([
+  const [rows, abogadosDb, resumen] = await Promise.all([
     listarProspectosUnificados(
       {
         ciudad: searchParams.ciudad || undefined,
@@ -34,7 +34,7 @@ export default async function ProspectosPage({
       alcance,
     ),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
-    esAdmin ? resumenLlamadasPorAbogado() : Promise.resolve([]),
+    resumenLlamadasPorAbogado(),
   ]);
 
   const prospectos = mapProspectosRows(rows);
@@ -44,6 +44,9 @@ export default async function ProspectosPage({
     month: "short",
     timeZone: "UTC",
   });
+  // La tabla de todos los abogados vive en /reportes (solo admin); aquí cada quien
+  // ve nada más su propia fila, sea admin o no.
+  const miResumen = resumen.find((r) => r.abogadoId === session?.user?.id) ?? null;
 
   return (
     <ProspectosClient
@@ -51,7 +54,7 @@ export default async function ProspectosPage({
       ciudades={ciudades}
       abogados={abogadosDb.map((u) => ({ id: u.id, nombre: u.nombre }))}
       esAdmin={esAdmin}
-      resumenAbogados={resumenAbogados}
+      miResumen={miResumen}
       hoyLabel={hoyLabel}
       filtroEstado={searchParams.estado ?? ""}
       filtroCiudad={searchParams.ciudad ?? ""}
