@@ -140,9 +140,19 @@ export type ResumenAbogado = {
 // esas citas realmente se dieron (Cita.estado = "asesorada"; no hay liga directa
 // prospecto→cita, así que la cita cuenta por su propio abogadoId, no por el del
 // prospecto — es una aproximación, no un cruce exacto por persona).
-export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
+//
+// mes/anio: qué mes reportar (1-12). Por defecto el mes en curso. Un abogado puede
+// estar llamando prospectos viejos (ej. registrados en agosto) — esas llamadas cuentan
+// para el mes en que se hicieron (fechaContacto), no para el mes en que se registró el
+// prospecto, así que hay que poder ver meses anteriores para que no "desaparezcan".
+export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: number): Promise<ResumenAbogado[]> {
   const hoy = hoyDespacho();
-  const inicioMes = `${hoy.slice(0, 7)}-01`;
+  const [anioHoy, mesHoy] = hoy.slice(0, 7).split("-").map(Number);
+  const anio = anioSel ?? anioHoy;
+  const mes = mesSel ?? mesHoy;
+
+  const inicioMes = `${anio}-${String(mes).padStart(2, "0")}-01`;
+  const finMes = mes === 12 ? `${anio + 1}-01-01` : `${anio}-${String(mes + 1).padStart(2, "0")}-01`;
   const inicioSemana = lunesDe(hoy);
   const inicioSemanaUTC = new Date(`${inicioSemana}T00:00:00.000Z`);
   const inicioSemanaMx = new Date(`${inicioSemana}T00:00:00${OFFSET_DESPACHO}`);
@@ -154,11 +164,18 @@ export async function resumenLlamadasPorAbogado(): Promise<ResumenAbogado[]> {
   const [abogados, prospectosMes, citasMes] = await Promise.all([
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     prisma.prospecto.findMany({
-      where: { abogadoId: { not: null }, fechaContacto: { gte: new Date(`${inicioMes}T00:00:00.000Z`) } },
+      where: {
+        abogadoId: { not: null },
+        fechaContacto: { gte: new Date(`${inicioMes}T00:00:00.000Z`), lt: new Date(`${finMes}T00:00:00.000Z`) },
+      },
       select: { abogadoId: true, estado: true, fechaContacto: true },
     }),
     prisma.cita.findMany({
-      where: { abogadoId: { not: null }, estado: "asesorada", fechaHora: { gte: new Date(`${inicioMes}T00:00:00${OFFSET_DESPACHO}`) } },
+      where: {
+        abogadoId: { not: null },
+        estado: "asesorada",
+        fechaHora: { gte: new Date(`${inicioMes}T00:00:00${OFFSET_DESPACHO}`), lt: new Date(`${finMes}T00:00:00${OFFSET_DESPACHO}`) },
+      },
       select: { abogadoId: true, fechaHora: true },
     }),
   ]);
