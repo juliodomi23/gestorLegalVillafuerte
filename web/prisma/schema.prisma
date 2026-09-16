@@ -134,6 +134,7 @@ model Usuario {
   checadas     Checada[]
   diligencias  Diligencia[]
   prospectos   Prospecto[]
+  llamadasProspecto LlamadaProspecto[]
   actividadRespuestas ActividadRespuesta[]
   // Expedientes que no son suyos ni de su gente, pero el dueño (o un admin) le dio
   // acceso puntual — p.ej. un abogado que cubre a otro en una audiencia.
@@ -531,7 +532,7 @@ model Prospecto {
   telefono     String?
   ciudad       String?
   asunto       String?
-  // por_contactar | no_contesto | agendo_cita | llamar_despues | convertido | descartado
+  // por_contactar | no_contesto | mensaje_automatico | agendo_cita | llamar_despues | convertido | descartado
   estado       String    @default("por_contactar")
   nota         String?
   // Fecha de registro: la pone el bot al crear/actualizar el prospecto. No se edita aquí.
@@ -548,8 +549,30 @@ model Prospecto {
   actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
 
   abogado Usuario? @relation(fields: [abogadoId], references: [id])
+  llamadas LlamadaProspecto[]
 
   @@map("prospectos")
+}
+
+// Historial de llamadas de un prospecto: un registro por cada día que un abogado
+// lo marcó como llamado. El campo abogadoId/fechaContacto en Prospecto solo guarda
+// el más reciente (para la vista de la lista); el conteo de "Llamadas por abogado"
+// suma de aquí, para que si dos abogados llaman al mismo prospecto en días distintos
+// (uno no contestó, otro sí después), la llamada le cuente a los dos.
+model LlamadaProspecto {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prospectoId  String   @map("prospecto_id") @db.Uuid
+  abogadoId    String   @map("abogado_id") @db.Uuid
+  fecha        DateTime @map("fecha") @db.Date
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  prospecto Prospecto @relation(fields: [prospectoId], references: [id])
+  abogado   Usuario   @relation(fields: [abogadoId], references: [id])
+
+  // Un abogado no acumula más de un registro por prospecto el mismo día, aunque
+  // reasigne la fila varias veces (ej. cambia el estado dos veces en la tarde).
+  @@unique([prospectoId, abogadoId, fecha])
+  @@map("llamadas_prospecto")
 }
 
 // Rutina semanal del Coordinador de Operaciones y Sistemas: la plantilla de lo que

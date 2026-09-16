@@ -56,6 +56,7 @@ export default async function ProspectosPage({
       esAdmin={esAdmin}
       miResumen={miResumen}
       hoyLabel={hoyLabel}
+      hoy={hoyDespacho()}
       filtroEstado={searchParams.estado ?? ""}
       filtroCiudad={searchParams.ciudad ?? ""}
       filtroMes={mes}

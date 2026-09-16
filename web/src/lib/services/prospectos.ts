@@ -92,7 +92,7 @@ export async function actualizarEstadoProspecto(
   nota?: string,
   opts?: { fechaContacto?: string; abogadoId?: string | null }
 ) {
-  return prisma.prospecto.update({
+  const p = await prisma.prospecto.update({
     where: { id },
     data: {
       estado,
@@ -103,6 +103,21 @@ export async function actualizarEstadoProspecto(
       ...(opts?.abogadoId !== undefined && { abogadoId: opts.abogadoId }),
     },
   });
+
+  // Historial para "Llamadas por abogado": un registro por abogado+día, aunque la
+  // fila se reasigne después a otro abogado otro día (ver LlamadaProspecto en el
+  // schema) — así la llamada de quien marcó primero no se pierde al sobrescribirse.
+  if (opts?.abogadoId && p.fechaContacto) {
+    await prisma.llamadaProspecto.upsert({
+      where: {
+        prospectoId_abogadoId_fecha: { prospectoId: id, abogadoId: opts.abogadoId, fecha: p.fechaContacto },
+      },
+      create: { prospectoId: id, abogadoId: opts.abogadoId, fecha: p.fechaContacto },
+      update: {},
+    });
+  }
+
+  return p;
 }
 
 export async function borrarProspecto(id: string) {
@@ -146,6 +161,9 @@ export type ResumenAbogado = {
 // para el mes en que se hicieron (fechaContacto), no para el mes en que se registró el
 // prospecto, así que hay que poder ver meses anteriores para que no "desaparezcan".
 export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: number): Promise<ResumenAbogado[]> {
+  // page.tsx llama esto en paralelo con listarProspectosUnificados (que también lo
+  // corre): idempotente por la marca en Configuracion, así que no importa cuál gane.
+  await backfillHistorialLlamadas();
   const hoy = hoyDespacho();
   const [anioHoy, mesHoy] = hoy.slice(0, 7).split("-").map(Number);
   const anio = anioSel ?? anioHoy;
@@ -161,14 +179,26 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
   const hoyUTC = new Date(`${hoy}T00:00:00.000Z`);
   const hoyInicioMx = new Date(`${hoy}T00:00:00${OFFSET_DESPACHO}`);
 
-  const [abogados, prospectosMes, citasMes] = await Promise.all([
+  const [abogados, llamadasMes, agendadasMes, citasMes] = await Promise.all([
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    // Llamadas: vienen del historial (LlamadaProspecto), no del prospecto en sí — así
+    // un prospecto que llamó un abogado un día y otro al siguiente cuenta para los dos,
+    // en vez de que el segundo sobrescriba el registro del primero.
+    prisma.llamadaProspecto.findMany({
+      where: {
+        fecha: { gte: new Date(`${inicioMes}T00:00:00.000Z`), lt: new Date(`${finMes}T00:00:00.000Z`) },
+      },
+      select: { abogadoId: true, fecha: true },
+    }),
+    // Agendadas: sí se queda atada al estado actual del prospecto — solo hay una cita
+    // real, y le corresponde a quien la consiguió, no a todo el historial de llamadas.
     prisma.prospecto.findMany({
       where: {
         abogadoId: { not: null },
+        estado: "agendo_cita",
         fechaContacto: { gte: new Date(`${inicioMes}T00:00:00.000Z`), lt: new Date(`${finMes}T00:00:00.000Z`) },
       },
-      select: { abogadoId: true, estado: true, fechaContacto: true },
+      select: { abogadoId: true, fechaContacto: true },
     }),
     prisma.cita.findMany({
       where: {
@@ -199,19 +229,20 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
     ]),
   );
 
-  for (const p of prospectosMes) {
-    const r = p.abogadoId ? porAbogadoId.get(p.abogadoId) : undefined;
+  for (const l of llamadasMes) {
+    const r = porAbogadoId.get(l.abogadoId);
     if (!r) continue;
     r.llamadasMes++;
-    if (p.estado === "agendo_cita") r.agendadasMes++;
-    if (p.fechaContacto && p.fechaContacto >= inicioSemanaUTC) {
-      r.llamadasSemana++;
-      if (p.estado === "agendo_cita") r.agendadasSemana++;
-    }
-    if (p.fechaContacto && p.fechaContacto.getTime() === hoyUTC.getTime()) {
-      r.llamadasHoy++;
-      if (p.estado === "agendo_cita") r.agendadasHoy++;
-    }
+    if (l.fecha >= inicioSemanaUTC) r.llamadasSemana++;
+    if (l.fecha.getTime() === hoyUTC.getTime()) r.llamadasHoy++;
+  }
+
+  for (const p of agendadasMes) {
+    const r = p.abogadoId ? porAbogadoId.get(p.abogadoId) : undefined;
+    if (!r) continue;
+    r.agendadasMes++;
+    if (p.fechaContacto && p.fechaContacto >= inicioSemanaUTC) r.agendadasSemana++;
+    if (p.fechaContacto && p.fechaContacto.getTime() === hoyUTC.getTime()) r.agendadasHoy++;
   }
 
   for (const c of citasMes) {
@@ -225,15 +256,15 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
   return Array.from(porAbogadoId.values());
 }
 
-// Para el bot externo: prospectos marcados "no contestó" a los que aún no se les
-// mandó la plantilla de reintento. Se marca reutilizando `nota` (sin migración): el
-// CRON, tras enviar el WhatsApp, hace PATCH con nota += "[plantilla_enviada]".
-export async function listarProspectosNoContestoSinPlantilla() {
+// Para el bot externo: prospectos marcados "no contestó" pendientes de la plantilla
+// de reintento. El CRON, tras enviar el WhatsApp, hace PATCH con
+// estado: "mensaje_automatico" — con eso solo, la próxima corrida ya no los vuelve
+// a traer (deja de calificar para estado: "no_contesto").
+export async function listarProspectosNoContesto() {
   return prisma.prospecto.findMany({
     where: {
       estado: "no_contesto",
       telefono: { not: null },
-      NOT: { nota: { contains: "[plantilla_enviada]" } },
     },
     orderBy: { creadoEn: "asc" },
   });
@@ -261,7 +292,10 @@ export async function listarProspectos(filtros?: {
       ...(filtros?.estado && { estado: filtros.estado }),
       ...(fechaFiltro && { fechaLlamada: fechaFiltro }),
     },
-    include: { abogado: { select: { id: true, nombre: true } } },
+    include: {
+      abogado: { select: { id: true, nombre: true } },
+      llamadas: { include: { abogado: { select: { nombre: true } } }, orderBy: { fecha: "asc" } },
+    },
     orderBy: [{ fechaLlamada: "desc" }, { creadoEn: "desc" }],
   });
 }
@@ -291,6 +325,8 @@ export type FilaProspectoUnificada = {
   fechaContacto: Date | null;
   abogadoId: string | null;
   abogadoNombre: string | null;
+  /** Vacío para las de origen "asesoria" (esas no tienen LlamadaProspecto). */
+  historial: { fecha: Date; abogadoNombre: string }[];
 };
 
 // Una sola vez: del 10-sep-2026 para atrás, fecha de llamada = fecha de registro. Un
@@ -346,12 +382,40 @@ async function backfillFechaContactoAbogadoSinFecha() {
   ]);
 }
 
+// Una sola vez: antes de existir LlamadaProspecto, cada prospecto solo guardaba su
+// última llamada (abogado_id + fecha_contacto). Sin este backfill, todas esas llamadas
+// ya hechas desaparecerían del conteo por abogado hasta que alguien las vuelva a tocar.
+// ponytail: borrar esta función cuando ya haya corrido en producción.
+const MARCA_BACKFILL_HISTORIAL_LLAMADAS = "backfillHistorialLlamadas20260915";
+
+async function backfillHistorialLlamadas() {
+  const config = await prisma.configuracion.findUnique({ where: { id: 1 } });
+  const prefs = (config?.preferencias ?? {}) as Record<string, unknown>;
+  if (prefs[MARCA_BACKFILL_HISTORIAL_LLAMADAS]) return;
+
+  await prisma.$transaction([
+    prisma.$executeRaw`
+      INSERT INTO llamadas_prospecto (id, prospecto_id, abogado_id, fecha, creado_en)
+      SELECT gen_random_uuid(), id, abogado_id, fecha_contacto, now()
+      FROM prospectos
+      WHERE abogado_id IS NOT NULL AND fecha_contacto IS NOT NULL
+      ON CONFLICT (prospecto_id, abogado_id, fecha) DO NOTHING
+    `,
+    prisma.configuracion.upsert({
+      where: { id: 1 },
+      create: { id: 1, nombreDespacho: "Villafuerte y Asociados", preferencias: { [MARCA_BACKFILL_HISTORIAL_LLAMADAS]: true } },
+      update: { preferencias: { ...prefs, [MARCA_BACKFILL_HISTORIAL_LLAMADAS]: true } },
+    }),
+  ]);
+}
+
 export async function listarProspectosUnificados(
   filtros: { ciudad?: string; estado?: string; mes?: number; anio?: number },
   alcance: Alcance,
 ) {
   await backfillFechaContactoInicial();
   await backfillFechaContactoAbogadoSinFecha();
+  await backfillHistorialLlamadas();
   const anio = filtros.anio ?? new Date().getFullYear();
   const mes = filtros.mes;
   const rango =
@@ -403,6 +467,7 @@ export async function listarProspectosUnificados(
       fechaContacto: p.fechaContacto,
       abogadoId: p.abogadoId,
       abogadoNombre: p.abogado?.nombre ?? null,
+      historial: p.llamadas.map((l) => ({ fecha: l.fecha, abogadoNombre: l.abogado.nombre })),
     })),
     ...asesorias.map((a) => ({
       id: a.id,
@@ -418,6 +483,7 @@ export async function listarProspectosUnificados(
       fechaContacto: null,
       abogadoId: null,
       abogadoNombre: null,
+      historial: [],
     })),
   ];
 
@@ -437,6 +503,7 @@ export type ProspectoRow = {
   fechaRegistro: string;
   fechaContacto: string;
   abogadoId: string | null;
+  historial: { fecha: string; abogadoNombre: string }[];
 };
 
 // Usado tanto por la carga inicial (page.tsx) como por el polling en vivo (api/prospectos/live):
@@ -460,5 +527,9 @@ export function mapProspectosRows(rows: FilaProspectoUnificada[]): ProspectoRow[
       : "—",
     fechaContacto: p.fechaContacto ? p.fechaContacto.toISOString().split("T")[0] : "",
     abogadoId: p.abogadoId,
+    historial: p.historial.map((h) => ({
+      fecha: h.fecha.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }),
+      abogadoNombre: h.abogadoNombre,
+    })),
   }));
 }

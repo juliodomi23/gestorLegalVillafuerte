@@ -31,6 +31,7 @@ type Resultado =
 const ESTADO_PROSPECTO: Record<string, string> = {
   por_contactar: "Por contactar",
   no_contesto: "No contestó",
+  mensaje_automatico: "Mensaje automático",
   agendo_cita: "Agendó cita",
   llamar_despues: "Llamar después",
   convertido: "Convertido",

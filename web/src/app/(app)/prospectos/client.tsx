@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, Trash2, MapPin, ArrowUpRight, Download } from "lucide-react";
+import { Phone, Trash2, MapPin, ArrowUpRight, Download, ChevronRight, ChevronDown, Lock } from "lucide-react";
 import { PageTitle, Card, FilterSelect } from "@/components/ui";
 import { useConfirm } from "@/components/confirm";
 import { actualizarProspectoAction, borrarProspectoAction, convertirProspectoAction } from "./actions";
@@ -15,6 +15,7 @@ export type Abogado = { id: string; nombre: string };
 const ESTADOS = [
   { value: "por_contactar", label: "Por contactar" },
   { value: "no_contesto", label: "No contestó" },
+  { value: "mensaje_automatico", label: "Mensaje automático" },
   { value: "agendo_cita", label: "Agendó cita" },
   { value: "llamar_despues", label: "Llamar después" },
   { value: "convertido", label: "Convertido" },
@@ -24,6 +25,7 @@ const ESTADOS = [
 const ESTADO_ESTILOS: Record<string, string> = {
   por_contactar: "bg-amber-wash text-amber",
   no_contesto: "bg-paper text-muted",
+  mensaje_automatico: "bg-blue-50 text-blue-700",
   agendo_cita: "bg-success-wash text-success",
   llamar_despues: "bg-blue-50 text-blue-700",
   convertido: "bg-emerald-50 text-emerald-700",
@@ -34,12 +36,15 @@ function FilaProspecto({
   p,
   esAdmin,
   abogados,
+  hoy,
 }: {
   p: ProspectoView;
   esAdmin: boolean;
   abogados: Abogado[];
+  hoy: string;
 }) {
   const router = useRouter();
+  const [expandido, setExpandido] = useState(false);
   const [estado, setEstado] = useState(p.estado);
   const [nota, setNota] = useState(p.nota);
   const [notaGuardada, setNotaGuardada] = useState(p.nota);
@@ -113,6 +118,9 @@ function FilaProspecto({
 
   const estiloEstado = ESTADO_ESTILOS[estado] ?? "bg-paper text-muted";
   const esAsesoria = p.origen === "asesoria";
+  // Ya la llamaron hoy: se bloquea Abogado/Estado para todos el resto del día, para
+  // que nadie reasigne o "se la gane" — mañana, al dejar de ser "hoy", se libera sola.
+  const bloqueada = !esAsesoria && !!fechaContacto && fechaContacto === hoy;
 
   function irAExpediente() {
     const params = new URLSearchParams({ nuevo: "1", nombre: p.nombre });
@@ -121,7 +129,19 @@ function FilaProspecto({
   }
 
   return (
+    <>
     <tr className={`hover:bg-paper/60 transition-colors ${pending ? "opacity-60" : ""}`}>
+      <td className="px-1 py-3 text-center">
+        {p.historial.length > 0 && (
+          <button
+            onClick={() => setExpandido((v) => !v)}
+            title={`${p.historial.length} llamada(s) registrada(s)`}
+            className="p-0.5 rounded text-muted hover:text-navy transition-colors"
+          >
+            {expandido ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+        )}
+      </td>
       <td className="px-4 py-3 text-[12px] text-muted whitespace-nowrap num">
         {p.fechaRegistro}
       </td>
@@ -161,7 +181,9 @@ function FilaProspecto({
           <select
             value={abogadoId}
             onChange={(e) => cambiarAbogado(e.target.value)}
-            className="w-36 px-2 py-1 rounded text-[12.5px] bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none cursor-pointer"
+            disabled={bloqueada}
+            title={bloqueada ? "Ya se le llamó hoy — se libera mañana" : undefined}
+            className="w-36 px-2 py-1 rounded text-[12.5px] bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="">—</option>
             {abogados.map((a) => (
@@ -178,17 +200,22 @@ function FilaProspecto({
             {ESTADOS.find((e) => e.value === estado)?.label ?? estado}
           </span>
         ) : (
-        <select
-          value={estado}
-          onChange={(e) => cambiarEstado(e.target.value)}
-          className={`px-2 py-1 rounded text-[12px] font-bold border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 ${estiloEstado}`}
-        >
-          {ESTADOS.map((e) => (
-            <option key={e.value} value={e.value}>
-              {e.label}
-            </option>
-          ))}
-        </select>
+        <span className="inline-flex items-center gap-1">
+          <select
+            value={estado}
+            onChange={(e) => cambiarEstado(e.target.value)}
+            disabled={bloqueada}
+            title={bloqueada ? "Ya se le llamó hoy — se libera mañana" : undefined}
+            className={`px-2 py-1 rounded text-[12px] font-bold border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 disabled:cursor-not-allowed disabled:opacity-60 ${estiloEstado}`}
+          >
+            {ESTADOS.map((e) => (
+              <option key={e.value} value={e.value}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+          {bloqueada && <Lock size={11} className="text-muted" />}
+        </span>
         )}
       </td>
       <td className="px-2 py-3 min-w-[160px]">
@@ -227,6 +254,21 @@ function FilaProspecto({
         </div>
       </td>
     </tr>
+    {expandido && p.historial.length > 0 && (
+      <tr className="bg-paper/40">
+        <td />
+        <td colSpan={10} className="px-4 py-2 text-[12px] text-muted">
+          <span className="font-bold">{p.historial.length} llamada(s):</span>{" "}
+          {p.historial.map((h, i) => (
+            <span key={i}>
+              {i > 0 && " · "}
+              {h.fecha} ({h.abogadoNombre})
+            </span>
+          ))}
+        </td>
+      </tr>
+    )}
+    </>
   );
 }
 
@@ -278,6 +320,7 @@ export default function ProspectosClient({
   esAdmin,
   miResumen: miResumenInicial,
   hoyLabel,
+  hoy,
   filtroEstado,
   filtroCiudad,
   filtroMes,
@@ -288,6 +331,7 @@ export default function ProspectosClient({
   esAdmin: boolean;
   miResumen: ResumenAbogado | null;
   hoyLabel: string;
+  hoy: string;
   filtroEstado: string;
   filtroCiudad: string;
   filtroMes: number;
@@ -452,6 +496,7 @@ export default function ProspectosClient({
         <table className="w-full min-w-[1000px] text-[13.5px]">
           <thead>
             <tr className="border-b border-line text-left">
+              <th className="eyebrow text-muted px-1 py-3"></th>
               <th className="eyebrow text-muted px-4 py-3">Fecha de registro</th>
               <th className="eyebrow text-muted px-2 py-3">Nombre</th>
               <th className="eyebrow text-muted px-2 py-3">Teléfono</th>
@@ -466,12 +511,12 @@ export default function ProspectosClient({
           </thead>
           <tbody className="divide-y divide-line/70">
             {prospectos.map((p) => (
-              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} />
+              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} hoy={hoy} />
             ))}
             {prospectos.length === 0 && (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="px-4 py-10 text-center text-muted"
                 >
                   No hay prospectos con estos filtros.
