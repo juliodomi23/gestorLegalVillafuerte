@@ -23,7 +23,7 @@ export default async function ProspectosPage({
   const mes = searchParams.mes ? parseInt(searchParams.mes) : mesActualMX();
 
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
-  const [rows, abogadosDb, resumen] = await Promise.all([
+  const [rows, abogadosDb, resumen, sucursalesDb] = await Promise.all([
     listarProspectosUnificados(
       {
         ciudad: searchParams.ciudad || undefined,
@@ -35,6 +35,7 @@ export default async function ProspectosPage({
     ),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     resumenLlamadasPorAbogado(),
+    prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
   ]);
 
   const prospectos = mapProspectosRows(rows);
@@ -53,6 +54,7 @@ export default async function ProspectosPage({
       prospectos={prospectos}
       ciudades={ciudades}
       abogados={abogadosDb.map((u) => ({ id: u.id, nombre: u.nombre }))}
+      sucursales={sucursalesDb.map((s) => s.nombre)}
       esAdmin={esAdmin}
       resumen={resumen}
       miResumen={miResumen}

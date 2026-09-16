@@ -4,10 +4,21 @@ import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Phone, Trash2, MapPin, ArrowUpRight, Download, ChevronRight, ChevronDown, Lock } from "lucide-react";
 import { PageTitle, Card, FilterSelect } from "@/components/ui";
+import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
 import { actualizarProspectoAction, borrarProspectoAction, convertirProspectoAction } from "./actions";
+import { crearCitaAction } from "../agenda/actions";
 import type { ResumenAbogado, ProspectoRow } from "@/lib/services/prospectos";
 import { rankingPorEquipo, rankingPorSucursal, type MetricaRanking } from "@/lib/equipos-prospectos";
+
+// Coincidencia laxa para adivinar la sucursal a partir de la ciudad libre que captura
+// el bot ("Tapachula", "San Cristóbal de las Casas"…): por inclusión de palabras, sin
+// acentos, no exacta — es solo para prellenar el selector, el usuario lo puede corregir.
+function sucursalDeCiudad(ciudad: string, sucursales: string[]): string {
+  const normalizar = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const ciudadNorm = normalizar(ciudad);
+  return sucursales.find((s) => ciudadNorm.includes(normalizar(s)) || normalizar(s).includes(ciudadNorm)) ?? "";
+}
 
 export type ProspectoView = ProspectoRow;
 
@@ -33,16 +44,20 @@ const ESTADO_ESTILOS: Record<string, string> = {
   descartado: "bg-danger-wash text-danger",
 };
 
+const CITA_VACIA = { fecha: "", hora: "", sucursal: "", abogado: "" };
+
 function FilaProspecto({
   p,
   esAdmin,
   abogados,
+  sucursales,
   hoy,
   miId,
 }: {
   p: ProspectoView;
   esAdmin: boolean;
   abogados: Abogado[];
+  sucursales: string[];
   hoy: string;
   miId: string | null;
 }) {
@@ -56,6 +71,39 @@ function FilaProspecto({
   const [pending, startTransition] = useTransition();
   const confirmar = useConfirm();
   const notaEnfocada = useRef(false);
+
+  // Al marcar "Agendó cita" se abre el mismo formulario de Nueva cita de Agenda,
+  // precargado con los datos del prospecto, para que la cita quede real (con fecha
+  // y hora) y el proceso pueda seguir ahí: llegó/no llegó, y luego si firmó.
+  const [citaAbierta, setCitaAbierta] = useState(false);
+  const [citaForm, setCitaForm] = useState(CITA_VACIA);
+  const [citaGuardando, setCitaGuardando] = useState(false);
+
+  function abrirModalCita() {
+    setCitaForm({
+      fecha: "",
+      hora: "",
+      sucursal: sucursalDeCiudad(p.ciudad, sucursales),
+      abogado: abogados.find((a) => a.id === abogadoId)?.nombre ?? "",
+    });
+    setCitaAbierta(true);
+  }
+
+  async function guardarCita() {
+    setCitaGuardando(true);
+    await crearCitaAction({
+      cliente: p.nombre,
+      asunto: p.asunto === "—" ? "" : p.asunto,
+      telefono: p.telefono === "—" ? "" : p.telefono,
+      fecha: citaForm.fecha,
+      hora: citaForm.hora,
+      sucursal: citaForm.sucursal,
+      abogado: citaForm.abogado,
+    });
+    setCitaGuardando(false);
+    setCitaAbierta(false);
+    router.refresh();
+  }
 
   // El refresco automático (otra persona registró una llamada, el bot cambió el
   // estado, etc.) trae props nuevos, pero useState solo lee el valor inicial: sin
@@ -75,6 +123,7 @@ function FilaProspecto({
     startTransition(() => {
       actualizarProspectoAction(p.id, nuevoEstado, nota, { fechaContacto, abogadoId: abogadoId || null });
     });
+    if (nuevoEstado === "agendo_cita" && estado !== "agendo_cita") abrirModalCita();
   }
 
   function guardarNota() {
@@ -275,6 +324,26 @@ function FilaProspecto({
         </td>
       </tr>
     )}
+    <Modal
+      open={citaAbierta}
+      onClose={() => setCitaAbierta(false)}
+      title={`Agendar cita — ${p.nombre}`}
+      onSubmit={guardarCita}
+      submitLabel={citaGuardando ? "Guardando…" : "Agendar cita"}
+    >
+      <Field label="Fecha">
+        <Input type="date" value={citaForm.fecha} onChange={(e) => setCitaForm((f) => ({ ...f, fecha: e.target.value }))} required />
+      </Field>
+      <Field label="Hora">
+        <Input type="time" value={citaForm.hora} onChange={(e) => setCitaForm((f) => ({ ...f, hora: e.target.value }))} />
+      </Field>
+      <Field label="Sucursal">
+        <Select options={sucursales} value={citaForm.sucursal} onChange={(e) => setCitaForm((f) => ({ ...f, sucursal: e.target.value }))} />
+      </Field>
+      <Field label="Abogado">
+        <Select options={abogados.map((a) => a.nombre)} value={citaForm.abogado} onChange={(e) => setCitaForm((f) => ({ ...f, abogado: e.target.value }))} />
+      </Field>
+    </Modal>
     </>
   );
 }
@@ -385,6 +454,7 @@ export default function ProspectosClient({
   prospectos: prospectosIniciales,
   ciudades,
   abogados,
+  sucursales,
   esAdmin,
   resumen: resumenInicial,
   miResumen: miResumenInicial,
@@ -397,6 +467,7 @@ export default function ProspectosClient({
   prospectos: ProspectoView[];
   ciudades: string[];
   abogados: Abogado[];
+  sucursales: string[];
   esAdmin: boolean;
   resumen: ResumenAbogado[];
   miResumen: ResumenAbogado | null;
@@ -585,7 +656,7 @@ export default function ProspectosClient({
           </thead>
           <tbody className="divide-y divide-line/70">
             {prospectos.map((p) => (
-              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} hoy={hoy} miId={miResumen?.abogadoId ?? null} />
+              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} sucursales={sucursales} hoy={hoy} miId={miResumen?.abogadoId ?? null} />
             ))}
             {prospectos.length === 0 && (
               <tr>
