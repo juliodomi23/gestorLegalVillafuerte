@@ -38,11 +38,13 @@ function FilaProspecto({
   esAdmin,
   abogados,
   hoy,
+  miId,
 }: {
   p: ProspectoView;
   esAdmin: boolean;
   abogados: Abogado[];
   hoy: string;
+  miId: string | null;
 }) {
   const router = useRouter();
   const [expandido, setExpandido] = useState(false);
@@ -119,12 +121,13 @@ function FilaProspecto({
 
   const estiloEstado = ESTADO_ESTILOS[estado] ?? "bg-paper text-muted";
   const esAsesoria = p.origen === "asesoria";
-  // Ya la llamaron hoy: se bloquea Abogado/Estado para todos el resto del día, para
-  // que nadie reasigne o "se la gane" — mañana, al dejar de ser "hoy", se libera sola.
-  // Requiere abogado asignado: una fila "Por contactar" puede tener fechaContacto de
-  // hoy sin que nadie la haya llamado (el campo de fecha se edita aparte del abogado);
-  // sin este chequeo, quedaba bloqueada antes de que alguien pudiera tomarla.
-  const bloqueada = !esAsesoria && !!abogadoId && !!fechaContacto && fechaContacto === hoy;
+  // Ya la llamaron hoy: se bloquea Abogado/Estado para el resto del día, para que
+  // nadie MÁS se la gane — pero no para quien ya se la asignó ni para admin, que
+  // deben poder seguir corrigiendo su propia fila el resto del día (ej. cambiar de
+  // "agendó cita" a "convertido" tras la llamada). Mañana, al dejar de ser "hoy", se
+  // libera sola para cualquiera.
+  const esMia = !!abogadoId && abogadoId === miId;
+  const bloqueada = !esAsesoria && !!abogadoId && !!fechaContacto && fechaContacto === hoy && !esMia && !esAdmin;
 
   function irAExpediente() {
     const params = new URLSearchParams({ nuevo: "1", nombre: p.nombre });
@@ -582,7 +585,7 @@ export default function ProspectosClient({
           </thead>
           <tbody className="divide-y divide-line/70">
             {prospectos.map((p) => (
-              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} hoy={hoy} />
+              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} hoy={hoy} miId={miResumen?.abogadoId ?? null} />
             ))}
             {prospectos.length === 0 && (
               <tr>
