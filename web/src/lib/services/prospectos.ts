@@ -172,8 +172,15 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
   const [anioHoy, mesHoy] = hoy.slice(0, 7).split("-").map(Number);
   const anio = anioSel ?? anioHoy;
   const mes = mesSel ?? mesHoy;
+  const esMesActual = anio === anioHoy && mes === mesHoy;
 
-  const inicioMes = `${anio}-${String(mes).padStart(2, "0")}-01`;
+  // Para el mes en curso, "llamadas del mes" son los últimos 30 días (ventana móvil)
+  // en vez de desde el día 1 — así no se ve en 0 justo al empezar el mes. Un mes ya
+  // cerrado (ej. viendo agosto en septiembre) sigue siendo el mes calendario completo,
+  // que es lo que tiene sentido para revisar historial.
+  const inicioMes = esMesActual
+    ? new Date(new Date(`${hoy}T00:00:00.000Z`).getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    : `${anio}-${String(mes).padStart(2, "0")}-01`;
   const finMes = mes === 12 ? `${anio + 1}-01-01` : `${anio}-${String(mes + 1).padStart(2, "0")}-01`;
   const inicioSemana = lunesDe(hoy);
   const inicioSemanaUTC = new Date(`${inicioSemana}T00:00:00.000Z`);
