@@ -7,6 +7,7 @@ import { PageTitle, Card, FilterSelect } from "@/components/ui";
 import { useConfirm } from "@/components/confirm";
 import { actualizarProspectoAction, borrarProspectoAction, convertirProspectoAction } from "./actions";
 import type { ResumenAbogado, ProspectoRow } from "@/lib/services/prospectos";
+import { rankingPorEquipo, rankingPorSucursal, type MetricaRanking } from "@/lib/equipos-prospectos";
 
 export type ProspectoView = ProspectoRow;
 
@@ -316,11 +317,73 @@ function MisLlamadas({ resumen, hoyLabel }: { resumen: ResumenAbogado | null; ho
   );
 }
 
+const TABS_RANKING: { value: MetricaRanking; label: string }[] = [
+  { value: "llamadasHoy", label: "Llamadas" },
+  { value: "agendadasHoy", label: "Agendaron" },
+  { value: "citasHoy", label: "Acudieron a la oficina" },
+  { value: "contratosHoy", label: "Firmaron contrato" },
+];
+
+// Tablero del día para motivar: solo lugares (1º, 2º, 3º…), sin números, ni por
+// abogado/equipo ni por sucursal — comparar quién llamó más se siente distinto a
+// comparar cuántas llamadas.
+function TablaLugares({ items }: { items: { lugar: number; label: string }[] }) {
+  if (items.length === 0) return <p className="text-[12.5px] text-muted px-4 py-3">Sin actividad hoy.</p>;
+  return (
+    <ol className="divide-y divide-line/70">
+      {items.map((it) => (
+        <li key={it.label} className="flex items-center gap-3 px-4 py-2">
+          <span className="w-8 text-center font-bold text-navy num">{it.lugar}º</span>
+          <span className="text-[13px] text-ink">{it.label}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function RankingProspectos({ resumen }: { resumen: ResumenAbogado[] }) {
+  const [tab, setTab] = useState<MetricaRanking>("llamadasHoy");
+  const porEquipo = rankingPorEquipo(resumen, tab);
+  const porSucursal = rankingPorSucursal(resumen, tab);
+
+  return (
+    <div className="bg-surface rounded-xl border border-line shadow-card overflow-hidden mb-5">
+      <div className="px-5 py-3.5 border-b border-line flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-serif text-[17px] text-ink">Lugares del día</h3>
+        <div className="flex flex-wrap gap-1.5">
+          {TABS_RANKING.map((t) => (
+            <button
+              key={t.value}
+              onClick={() => setTab(t.value)}
+              className={`px-2.5 py-1 rounded-full text-[11.5px] font-bold transition-colors border ${
+                tab === t.value ? "bg-navy text-white border-navy" : "border-line text-muted hover:bg-paper"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-line">
+        <div>
+          <div className="eyebrow text-muted px-4 pt-3 pb-1">Por abogado / equipo</div>
+          <TablaLugares items={porEquipo} />
+        </div>
+        <div>
+          <div className="eyebrow text-muted px-4 pt-3 pb-1">Por sucursal</div>
+          <TablaLugares items={porSucursal} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProspectosClient({
   prospectos: prospectosIniciales,
   ciudades,
   abogados,
   esAdmin,
+  resumen: resumenInicial,
   miResumen: miResumenInicial,
   hoyLabel,
   hoy,
@@ -332,6 +395,7 @@ export default function ProspectosClient({
   ciudades: string[];
   abogados: Abogado[];
   esAdmin: boolean;
+  resumen: ResumenAbogado[];
   miResumen: ResumenAbogado | null;
   hoyLabel: string;
   hoy: string;
@@ -342,10 +406,12 @@ export default function ProspectosClient({
   const router = useRouter();
   const [prospectos, setProspectos] = useState(prospectosIniciales);
   const [miResumen, setMiResumen] = useState(miResumenInicial);
+  const [resumen, setResumen] = useState(resumenInicial);
 
   // Cambiar de filtro (mes/estado/ciudad) navega de verdad, con datos frescos del server.
   useEffect(() => setProspectos(prospectosIniciales), [prospectosIniciales]);
   useEffect(() => setMiResumen(miResumenInicial), [miResumenInicial]);
+  useEffect(() => setResumen(resumenInicial), [resumenInicial]);
 
   // El bot y otros abogados cambian estados de prospectos en tiempo real (llamadas,
   // citas agendadas); sin esto solo se ve al recargar. Cada 20s, y solo con la
@@ -368,6 +434,7 @@ export default function ProspectosClient({
         const d = await res.json();
         if (!vivo) return;
         setProspectos(d.prospectos ?? []);
+        setResumen(d.resumen ?? []);
         setMiResumen(d.miResumen ?? null);
       } catch {
         // sin conexión: se reintenta en el siguiente ciclo
@@ -431,6 +498,7 @@ export default function ProspectosClient({
         subtitle={`${prospectos.length} en ${mesLabel} 2026`}
       />
 
+      <RankingProspectos resumen={resumen} />
       <MisLlamadas resumen={miResumen} hoyLabel={hoyLabel} />
 
       {/* Selector de mes */}

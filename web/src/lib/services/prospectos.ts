@@ -139,15 +139,19 @@ export async function marcarAgendoCitaPorConversacion(conversationId: string) {
 export type ResumenAbogado = {
   abogadoId: string;
   nombre: string;
+  sucursalNombre: string | null;
   llamadasMes: number;
   agendadasMes: number;
   citasMes: number;
+  contratosMes: number;
   llamadasSemana: number;
   agendadasSemana: number;
   citasSemana: number;
+  contratosSemana: number;
   llamadasHoy: number;
   agendadasHoy: number;
   citasHoy: number;
+  contratosHoy: number;
 };
 
 // Cuánto está llamando cada abogado a partir de que empezaron el lunes las llamadas
@@ -179,8 +183,12 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
   const hoyUTC = new Date(`${hoy}T00:00:00.000Z`);
   const hoyInicioMx = new Date(`${hoy}T00:00:00${OFFSET_DESPACHO}`);
 
-  const [abogados, llamadasMes, agendadasMes, citasMes] = await Promise.all([
-    prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+  const [abogados, llamadasMes, agendadasMes, citasMes, contratosMes] = await Promise.all([
+    prisma.usuario.findMany({
+      where: { activo: true },
+      orderBy: { nombre: "asc" },
+      include: { sucursal: { select: { nombre: true } } },
+    }),
     // Llamadas: vienen del historial (LlamadaProspecto), no del prospecto en sí — así
     // un prospecto que llamó un abogado un día y otro al siguiente cuenta para los dos,
     // en vez de que el segundo sobrescriba el registro del primero.
@@ -208,6 +216,15 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
       },
       select: { abogadoId: true, fechaHora: true },
     }),
+    // Firmaron: fechaFirma es fecha pura (medianoche UTC), como fechaContacto.
+    prisma.asesoria.findMany({
+      where: {
+        abogadoId: { not: null },
+        status: "contrato_firmado",
+        fechaFirma: { gte: new Date(`${inicioMes}T00:00:00.000Z`), lt: new Date(`${finMes}T00:00:00.000Z`) },
+      },
+      select: { abogadoId: true, fechaFirma: true },
+    }),
   ]);
 
   const porAbogadoId = new Map<string, ResumenAbogado>(
@@ -216,15 +233,19 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
       {
         abogadoId: a.id,
         nombre: a.nombre,
+        sucursalNombre: a.sucursal?.nombre ?? null,
         llamadasMes: 0,
         agendadasMes: 0,
         citasMes: 0,
+        contratosMes: 0,
         llamadasSemana: 0,
         agendadasSemana: 0,
         citasSemana: 0,
+        contratosSemana: 0,
         llamadasHoy: 0,
         agendadasHoy: 0,
         citasHoy: 0,
+        contratosHoy: 0,
       },
     ]),
   );
@@ -251,6 +272,14 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
     r.citasMes++;
     if (c.fechaHora >= inicioSemanaMx) r.citasSemana++;
     if (c.fechaHora >= hoyInicioMx) r.citasHoy++;
+  }
+
+  for (const f of contratosMes) {
+    const r = f.abogadoId ? porAbogadoId.get(f.abogadoId) : undefined;
+    if (!r || !f.fechaFirma) continue;
+    r.contratosMes++;
+    if (f.fechaFirma >= inicioSemanaUTC) r.contratosSemana++;
+    if (f.fechaFirma.getTime() === hoyUTC.getTime()) r.contratosHoy++;
   }
 
   return Array.from(porAbogadoId.values());

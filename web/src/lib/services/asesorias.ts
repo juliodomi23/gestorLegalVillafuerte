@@ -1,6 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { resolverSucursal, resolverAbogado, asignarFolio } from "./resolvers";
+import { hoyDespacho } from "@/lib/fecha";
 import type { Prisma } from "@prisma/client";
+
+// Se pone la primera vez que el status llega a "contrato_firmado"; si ya tenía fecha
+// (o el status nuevo es otro) se deja igual, para no perder el día real de la firma
+// si después se corrige otro campo de la asesoría.
+export function fechaFirmaSiAplica(statusNuevo: string | undefined, fechaFirmaActual: Date | null): Date | null {
+  if (statusNuevo === "contrato_firmado" && !fechaFirmaActual) {
+    return new Date(`${hoyDespacho()}T00:00:00.000Z`);
+  }
+  return fechaFirmaActual;
+}
 
 export type DatosAsesoria = {
   nombre: string;
@@ -70,7 +81,11 @@ export async function buscarAsesorias(f: FiltrosAsesoria) {
 
 export async function actualizarAsesoria(id: string, cambios: CambiosAsesoria) {
   const data: Prisma.AsesoriaUpdateInput = {};
-  if (cambios.status) data.status = cambios.status;
+  if (cambios.status) {
+    const actual = await prisma.asesoria.findUnique({ where: { id }, select: { fechaFirma: true } });
+    data.status = cambios.status;
+    data.fechaFirma = fechaFirmaSiAplica(cambios.status, actual?.fechaFirma ?? null);
+  }
   if (cambios.urlDocumento !== undefined) data.urlDocumento = cambios.urlDocumento;
   if (cambios.resumen !== undefined) data.resumen = cambios.resumen;
   return prisma.asesoria.update({ where: { id }, data });

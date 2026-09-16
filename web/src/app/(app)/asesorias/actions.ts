@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { resolverAbogado, resolverSucursal, asignarFolio } from "@/lib/services/resolvers";
+import { fechaFirmaSiAplica } from "@/lib/services/asesorias";
 import { requireSession, type Sesion } from "@/lib/guard";
 import type { StatusAsesoria } from "@/lib/constants";
 
@@ -54,6 +55,7 @@ export async function crearAsesoriaAction(form: FormAsesoria) {
       pagoAsesoria: form.pago,
       monto: form.pago && form.monto ? form.monto : null,
       status: form.status,
+      fechaFirma: fechaFirmaSiAplica(form.status, null),
       abogadoId,
       sucursalId,
       origen: "web",
@@ -83,6 +85,7 @@ export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
   const reasignar = puedeAsignar(sesion)
     ? { abogadoId: await resolverAbogado(form.abogado || sesion.nombre) }
     : {};
+  const actual = await prisma.asesoria.findUnique({ where: { id }, select: { fechaFirma: true } });
   await prisma.asesoria.update({
     where: { id },
     data: {
@@ -94,6 +97,7 @@ export async function editarAsesoriaAction(id: string, form: FormAsesoria) {
       pagoAsesoria: form.pago,
       monto: form.pago && form.monto ? form.monto : null,
       status: form.status,
+      fechaFirma: fechaFirmaSiAplica(form.status, actual?.fechaFirma ?? null),
       sucursalId,
       edad: form.edad || null,
       sexo: form.sexo || null,
@@ -122,7 +126,11 @@ export async function guardarSeguimientoAsesoriaAction(id: string, seguimiento: 
 
 export async function cambiarStatusAsesoriaAction(id: string, status: StatusAsesoria) {
   await requireSession();
-  await prisma.asesoria.update({ where: { id }, data: { status } });
+  const actual = await prisma.asesoria.findUnique({ where: { id }, select: { fechaFirma: true } });
+  await prisma.asesoria.update({
+    where: { id },
+    data: { status, fechaFirma: fechaFirmaSiAplica(status, actual?.fechaFirma ?? null) },
+  });
   revalidatePath("/asesorias");
 }
 

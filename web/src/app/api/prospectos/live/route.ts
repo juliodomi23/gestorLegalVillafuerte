@@ -39,5 +39,5 @@ export async function GET(req: Request) {
   ]);
 
   const miResumen = resumen.find((r) => r.abogadoId === session.user.id) ?? null;
-  return Response.json({ prospectos: mapProspectosRows(rows), miResumen });
+  return Response.json({ prospectos: mapProspectosRows(rows), miResumen, resumen });
 }

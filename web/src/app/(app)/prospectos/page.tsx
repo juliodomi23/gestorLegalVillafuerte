@@ -54,6 +54,7 @@ export default async function ProspectosPage({
       ciudades={ciudades}
       abogados={abogadosDb.map((u) => ({ id: u.id, nombre: u.nombre }))}
       esAdmin={esAdmin}
+      resumen={resumen}
       miResumen={miResumen}
       hoyLabel={hoyLabel}
       hoy={hoyDespacho()}

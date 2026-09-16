@@ -345,6 +345,10 @@ model Asesoria {
   presupuestoTexto      String?  @map("presupuesto_texto")
   seguimiento  String?
   status        String   @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
+  // Cuándo pasó a "contrato_firmado" (para el ranking de Prospectos). Se pone una sola
+  // vez, la primera vez que llega a ese status; no se mueve si después se reasigna o
+  // se edita el resto de la fila.
+  fechaFirma    DateTime? @map("fecha_firma") @db.Date
   urlDocumento  String?  @map("url_documento")
   abogadoId     String?  @map("abogado_id") @db.Uuid
   origen        String   @default("web") // web | whatsapp
