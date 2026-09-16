@@ -125,6 +125,16 @@ export async function cambiarEstadoCitaAction(id: string, estado: string) {
   revalidatePath("/agenda");
 }
 
+// Asignar abogado directo desde la tabla de Agenda, sin abrir el modal completo ni
+// tocar Google Calendar (el evento no guarda abogado). El bot agenda citas sin
+// abogado — así cualquiera la toma con un clic y sí cuenta en el ranking de
+// Prospectos ("Acudieron a la oficina"), que solo ve citas con abogadoId puesto.
+export async function asignarAbogadoCitaAction(id: string, abogadoId: string | null) {
+  await requireSession();
+  await prisma.cita.update({ where: { id }, data: { abogadoId } });
+  revalidatePath("/agenda");
+}
+
 export async function borrarCitaAction(id: string) {
   await requireSession();
   // Leer el evento ANTES del delete: despues ya no se sabria cual borrar en Calendar.

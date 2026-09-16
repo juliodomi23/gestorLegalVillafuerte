@@ -115,6 +115,7 @@ export default async function AgendaPage({
       "—",
     sucursal: c.sucursal?.nombre ?? "—",
     abogado: c.abogado?.nombre ?? "—",
+    abogadoId: c.abogadoId,
     estado: c.estado,
   }));
 
@@ -129,7 +130,7 @@ export default async function AgendaPage({
   }));
 
   const sucursales = sucursalesDb.map((s) => s.nombre);
-  const abogados = abogadosDb.map((u) => u.nombre);
+  const abogados = abogadosDb.map((u) => ({ id: u.id, nombre: u.nombre }));
 
   return (
     <AgendaClient

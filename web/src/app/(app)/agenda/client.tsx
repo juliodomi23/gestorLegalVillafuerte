@@ -6,7 +6,13 @@ import { CalendarPlus, Phone, PhoneCall, Trash2, Pencil, MessageCircle, ChevronL
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
-import { crearCitaAction, editarCitaAction, borrarCitaAction, cambiarEstadoCitaAction } from "./actions";
+import {
+  crearCitaAction,
+  editarCitaAction,
+  borrarCitaAction,
+  cambiarEstadoCitaAction,
+  asignarAbogadoCitaAction,
+} from "./actions";
 import { marcarLlamadoAction } from "../seguimientos/actions";
 
 export type CitaView = {
@@ -18,8 +24,11 @@ export type CitaView = {
   telefono: string;
   sucursal: string;
   abogado: string;
+  abogadoId: string | null;
   estado: string;
 };
+
+export type Abogado = { id: string; nombre: string };
 
 // Llamada de seguimiento que toca ese día (viene de /seguimientos).
 export type SeguimientoAgendaView = {
@@ -80,14 +89,18 @@ function formatearDia(fechaISO: string): string {
 
 function TablaSimple({
   citas,
+  abogados,
   onEditar,
   onBorrar,
   onCambiarEstado,
+  onAsignarAbogado,
 }: {
   citas: CitaView[];
+  abogados: Abogado[];
   onEditar: (cita: CitaView) => void;
   onBorrar: (id: string) => void;
   onCambiarEstado: (id: string, estado: string) => void;
+  onAsignarAbogado: (id: string, abogadoId: string) => void;
 }) {
   return (
     <table className="w-full min-w-[820px] text-[13.5px]">
@@ -114,7 +127,22 @@ function TablaSimple({
               {c.telefono}
             </td>
             <td className="px-3 py-3.5 text-muted">{c.sucursal}</td>
-            <td className="px-3 py-3.5">{c.abogado}</td>
+            <td className="px-3 py-3.5">
+              <select
+                value={c.abogadoId ?? ""}
+                onChange={(e) => onAsignarAbogado(c.id, e.target.value)}
+                className={`px-2 py-1 rounded-md border border-line text-[12.5px] bg-transparent cursor-pointer ${
+                  c.abogadoId ? "text-ink" : "text-muted"
+                }`}
+              >
+                <option value="">Sin asignar</option>
+                {abogados.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nombre}
+                  </option>
+                ))}
+              </select>
+            </td>
             <td className="px-3 py-3.5">
               <select
                 value={c.estado}
@@ -223,10 +251,11 @@ export default function AgendaClient({
   citas: CitaView[];
   seguimientos: SeguimientoAgendaView[];
   sucursales: string[];
-  abogados: string[];
+  abogados: Abogado[];
   fechaActual: string;
   vista: string;
 }) {
+  const nombresAbogados = abogados.map((a) => a.nombre);
   const router = useRouter();
   const vistaActual: Vista = VISTAS.includes(vista as Vista) ? (vista as Vista) : "dia";
 
@@ -276,6 +305,11 @@ export default function AgendaClient({
 
   async function cambiarEstado(id: string, estado: string) {
     await cambiarEstadoCitaAction(id, estado);
+    router.refresh();
+  }
+
+  async function asignarAbogado(id: string, abogadoId: string) {
+    await asignarAbogadoCitaAction(id, abogadoId || null);
     router.refresh();
   }
 
@@ -372,7 +406,14 @@ export default function AgendaClient({
 
       {vistaActual === "dia" ? (
         <Card className="overflow-x-auto">
-          <TablaSimple citas={citas} onEditar={abrirEditar} onBorrar={borrar} onCambiarEstado={cambiarEstado} />
+          <TablaSimple
+            citas={citas}
+            abogados={abogados}
+            onEditar={abrirEditar}
+            onBorrar={borrar}
+            onCambiarEstado={cambiarEstado}
+            onAsignarAbogado={asignarAbogado}
+          />
         </Card>
       ) : (
         <div className="space-y-4">
@@ -394,7 +435,14 @@ export default function AgendaClient({
                   {citasPorDia[dia].length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <TablaSimple citas={citasPorDia[dia]} onEditar={abrirEditar} onBorrar={borrar} onCambiarEstado={cambiarEstado} />
+              <TablaSimple
+                citas={citasPorDia[dia]}
+                abogados={abogados}
+                onEditar={abrirEditar}
+                onBorrar={borrar}
+                onCambiarEstado={cambiarEstado}
+                onAsignarAbogado={asignarAbogado}
+              />
             </Card>
           ))}
         </div>
@@ -463,7 +511,7 @@ export default function AgendaClient({
           <Select options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} />
         </Field>
         <Field label="Abogado" full>
-          <Select options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} />
+          <Select options={nombresAbogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} />
         </Field>
       </Modal>
     </>
