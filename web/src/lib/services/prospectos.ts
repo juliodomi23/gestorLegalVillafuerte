@@ -260,12 +260,27 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
 // de reintento. El CRON, tras enviar el WhatsApp, hace PATCH con
 // estado: "mensaje_automatico" — con eso solo, la próxima corrida ya no los vuelve
 // a traer (deja de calificar para estado: "no_contesto").
+// Tope por costos de Meta (plantilla de WhatsApp cobra por envío): a lo más este
+// número de prospectos por día, sin importar cuántas corridas del CRON pasen.
+const LIMITE_DIARIO_NO_CONTESTO = 30;
+
 // Solo el "no contestó" de HOY (fechaContacto = hoy): el estado existe desde antes de
 // este CRON y hay ~350 registros viejos acumulados desde agosto — mandarles la
 // plantilla a todos de golpe reviviría leads fríos de semanas. Empieza acotado a los
 // de hoy; si se quiere ampliar a un rango de días, es este filtro el que hay que tocar.
+//
+// El tope de 30/día se calcula contando cuántos ya se marcaron "mensaje_automatico"
+// hoy (actualizadoEn de hoy) — así, si una corrida ya mandó 30, las siguientes del
+// mismo día no vuelven a mandar aunque queden más "no_contesto" nuevos.
 export async function listarProspectosNoContesto() {
   const hoy = new Date(`${hoyDespacho()}T00:00:00.000Z`);
+  const inicioHoy = new Date(`${hoyDespacho()}T00:00:00${OFFSET_DESPACHO}`);
+  const yaEnviadosHoy = await prisma.prospecto.count({
+    where: { estado: "mensaje_automatico", actualizadoEn: { gte: inicioHoy } },
+  });
+  const cupo = LIMITE_DIARIO_NO_CONTESTO - yaEnviadosHoy;
+  if (cupo <= 0) return [];
+
   return prisma.prospecto.findMany({
     where: {
       estado: "no_contesto",
@@ -273,6 +288,7 @@ export async function listarProspectosNoContesto() {
       fechaContacto: hoy,
     },
     orderBy: { creadoEn: "asc" },
+    take: cupo,
   });
 }
 
