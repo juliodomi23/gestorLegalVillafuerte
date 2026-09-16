@@ -308,11 +308,24 @@ export async function listarProspectos(filtros?: {
         }
       : undefined;
 
+  // El mes filtra por cuándo se le llamó (fechaContacto) si ya se le llamó; si no, por
+  // cuándo se registró (fechaLlamada). Sin este OR, un prospecto registrado en agosto
+  // pero contactado hoy en septiembre desaparecía del filtro "Septiembre" aunque el
+  // trabajo real (la llamada, el mensaje automático) haya sido hoy.
+  const fechaWhere = fechaFiltro
+    ? {
+        OR: [
+          { fechaContacto: fechaFiltro },
+          { AND: [{ fechaContacto: null }, { fechaLlamada: fechaFiltro }] },
+        ],
+      }
+    : {};
+
   return prisma.prospecto.findMany({
     where: {
       ...(filtros?.ciudad && { ciudad: filtros.ciudad }),
       ...(filtros?.estado && { estado: filtros.estado }),
-      ...(fechaFiltro && { fechaLlamada: fechaFiltro }),
+      ...fechaWhere,
     },
     include: {
       abogado: { select: { id: true, nombre: true } },
