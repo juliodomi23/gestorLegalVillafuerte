@@ -120,7 +120,10 @@ function FilaProspecto({
   const esAsesoria = p.origen === "asesoria";
   // Ya la llamaron hoy: se bloquea Abogado/Estado para todos el resto del día, para
   // que nadie reasigne o "se la gane" — mañana, al dejar de ser "hoy", se libera sola.
-  const bloqueada = !esAsesoria && !!fechaContacto && fechaContacto === hoy;
+  // Requiere abogado asignado: una fila "Por contactar" puede tener fechaContacto de
+  // hoy sin que nadie la haya llamado (el campo de fecha se edita aparte del abogado);
+  // sin este chequeo, quedaba bloqueada antes de que alguien pudiera tomarla.
+  const bloqueada = !esAsesoria && !!abogadoId && !!fechaContacto && fechaContacto === hoy;
 
   function irAExpediente() {
     const params = new URLSearchParams({ nuevo: "1", nombre: p.nombre });
