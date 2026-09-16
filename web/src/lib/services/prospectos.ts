@@ -260,11 +260,17 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
 // de reintento. El CRON, tras enviar el WhatsApp, hace PATCH con
 // estado: "mensaje_automatico" — con eso solo, la próxima corrida ya no los vuelve
 // a traer (deja de calificar para estado: "no_contesto").
+// Solo el "no contestó" de HOY (fechaContacto = hoy): el estado existe desde antes de
+// este CRON y hay ~350 registros viejos acumulados desde agosto — mandarles la
+// plantilla a todos de golpe reviviría leads fríos de semanas. Empieza acotado a los
+// de hoy; si se quiere ampliar a un rango de días, es este filtro el que hay que tocar.
 export async function listarProspectosNoContesto() {
+  const hoy = new Date(`${hoyDespacho()}T00:00:00.000Z`);
   return prisma.prospecto.findMany({
     where: {
       estado: "no_contesto",
       telefono: { not: null },
+      fechaContacto: hoy,
     },
     orderBy: { creadoEn: "asc" },
   });
