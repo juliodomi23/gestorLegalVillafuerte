@@ -23,6 +23,7 @@ import {
   ListChecks,
   FileSignature,
   Receipt,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
@@ -170,6 +171,14 @@ export function Sidebar({
           className="text-white/45 hover:text-white transition-colors"
         >
           <HelpCircle size={18} strokeWidth={1.75} />
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new Event("gl:novedades"))}
+          title="Lo nuevo del Gestor"
+          aria-label="Lo nuevo del Gestor"
+          className="text-white/45 hover:text-white transition-colors"
+        >
+          <Sparkles size={18} strokeWidth={1.75} />
         </button>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}

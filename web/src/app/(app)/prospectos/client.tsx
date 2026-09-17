@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Phone, Trash2, MapPin, ArrowUpRight, Download, ChevronRight, ChevronDown, Lock } from "lucide-react";
 import { PageTitle, Card, FilterSelect } from "@/components/ui";
-import { Modal, Field, Input, Select } from "@/components/modal";
+import { Modal, Field, Input, Select, Textarea } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
 import { actualizarProspectoAction, borrarProspectoAction, convertirProspectoAction } from "./actions";
 import { crearCitaAction } from "../agenda/actions";
@@ -44,7 +44,7 @@ const ESTADO_ESTILOS: Record<string, string> = {
   descartado: "bg-danger-wash text-danger",
 };
 
-const CITA_VACIA = { fecha: "", hora: "", sucursal: "", abogado: "" };
+const CITA_VACIA = { fecha: "", hora: "", sucursal: "", abogado: "", asunto: "" };
 
 function FilaProspecto({
   p,
@@ -85,6 +85,7 @@ function FilaProspecto({
       hora: "",
       sucursal: sucursalDeCiudad(p.ciudad, sucursales),
       abogado: abogados.find((a) => a.id === abogadoId)?.nombre ?? "",
+      asunto: p.asunto === "—" ? "" : p.asunto,
     });
     setCitaAbierta(true);
   }
@@ -93,7 +94,7 @@ function FilaProspecto({
     setCitaGuardando(true);
     await crearCitaAction({
       cliente: p.nombre,
-      asunto: p.asunto === "—" ? "" : p.asunto,
+      asunto: citaForm.asunto,
       telefono: p.telefono === "—" ? "" : p.telefono,
       fecha: citaForm.fecha,
       hora: citaForm.hora,
@@ -342,6 +343,9 @@ function FilaProspecto({
       </Field>
       <Field label="Abogado">
         <Select options={abogados.map((a) => a.nombre)} value={citaForm.abogado} onChange={(e) => setCitaForm((f) => ({ ...f, abogado: e.target.value }))} />
+      </Field>
+      <Field label="Motivo" full>
+        <Textarea value={citaForm.asunto} onChange={(e) => setCitaForm((f) => ({ ...f, asunto: e.target.value }))} />
       </Field>
     </Modal>
     </>

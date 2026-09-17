@@ -145,6 +145,7 @@ function TablaSimple({
             </td>
             <td className="px-3 py-3.5">
               <select
+                data-tour="cita-estado"
                 value={c.estado}
                 onChange={(e) => onCambiarEstado(c.id, e.target.value)}
                 className={`px-2 py-0.5 rounded text-[12px] font-bold border-0 cursor-pointer ${

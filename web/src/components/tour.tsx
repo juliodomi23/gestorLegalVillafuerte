@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
 
 const KEY = "gl-tour-v1";
+const KEY_NOVEDADES = "gl-novedades-v1";
 const ANCHO = 320;
 
 type Paso = {
@@ -109,6 +110,57 @@ const PASOS: Paso[] = [
   },
 ];
 
+const PASOS_NOVEDADES: Paso[] = [
+  {
+    ruta: "/inicio",
+    titulo: "Lo nuevo del Gestor",
+    texto:
+      "Le agregamos varias cosas al sistema. Son 5 pasos rápidos para que sepas dónde quedó todo.",
+  },
+  {
+    ruta: "/diligencias",
+    sel: '[data-tour="titulo"]',
+    titulo: "Diligencias",
+    texto:
+      "Sección nueva para los trámites y salidas de campo, con folio propio por sucursal y el estado del reembolso al abogado. Antes esto no se registraba en ningún lado.",
+  },
+  {
+    ruta: "/prospectos",
+    sel: '[data-tour="titulo"]',
+    titulo: "De prospecto a cliente firmado",
+    texto:
+      "Al marcar 'Agendó cita' se abre el formulario de la cita, ahora con un campo de Motivo para que quede claro por qué viene. De ahí la cita pasa a Agenda (llegó o no) y, si firma, a Contratos.",
+  },
+  {
+    ruta: "/agenda",
+    sel: '[data-tour="cita-estado"]',
+    titulo: "Marca si llegó a la sucursal",
+    texto:
+      "En cuanto el cliente se presenta, cambia el estado a 'Asesorado'. Si no llegó, márcalo como 'No asistió'. Eso es lo que alimenta los reportes y el seguimiento de no-shows.",
+  },
+  {
+    ruta: "/contratos",
+    sel: '[data-tour="titulo"]',
+    titulo: "Contratos firmados",
+    texto:
+      "Aquí queda cada contrato firmado con su plan de pagos, para dar seguimiento a los abonos sin andar buscando el papel.",
+  },
+  {
+    ruta: "/reportes",
+    sel: '[data-tour="titulo"]',
+    soloAdmin: true,
+    titulo: "Reportes de llamadas",
+    texto:
+      "Control completo por abogado, con pestañas de hoy, semana y mes, y selector para revisar meses anteriores. Cada abogado ve su propia vista en 'Mis llamadas'.",
+  },
+  {
+    ruta: "/inicio",
+    titulo: "Eso es todo lo nuevo",
+    texto:
+      "Si quieres volver a verlo, usa el icono de brillo (✨) abajo a la izquierda, junto al de ayuda.",
+  },
+];
+
 const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
 
 type R = { left: number; top: number; width: number; height: number };
@@ -178,8 +230,26 @@ function Panel({ zona, hueco }: { zona: Zona; hueco: R | null }) {
   );
 }
 
-export function Tour({ rol }: { rol: Rol }) {
-  const pasos = PASOS.filter((p) => !p.soloAdmin || rol === "admin");
+/**
+ * Motor compartido por el tour de bienvenida y el de novedades: misma mecánica
+ * de resaltado/posicionamiento, cada uno con su propia lista de pasos y su
+ * propia llave de localStorage para no pisarse.
+ */
+function TourEngine({
+  pasos,
+  storageKey,
+  eventName,
+  requiereVisto,
+  labelFinal = "Empezar",
+}: {
+  pasos: Paso[];
+  storageKey: string;
+  eventName: string;
+  /** Si se da, el auto-inicio espera a que esta otra llave ya exista (p.ej. no
+   * ofrecer "lo nuevo" hasta que la persona ya pasó por el tour de bienvenida). */
+  requiereVisto?: string;
+  labelFinal?: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
@@ -195,16 +265,26 @@ export function Tour({ rol }: { rol: Rol }) {
 
   const paso = pasos[i];
 
-  // Primera visita + evento para relanzarlo desde el sidebar
+  // Primera visita + evento para relanzarlo desde el sidebar. Si depende de
+  // otro tour (requiereVisto) y esa llave todavía no existe, en vez de no
+  // mostrarse nunca se queda esperando el evento "<requiereVisto>:listo" que
+  // dispara el otro tour al cerrarse — así a todos les toca ver este también,
+  // solo que justo después de terminar el primero en vez de al mismo tiempo.
   useEffect(() => {
-    if (!localStorage.getItem(KEY)) setAbierto(true);
     const abrir = () => {
       setI(0);
       setAbierto(true);
     };
-    window.addEventListener("gl:tour", abrir);
-    return () => window.removeEventListener("gl:tour", abrir);
-  }, []);
+    const visto = !!localStorage.getItem(storageKey);
+    const requisitoOk = !requiereVisto || !!localStorage.getItem(requiereVisto);
+    if (!visto && requisitoOk) setAbierto(true);
+    window.addEventListener(eventName, abrir);
+    if (requiereVisto && !visto) window.addEventListener(`${requiereVisto}:listo`, abrir);
+    return () => {
+      window.removeEventListener(eventName, abrir);
+      if (requiereVisto) window.removeEventListener(`${requiereVisto}:listo`, abrir);
+    };
+  }, [storageKey, requiereVisto, eventName]);
 
   // Navegar a la pantalla del paso actual
   useEffect(() => {
@@ -260,9 +340,10 @@ export function Tour({ rol }: { rol: Rol }) {
   }, [abierto, i, paso?.sel, pathname]);
 
   const cerrar = useCallback(() => {
-    localStorage.setItem(KEY, "1");
+    localStorage.setItem(storageKey, "1");
     setAbierto(false);
-  }, []);
+    window.dispatchEvent(new Event(`${storageKey}:listo`));
+  }, [storageKey]);
 
   const siguiente = useCallback(() => {
     if (i + 1 >= pasos.length) cerrar();
@@ -369,11 +450,31 @@ export function Tour({ rol }: { rol: Rol }) {
             onClick={siguiente}
             className="px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors shadow-sm"
           >
-            {i + 1 === pasos.length ? "Empezar" : "Siguiente"}
+            {i + 1 === pasos.length ? labelFinal : "Siguiente"}
           </button>
         </div>
 
       </div>
     </div>
+  );
+}
+
+export function Tour({ rol }: { rol: Rol }) {
+  const pasos = PASOS.filter((p) => !p.soloAdmin || rol === "admin");
+  return <TourEngine pasos={pasos} storageKey={KEY} eventName="gl:tour" />;
+}
+
+/** Se ofrece sola solo a quien ya pasó por el tour de bienvenida (o lo saltó);
+ * a quien apenas está entrando por primera vez no le hace falta un "lo nuevo". */
+export function NovedadesTour({ rol }: { rol: Rol }) {
+  const pasos = PASOS_NOVEDADES.filter((p) => !p.soloAdmin || rol === "admin");
+  return (
+    <TourEngine
+      pasos={pasos}
+      storageKey={KEY_NOVEDADES}
+      eventName="gl:novedades"
+      requiereVisto={KEY}
+      labelFinal="Listo"
+    />
   );
 }

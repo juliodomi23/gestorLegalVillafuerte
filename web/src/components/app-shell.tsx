@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
-import { Tour } from "@/components/tour";
+import { Tour, NovedadesTour } from "@/components/tour";
 import { AvisoPin, type EstadoPin } from "@/components/aviso-pin";
 import type { Rol } from "@/lib/usuarios";
 
@@ -43,6 +43,7 @@ export function AppShell({
       </div>
 
       <Tour rol={rol} />
+      <NovedadesTour rol={rol} />
     </div>
   );
 }
