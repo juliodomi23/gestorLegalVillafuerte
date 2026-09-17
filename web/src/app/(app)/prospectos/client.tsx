@@ -460,6 +460,7 @@ export default function ProspectosClient({
   abogados,
   sucursales,
   esAdmin,
+  miId,
   resumen: resumenInicial,
   miResumen: miResumenInicial,
   hoyLabel,
@@ -474,6 +475,7 @@ export default function ProspectosClient({
   abogados: Abogado[];
   sucursales: string[];
   esAdmin: boolean;
+  miId: string | null;
   resumen: ResumenAbogado[];
   miResumen: ResumenAbogado | null;
   hoyLabel: string;
@@ -651,6 +653,18 @@ export default function ProspectosClient({
             ))}
           </select>
         )}
+        {!esAdmin && miId && (
+          <button
+            onClick={() => setFiltro("abogado", filtroAbogado === miId ? "" : miId)}
+            className={`px-3 py-2 rounded-lg border text-[13px] font-bold transition-colors ${
+              filtroAbogado === miId
+                ? "border-navy/40 bg-navy/[.04] text-navy"
+                : "border-line bg-surface text-ink hover:border-navy/40"
+            }`}
+          >
+            Solo mías
+          </button>
+        )}
         <span className="flex-1" />
         <button
           onClick={exportarCSV}
@@ -680,7 +694,7 @@ export default function ProspectosClient({
           </thead>
           <tbody className="divide-y divide-line/70">
             {prospectos.map((p) => (
-              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} sucursales={sucursales} hoy={hoy} miId={miResumen?.abogadoId ?? null} />
+              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} sucursales={sucursales} hoy={hoy} miId={miId} />
             ))}
             {prospectos.length === 0 && (
               <tr>

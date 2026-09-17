@@ -21,9 +21,13 @@ export default async function ProspectosPage({
   const esAdmin = session?.user?.rol === "admin";
 
   const mes = searchParams.mes ? parseInt(searchParams.mes) : mesActualMX();
-  // El filtro por abogado es solo para admin (es el que arma el reporte de "quién le
-  // llamó a quién"); si un no-admin llega con el query param igual se ignora.
-  const filtroAbogadoId = esAdmin ? searchParams.abogado || undefined : undefined;
+  // Admin puede filtrar por cualquier abogado (reporte de "quién le llamó a quién");
+  // un no-admin solo puede filtrar por sí mismo ("Solo mías"), no por nadie más.
+  const filtroAbogadoId = esAdmin
+    ? searchParams.abogado || undefined
+    : searchParams.abogado && searchParams.abogado === session?.user?.id
+      ? searchParams.abogado
+      : undefined;
 
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
   const [rows, abogadosDb, resumen, sucursalesDb] = await Promise.all([
@@ -60,6 +64,7 @@ export default async function ProspectosPage({
       abogados={abogadosDb.map((u) => ({ id: u.id, nombre: u.nombre }))}
       sucursales={sucursalesDb.map((s) => s.nombre)}
       esAdmin={esAdmin}
+      miId={session?.user?.id ?? null}
       resumen={resumen}
       miResumen={miResumen}
       hoyLabel={hoyLabel}
