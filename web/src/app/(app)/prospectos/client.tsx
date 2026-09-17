@@ -466,6 +466,7 @@ export default function ProspectosClient({
   hoy,
   filtroEstado,
   filtroCiudad,
+  filtroAbogado,
   filtroMes,
 }: {
   prospectos: ProspectoView[];
@@ -479,6 +480,7 @@ export default function ProspectosClient({
   hoy: string;
   filtroEstado: string;
   filtroCiudad: string;
+  filtroAbogado: string;
   filtroMes: number;
 }) {
   const router = useRouter();
@@ -507,6 +509,7 @@ export default function ProspectosClient({
         const params = new URLSearchParams({ mes: String(filtroMes) });
         if (filtroCiudad) params.set("ciudad", filtroCiudad);
         if (filtroEstado) params.set("estado", filtroEstado);
+        if (filtroAbogado) params.set("abogado", filtroAbogado);
         const res = await fetch(`/api/prospectos/live?${params}`);
         if (!res.ok || !vivo) return;
         const d = await res.json();
@@ -525,12 +528,13 @@ export default function ProspectosClient({
       clearInterval(id);
       document.removeEventListener("visibilitychange", refrescar);
     };
-  }, [filtroCiudad, filtroEstado, filtroMes]);
+  }, [filtroCiudad, filtroEstado, filtroAbogado, filtroMes]);
 
   function setFiltro(key: string, value: string) {
     const params = new URLSearchParams();
     if (key !== "estado" && filtroEstado) params.set("estado", filtroEstado);
     if (key !== "ciudad" && filtroCiudad) params.set("ciudad", filtroCiudad);
+    if (key !== "abogado" && filtroAbogado) params.set("abogado", filtroAbogado);
     params.set("mes", key !== "mes" ? String(filtroMes) : value);
     if (value && key !== "mes") params.set(key, value);
     router.push(`/prospectos?${params.toString()}`);
@@ -631,6 +635,22 @@ export default function ProspectosClient({
           onChange={(v) => setFiltro("ciudad", v)}
           options={ciudades}
         />
+        {esAdmin && (
+          <select
+            value={filtroAbogado}
+            onChange={(e) => setFiltro("abogado", e.target.value)}
+            className={`px-3 py-2 rounded-lg border text-[13px] cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-navy/20 ${
+              filtroAbogado ? "border-navy/40 bg-navy/[.04] text-navy font-bold" : "border-line bg-surface text-ink hover:border-navy/40"
+            }`}
+          >
+            <option value="">Abogado: todos</option>
+            {abogados.map((a) => (
+              <option key={a.id} value={a.id}>
+                Abogado: {a.nombre}
+              </option>
+            ))}
+          </select>
+        )}
         <span className="flex-1" />
         <button
           onClick={exportarCSV}

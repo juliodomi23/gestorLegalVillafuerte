@@ -15,12 +15,15 @@ import ProspectosClient from "./client";
 export default async function ProspectosPage({
   searchParams,
 }: {
-  searchParams: { ciudad?: string; estado?: string; mes?: string };
+  searchParams: { ciudad?: string; estado?: string; mes?: string; abogado?: string };
 }) {
   const session = await getServerSession(authOptions);
   const esAdmin = session?.user?.rol === "admin";
 
   const mes = searchParams.mes ? parseInt(searchParams.mes) : mesActualMX();
+  // El filtro por abogado es solo para admin (es el que arma el reporte de "quién le
+  // llamó a quién"); si un no-admin llega con el query param igual se ignora.
+  const filtroAbogadoId = esAdmin ? searchParams.abogado || undefined : undefined;
 
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
   const [rows, abogadosDb, resumen, sucursalesDb] = await Promise.all([
@@ -28,6 +31,7 @@ export default async function ProspectosPage({
       {
         ciudad: searchParams.ciudad || undefined,
         estado: searchParams.estado || undefined,
+        abogadoId: filtroAbogadoId,
         mes,
         anio: ANIO_PROSPECTOS,
       },
@@ -62,6 +66,7 @@ export default async function ProspectosPage({
       hoy={hoyDespacho()}
       filtroEstado={searchParams.estado ?? ""}
       filtroCiudad={searchParams.ciudad ?? ""}
+      filtroAbogado={filtroAbogadoId ?? ""}
       filtroMes={mes}
     />
   );

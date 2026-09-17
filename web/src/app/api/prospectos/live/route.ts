@@ -30,6 +30,7 @@ export async function GET(req: Request) {
       {
         ciudad: searchParams.get("ciudad") || undefined,
         estado: searchParams.get("estado") || undefined,
+        abogadoId: searchParams.get("abogado") || undefined,
         mes,
         anio: ANIO_PROSPECTOS,
       },

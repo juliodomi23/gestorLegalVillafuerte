@@ -333,6 +333,7 @@ export async function listarProspectos(filtros?: {
   estado?: string;
   mes?: number;
   anio?: number;
+  abogadoId?: string;
 }) {
   const anio = filtros?.anio ?? 2026;
   const mes = filtros?.mes;
@@ -361,6 +362,7 @@ export async function listarProspectos(filtros?: {
     where: {
       ...(filtros?.ciudad && { ciudad: filtros.ciudad }),
       ...(filtros?.estado && { estado: filtros.estado }),
+      ...(filtros?.abogadoId && { abogadoId: filtros.abogadoId }),
       ...fechaWhere,
     },
     include: {
@@ -481,7 +483,7 @@ async function backfillHistorialLlamadas() {
 }
 
 export async function listarProspectosUnificados(
-  filtros: { ciudad?: string; estado?: string; mes?: number; anio?: number },
+  filtros: { ciudad?: string; estado?: string; mes?: number; anio?: number; abogadoId?: string },
   alcance: Alcance,
 ) {
   await backfillFechaContactoInicial();
@@ -513,6 +515,7 @@ export async function listarProspectosUnificados(
               porAbogado(alcance),
               ...(rango ? [{ fecha: rango }] : []),
               ...(statusBuscado ? [{ status: statusBuscado }] : []),
+              ...(filtros.abogadoId ? [{ abogadoId: filtros.abogadoId }] : []),
               // La ciudad del bot es texto libre; la de una asesoría es su sucursal.
               ...(filtros.ciudad ? [{ sucursal: { nombre: { contains: filtros.ciudad, mode: "insensitive" as const } } }] : []),
             ],
