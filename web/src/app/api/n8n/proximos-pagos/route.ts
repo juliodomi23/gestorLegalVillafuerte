@@ -21,6 +21,7 @@ export async function GET(req: Request) {
         select: {
           numeroInterno: true,
           cliente: { select: { nombre: true } },
+          abogadoResponsable: { select: { nombre: true, telefonoWhatsapp: true } },
         },
       },
     },
@@ -30,6 +31,8 @@ export async function GET(req: Request) {
   const data = planes.map((p) => ({
     expediente: p.expediente?.numeroInterno ?? "—",
     cliente: p.expediente?.cliente?.nombre ?? "—",
+    abogado: p.expediente?.abogadoResponsable?.nombre ?? null,
+    abogadoTelefono: p.expediente?.abogadoResponsable?.telefonoWhatsapp ?? null,
     tipo: p.tipo,
     montoTotal: Number(p.montoTotal),
     montoPeriodico: p.montoPeriodico ? Number(p.montoPeriodico) : null,
