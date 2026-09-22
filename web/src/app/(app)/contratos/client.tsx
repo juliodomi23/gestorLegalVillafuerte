@@ -1,9 +1,24 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileText, Upload, Loader, Pencil, CalendarClock, ExternalLink, Eye, X, User, StickyNote, Plus, ClipboardCheck } from "lucide-react";
+import {
+  FileText,
+  Upload,
+  Loader,
+  Pencil,
+  CalendarClock,
+  ExternalLink,
+  Eye,
+  X,
+  User,
+  StickyNote,
+  Plus,
+  ClipboardCheck,
+  ChevronRight,
+  ChevronDown,
+} from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { guardarPlanAction, guardarRevisionAction } from "./actions";
@@ -15,14 +30,11 @@ const TIPOS = ["todo_inicio", "inicio_final", "quincenal", "mensual"];
 const ETIQUETAS = TIPOS.map((t) => ETIQUETA_PLAN[t]);
 
 const ESTADOS_REVISION: EstadoRevision[] = ["pendiente", "aprobado", "corregir"];
-const ETIQUETAS_REVISION = ESTADOS_REVISION.map((e) => ETIQUETA_REVISION[e]);
 const ESTILO_REVISION: Record<EstadoRevision, string> = {
   pendiente: "bg-line/40 text-muted",
   aprobado: "bg-success-wash text-success",
   corregir: "bg-danger-wash text-danger",
 };
-
-const revisionVacia = { documentoId: "", estado: "pendiente" as EstadoRevision, notas: "" };
 
 const expedienteVacio = { clienteNombre: "", clienteTel: "", materia: "", etapa: "", abogado: "", sucursal: "" };
 
@@ -65,11 +77,6 @@ export default function ContratosClient({
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [verDetalle, setVerDetalle] = useState<ContratoView | null>(null);
-
-  const [abiertoRevision, setAbiertoRevision] = useState(false);
-  const [formRevision, setFormRevision] = useState(revisionVacia);
-  const [guardandoRevision, setGuardandoRevision] = useState(false);
-  const [errorRevision, setErrorRevision] = useState("");
 
   const [abiertoExpediente, setAbiertoExpediente] = useState(false);
   const [formExp, setFormExp] = useState({ ...expedienteVacio, abogado: esAdmin ? "" : sesionNombre });
@@ -173,25 +180,6 @@ export default function ContratosClient({
 
   const sinPlan = contratos.filter((c) => !c.plan).length;
 
-  function abrirRevision(c: ContratoView) {
-    setErrorRevision("");
-    setFormRevision({ documentoId: c.documentoId, estado: c.revisionEstado, notas: c.revisionNotas ?? "" });
-    setAbiertoRevision(true);
-  }
-
-  async function guardarRevision() {
-    setErrorRevision("");
-    setGuardandoRevision(true);
-    const r = await guardarRevisionAction(formRevision.documentoId, formRevision.estado, formRevision.notas);
-    setGuardandoRevision(false);
-    if (!r.ok) {
-      setErrorRevision(r.error);
-      return;
-    }
-    setAbiertoRevision(false);
-    router.refresh();
-  }
-
   return (
     <>
       <PageTitle
@@ -262,6 +250,7 @@ export default function ContratosClient({
         <table className="w-full min-w-[860px] text-[13.5px]">
           <thead>
             <tr className="border-b border-line text-left">
+              {esAdmin && <th className="px-1 py-3" />}
               <th className="eyebrow text-muted px-5 py-3">Expediente</th>
               <th className="eyebrow text-muted px-3 py-3">Cliente</th>
               <th className="eyebrow text-muted px-3 py-3">Contrato</th>
@@ -275,90 +264,17 @@ export default function ContratosClient({
           </thead>
           <tbody className="divide-y divide-line/70">
             {contratos.map((c) => (
-              <tr key={c.documentoId} className="hover:bg-paper/60 transition-colors">
-                <td className="px-5 py-3 num font-bold">
-                  <Link href={`/expedientes/${c.expedienteId}`} className="text-navy hover:underline">
-                    {c.numeroExpediente}
-                  </Link>
-                </td>
-                <td className="px-3 py-3">{c.cliente}</td>
-                <td className="px-3 py-3">
-                  {c.link ? (
-                    <a
-                      href={c.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-navy hover:underline inline-flex items-center gap-1.5"
-                    >
-                      <FileText size={14} /> {c.subidoEl}
-                      <ExternalLink size={11} />
-                    </a>
-                  ) : (
-                    <span className="text-muted">{c.subidoEl}</span>
-                  )}
-                </td>
-                <td className="px-3 py-3">
-                  {c.plan ? (
-                    c.plan.etiqueta
-                  ) : (
-                    <span className="text-amber font-bold">Sin registrar</span>
-                  )}
-                </td>
-                <td className="px-3 py-3 num text-right">
-                  {c.plan ? pesos(c.plan.montoTotal) : "—"}
-                </td>
-                <td className="px-3 py-3 num text-muted">
-                  {c.plan?.fechaProxPago ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <CalendarClock size={13} /> {c.plan.fechaProxPago}
-                    </span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-3 py-3 text-muted">{c.abogado}</td>
-                {esAdmin && (
-                  <td className="px-3 py-3">
-                    <span className={`px-2 py-1 rounded-md text-[11.5px] font-bold ${ESTILO_REVISION[c.revisionEstado]}`}>
-                      {ETIQUETA_REVISION[c.revisionEstado]}
-                    </span>
-                  </td>
-                )}
-                <td className="px-3 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <button
-                      onClick={() => setVerDetalle(c)}
-                      title="Ver detalles"
-                      aria-label="Ver detalles"
-                      className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"
-                    >
-                      <Eye size={16} />
-                    </button>
-                    <button
-                      onClick={() => abrirPlan(c)}
-                      title="Plan de pagos"
-                      aria-label="Plan de pagos"
-                      className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    {esAdmin && (
-                      <button
-                        onClick={() => abrirRevision(c)}
-                        title="Checklist de revisión"
-                        aria-label="Checklist de revisión"
-                        className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"
-                      >
-                        <ClipboardCheck size={16} />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
+              <FilaContrato
+                key={c.documentoId}
+                c={c}
+                esAdmin={esAdmin}
+                onVerDetalle={() => setVerDetalle(c)}
+                onAbrirPlan={() => abrirPlan(c)}
+              />
             ))}
             {contratos.length === 0 && (
               <tr>
-                <td colSpan={esAdmin ? 9 : 8} className="px-5 py-10 text-center text-muted">
+                <td colSpan={esAdmin ? 10 : 8} className="px-5 py-10 text-center text-muted">
                   Todavía no hay contratos subidos.
                 </td>
               </tr>
@@ -404,39 +320,6 @@ export default function ContratosClient({
           <p className="col-span-full text-[13px] text-danger bg-danger-wash rounded-lg px-3 py-2">{error}</p>
         )}
       </Modal>
-
-      {esAdmin && (
-        <Modal
-          open={abiertoRevision}
-          onClose={() => setAbiertoRevision(false)}
-          title="Checklist de revisión"
-          onSubmit={guardarRevision}
-          submitLabel={guardandoRevision ? "Guardando…" : "Guardar"}
-        >
-          <Field label="Estado" full>
-            <Select
-              options={ETIQUETAS_REVISION}
-              value={ETIQUETA_REVISION[formRevision.estado]}
-              onChange={(e) =>
-                setFormRevision((f) => ({
-                  ...f,
-                  estado: ESTADOS_REVISION.find((s) => ETIQUETA_REVISION[s] === e.target.value) ?? "pendiente",
-                }))
-              }
-            />
-          </Field>
-          <Field label="Notas" full>
-            <Input
-              value={formRevision.notas}
-              onChange={(e) => setFormRevision((f) => ({ ...f, notas: e.target.value }))}
-              placeholder="Qué falta corregir…"
-            />
-          </Field>
-          {errorRevision && (
-            <p className="col-span-full text-[13px] text-danger bg-danger-wash rounded-lg px-3 py-2">{errorRevision}</p>
-          )}
-        </Modal>
-      )}
 
       <Modal
         open={abiertoExpediente}
@@ -543,6 +426,149 @@ export default function ContratosClient({
             </div>
           </div>
         </div>
+      )}
+    </>
+  );
+}
+
+// Checklist de revisión, inline como en Prospectos: select con el estado + flecha
+// que despliega una fila corta para la nota. Solo se monta cuando esAdmin (el
+// select y el guardado son admin-only; ver actions.ts).
+function FilaContrato({
+  c,
+  esAdmin,
+  onVerDetalle,
+  onAbrirPlan,
+}: {
+  c: ContratoView;
+  esAdmin: boolean;
+  onVerDetalle: () => void;
+  onAbrirPlan: () => void;
+}) {
+  const [expandido, setExpandido] = useState(false);
+  const [estado, setEstado] = useState(c.revisionEstado);
+  const [notas, setNotas] = useState(c.revisionNotas ?? "");
+  const [notasGuardadas, setNotasGuardadas] = useState(c.revisionNotas ?? "");
+  const notaEnfocada = useRef(false);
+
+  useEffect(() => { setEstado(c.revisionEstado); }, [c.revisionEstado]);
+  useEffect(() => {
+    if (notaEnfocada.current) return;
+    setNotas(c.revisionNotas ?? "");
+    setNotasGuardadas(c.revisionNotas ?? "");
+  }, [c.revisionNotas]);
+
+  function cambiarEstado(nuevo: EstadoRevision) {
+    setEstado(nuevo);
+    guardarRevisionAction(c.documentoId, nuevo, notas);
+  }
+
+  function guardarNotas() {
+    if (notas === notasGuardadas) return;
+    setNotasGuardadas(notas);
+    guardarRevisionAction(c.documentoId, estado, notas);
+  }
+
+  return (
+    <>
+      <tr className="hover:bg-paper/60 transition-colors">
+        {esAdmin && (
+          <td className="px-1 py-3 text-center">
+            <button
+              onClick={() => setExpandido((v) => !v)}
+              title="Nota de revisión"
+              className="p-0.5 rounded text-muted hover:text-navy transition-colors"
+            >
+              {expandido ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </button>
+          </td>
+        )}
+        <td className="px-5 py-3 num font-bold">
+          <Link href={`/expedientes/${c.expedienteId}`} className="text-navy hover:underline">
+            {c.numeroExpediente}
+          </Link>
+        </td>
+        <td className="px-3 py-3">{c.cliente}</td>
+        <td className="px-3 py-3">
+          {c.link ? (
+            <a
+              href={c.link}
+              target="_blank"
+              rel="noreferrer"
+              className="text-navy hover:underline inline-flex items-center gap-1.5"
+            >
+              <FileText size={14} /> {c.subidoEl}
+              <ExternalLink size={11} />
+            </a>
+          ) : (
+            <span className="text-muted">{c.subidoEl}</span>
+          )}
+        </td>
+        <td className="px-3 py-3">
+          {c.plan ? c.plan.etiqueta : <span className="text-amber font-bold">Sin registrar</span>}
+        </td>
+        <td className="px-3 py-3 num text-right">{c.plan ? pesos(c.plan.montoTotal) : "—"}</td>
+        <td className="px-3 py-3 num text-muted">
+          {c.plan?.fechaProxPago ? (
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarClock size={13} /> {c.plan.fechaProxPago}
+            </span>
+          ) : (
+            "—"
+          )}
+        </td>
+        <td className="px-3 py-3 text-muted">{c.abogado}</td>
+        {esAdmin && (
+          <td className="px-3 py-3">
+            <select
+              value={estado}
+              onChange={(e) => cambiarEstado(e.target.value as EstadoRevision)}
+              className={`px-2 py-1 rounded text-[11.5px] font-bold border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 ${ESTILO_REVISION[estado]}`}
+            >
+              {ESTADOS_REVISION.map((s) => (
+                <option key={s} value={s}>
+                  {ETIQUETA_REVISION[s]}
+                </option>
+              ))}
+            </select>
+          </td>
+        )}
+        <td className="px-3 py-3 text-right">
+          <div className="flex items-center justify-end gap-1">
+            <button
+              onClick={onVerDetalle}
+              title="Ver detalles"
+              aria-label="Ver detalles"
+              className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"
+            >
+              <Eye size={16} />
+            </button>
+            <button
+              onClick={onAbrirPlan}
+              title="Plan de pagos"
+              aria-label="Plan de pagos"
+              className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"
+            >
+              <Pencil size={16} />
+            </button>
+          </div>
+        </td>
+      </tr>
+      {esAdmin && expandido && (
+        <tr className="bg-paper/40">
+          <td />
+          <td colSpan={9} className="px-4 py-2">
+            <input
+              type="text"
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              onFocus={() => { notaEnfocada.current = true; }}
+              onBlur={() => { notaEnfocada.current = false; guardarNotas(); }}
+              placeholder="Nota de revisión (qué falta corregir)…"
+              className="w-full max-w-lg px-2 py-1 rounded bg-surface border border-line focus:border-navy/40 focus:outline-none text-[12.5px] text-ink placeholder:text-muted/60 transition-colors"
+            />
+          </td>
+        </tr>
       )}
     </>
   );
