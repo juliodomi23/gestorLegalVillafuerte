@@ -14,12 +14,13 @@ import type { Alcance } from "@/lib/alcance";
 
 export const TIPO_CONTRATO = "contrato";
 
-const TIPOS_PLAN = ["todo_inicio", "inicio_final", "quincenal", "mensual"] as const;
+const TIPOS_PLAN = ["todo_inicio", "inicio_final", "semanal", "quincenal", "mensual"] as const;
 export type TipoPlan = (typeof TIPOS_PLAN)[number];
 
 export const ETIQUETA_PLAN: Record<string, string> = {
   todo_inicio: "Todo al inicio",
   inicio_final: "Inicio y final",
+  semanal: "Semanal",
   quincenal: "Quincenal",
   mensual: "Mensual",
 };

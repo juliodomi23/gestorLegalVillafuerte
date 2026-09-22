@@ -26,7 +26,7 @@ import { crearExpedienteAction, crearClienteRapidoAction } from "@/app/(app)/exp
 import { ETIQUETA_PLAN, ETIQUETA_REVISION, type ContratoView, type EstadoRevision } from "@/lib/services/contratos";
 import { MATERIAS, ETAPAS } from "@/lib/constants";
 
-const TIPOS = ["todo_inicio", "inicio_final", "quincenal", "mensual"];
+const TIPOS = ["todo_inicio", "inicio_final", "semanal", "quincenal", "mensual"];
 const ETIQUETAS = TIPOS.map((t) => ETIQUETA_PLAN[t]);
 
 const ESTADOS_REVISION: EstadoRevision[] = ["pendiente", "aprobado", "corregir"];
@@ -87,7 +87,8 @@ export default function ContratosClient({
 
   const set = (c: keyof typeof planVacio, v: string) => setForm((f) => ({ ...f, [c]: v }));
 
-  const esParcialidades = form.tipo === ETIQUETA_PLAN.quincenal || form.tipo === ETIQUETA_PLAN.mensual;
+  const esParcialidades =
+    form.tipo === ETIQUETA_PLAN.semanal || form.tipo === ETIQUETA_PLAN.quincenal || form.tipo === ETIQUETA_PLAN.mensual;
   const resumenPagos = (() => {
     const total = Number(form.montoTotal);
     const inicial = Number(form.montoInicial) || 0;
@@ -96,7 +97,8 @@ export default function ContratosClient({
     const restante = total - inicial;
     if (restante <= 0) return "";
     const cantidad = Math.ceil(restante / periodico);
-    const frecuencia = form.tipo === ETIQUETA_PLAN.quincenal ? "quincenal" : "mensual";
+    const frecuencia =
+      form.tipo === ETIQUETA_PLAN.semanal ? "semanal" : form.tipo === ETIQUETA_PLAN.quincenal ? "quincenal" : "mensual";
     return `Serán ${cantidad} pago${cantidad === 1 ? "" : "s"} ${frecuencia}${cantidad === 1 ? "" : "es"} de ${pesos(periodico)}${
       restante % periodico !== 0 ? " (el último ajusta el resto)" : ""
     }.`;
