@@ -87,6 +87,21 @@ export default function ContratosClient({
 
   const set = (c: keyof typeof planVacio, v: string) => setForm((f) => ({ ...f, [c]: v }));
 
+  const esParcialidades = form.tipo === ETIQUETA_PLAN.quincenal || form.tipo === ETIQUETA_PLAN.mensual;
+  const resumenPagos = (() => {
+    const total = Number(form.montoTotal);
+    const inicial = Number(form.montoInicial) || 0;
+    const periodico = Number(form.montoPeriodico);
+    if (!esParcialidades || !total || !periodico) return "";
+    const restante = total - inicial;
+    if (restante <= 0) return "";
+    const cantidad = Math.ceil(restante / periodico);
+    const frecuencia = form.tipo === ETIQUETA_PLAN.quincenal ? "quincenal" : "mensual";
+    return `Serán ${cantidad} pago${cantidad === 1 ? "" : "s"} ${frecuencia}${cantidad === 1 ? "" : "es"} de ${pesos(periodico)}${
+      restante % periodico !== 0 ? " (el último ajusta el resto)" : ""
+    }.`;
+  })();
+
   async function crearExpedienteRapido() {
     if (!formExp.clienteNombre.trim() || !formExp.materia || !formExp.abogado || !formExp.sucursal) {
       setErrorExp("Completa cliente, materia, abogado y sucursal");
@@ -290,29 +305,44 @@ export default function ContratosClient({
         onSubmit={guardarPlan}
         submitLabel={guardando ? "Guardando…" : "Guardar plan"}
       >
-        <p className="col-span-full text-[12.5px] text-muted -mt-1">
-          Si el contrato tiene más de un pago, pon la fecha del siguiente: se agenda solo en
-          el calendario del despacho.
-        </p>
         <Field label="Tipo de plan">
           <Select options={ETIQUETAS} value={form.tipo} onChange={(e) => set("tipo", e.target.value)} />
         </Field>
         <Field label="Monto total">
           <Input value={form.montoTotal} onChange={(e) => set("montoTotal", e.target.value)} placeholder="15000" />
         </Field>
-        <Field label="Pago inicial (opcional)">
-          <Input value={form.montoInicial} onChange={(e) => set("montoInicial", e.target.value)} placeholder="5000" />
-        </Field>
-        <Field label="Monto de cada pago (opcional)">
-          <Input
-            value={form.montoPeriodico}
-            onChange={(e) => set("montoPeriodico", e.target.value)}
-            placeholder="2500"
-          />
-        </Field>
-        <Field label="Fecha del próximo pago">
-          <Input type="date" value={form.fechaProxPago} onChange={(e) => set("fechaProxPago", e.target.value)} />
-        </Field>
+        {form.tipo && form.tipo !== ETIQUETA_PLAN.todo_inicio && (
+          <Field label="Pago inicial (opcional)">
+            <Input value={form.montoInicial} onChange={(e) => set("montoInicial", e.target.value)} placeholder="5000" />
+          </Field>
+        )}
+        {esParcialidades && (
+          <>
+            <Field label="Monto de cada pago">
+              <Input
+                value={form.montoPeriodico}
+                onChange={(e) => set("montoPeriodico", e.target.value)}
+                placeholder="2500"
+              />
+            </Field>
+            <Field label="Fecha del próximo pago">
+              <Input type="date" value={form.fechaProxPago} onChange={(e) => set("fechaProxPago", e.target.value)} />
+            </Field>
+            {resumenPagos && (
+              <p className="col-span-full text-[12.5px] text-navy bg-navy/[.06] rounded-lg px-3 py-2 -mt-1">
+                {resumenPagos}
+              </p>
+            )}
+            <p className="col-span-full text-[12px] text-muted -mt-1">
+              El próximo pago se agenda solo en el calendario del despacho.
+            </p>
+          </>
+        )}
+        {form.tipo === ETIQUETA_PLAN.inicio_final && (
+          <Field label="Fecha del pago final">
+            <Input type="date" value={form.fechaProxPago} onChange={(e) => set("fechaProxPago", e.target.value)} />
+          </Field>
+        )}
         <Field label="Notas" full>
           <Input value={form.notas} onChange={(e) => set("notas", e.target.value)} placeholder="Acordado con el cliente…" />
         </Field>
