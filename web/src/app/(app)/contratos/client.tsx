@@ -391,6 +391,32 @@ export default function ContratosClient({
                   )}
                 </div>
               </div>
+              {verDetalle.plan && verDetalle.plan.tipo !== "todo_inicio" && (
+                <div className="flex items-start gap-2.5 px-6 py-2.5">
+                  <FileText size={15} className="text-muted shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="eyebrow text-muted">Pagos registrados</p>
+                    <p className="text-[13.5px] text-ink">
+                      {pesos(verDetalle.plan.pagado)} de {pesos(verDetalle.plan.montoTotal)}
+                      {verDetalle.plan.saldo > 0 && (
+                        <span className="text-amber font-bold"> · faltan {pesos(verDetalle.plan.saldo)}</span>
+                      )}
+                    </p>
+                    {verDetalle.plan.pagos.length > 0 ? (
+                      <ul className="mt-1 space-y-0.5">
+                        {verDetalle.plan.pagos.map((p, i) => (
+                          <li key={i} className="text-muted text-[12.5px] flex justify-between gap-3">
+                            <span>{p.fecha}{p.concepto ? ` · ${p.concepto}` : ""}</span>
+                            <span className="num">{pesos(p.monto)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-muted text-[12.5px] mt-0.5">Sin pagos registrados en Caja todavía.</p>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="flex items-start gap-2.5 px-6 py-2.5">
                 <StickyNote size={15} className="text-muted shrink-0 mt-0.5" />
                 <div>

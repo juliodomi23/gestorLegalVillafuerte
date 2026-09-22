@@ -65,6 +65,9 @@ export type ContratoView = {
     montoPeriodico: number | null;
     fechaProxPago: string | null;
     notas: string | null;
+    pagos: { fecha: string; monto: number; concepto: string | null }[];
+    pagado: number;
+    saldo: number;
   } | null;
 };
 
@@ -87,8 +90,27 @@ export async function listarContratos(alcance: Alcance): Promise<ContratoView[]>
     orderBy: { creadoEn: "desc" },
   });
 
+  // Los pagos ya se registran en Caja (movimientos de tipo ingreso ligados al
+  // expediente); no hace falta una tabla nueva, solo agruparlos aquí por expediente.
+  const expedienteIds = docs.filter((d) => d.expediente.planPago).map((d) => d.expedienteId);
+  const movimientos = expedienteIds.length
+    ? await prisma.movimientoCaja.findMany({
+        where: { expedienteId: { in: expedienteIds }, tipo: "ingreso" },
+        orderBy: { fecha: "desc" },
+      })
+    : [];
+  const pagosPorExpediente = new Map<string, typeof movimientos>();
+  for (const m of movimientos) {
+    if (!m.expedienteId) continue;
+    const lista = pagosPorExpediente.get(m.expedienteId) ?? [];
+    lista.push(m);
+    pagosPorExpediente.set(m.expedienteId, lista);
+  }
+
   return docs.map((d) => {
     const p = d.expediente.planPago;
+    const pagos = pagosPorExpediente.get(d.expedienteId) ?? [];
+    const pagado = pagos.reduce((s, m) => s + Number(m.monto), 0);
     return {
       documentoId: d.id,
       nombre: d.nombre,
@@ -115,6 +137,13 @@ export async function listarContratos(alcance: Alcance): Promise<ContratoView[]>
             montoPeriodico: p.montoPeriodico ? Number(p.montoPeriodico) : null,
             fechaProxPago: p.fechaProxPago ? p.fechaProxPago.toISOString().slice(0, 10) : null,
             notas: p.notas,
+            pagos: pagos.map((m) => ({
+              fecha: m.fecha.toISOString().slice(0, 10),
+              monto: Number(m.monto),
+              concepto: m.concepto,
+            })),
+            pagado,
+            saldo: Number(p.montoTotal) - pagado,
           }
         : null,
     };
