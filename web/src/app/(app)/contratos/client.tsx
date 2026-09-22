@@ -3,16 +3,26 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileText, Upload, Loader, Pencil, CalendarClock, ExternalLink, Eye, X, User, StickyNote, Plus } from "lucide-react";
+import { FileText, Upload, Loader, Pencil, CalendarClock, ExternalLink, Eye, X, User, StickyNote, Plus, ClipboardCheck } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
-import { guardarPlanAction } from "./actions";
+import { guardarPlanAction, guardarRevisionAction } from "./actions";
 import { crearExpedienteAction, crearClienteRapidoAction } from "@/app/(app)/expedientes/actions";
-import { ETIQUETA_PLAN, type ContratoView } from "@/lib/services/contratos";
+import { ETIQUETA_PLAN, ETIQUETA_REVISION, type ContratoView, type EstadoRevision } from "@/lib/services/contratos";
 import { MATERIAS, ETAPAS } from "@/lib/constants";
 
 const TIPOS = ["todo_inicio", "inicio_final", "quincenal", "mensual"];
 const ETIQUETAS = TIPOS.map((t) => ETIQUETA_PLAN[t]);
+
+const ESTADOS_REVISION: EstadoRevision[] = ["pendiente", "aprobado", "corregir"];
+const ETIQUETAS_REVISION = ESTADOS_REVISION.map((e) => ETIQUETA_REVISION[e]);
+const ESTILO_REVISION: Record<EstadoRevision, string> = {
+  pendiente: "bg-line/40 text-muted",
+  aprobado: "bg-success-wash text-success",
+  corregir: "bg-danger-wash text-danger",
+};
+
+const revisionVacia = { documentoId: "", estado: "pendiente" as EstadoRevision, notas: "" };
 
 const expedienteVacio = { clienteNombre: "", clienteTel: "", materia: "", etapa: "", abogado: "", sucursal: "" };
 
@@ -55,6 +65,11 @@ export default function ContratosClient({
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [verDetalle, setVerDetalle] = useState<ContratoView | null>(null);
+
+  const [abiertoRevision, setAbiertoRevision] = useState(false);
+  const [formRevision, setFormRevision] = useState(revisionVacia);
+  const [guardandoRevision, setGuardandoRevision] = useState(false);
+  const [errorRevision, setErrorRevision] = useState("");
 
   const [abiertoExpediente, setAbiertoExpediente] = useState(false);
   const [formExp, setFormExp] = useState({ ...expedienteVacio, abogado: esAdmin ? "" : sesionNombre });
@@ -158,6 +173,25 @@ export default function ContratosClient({
 
   const sinPlan = contratos.filter((c) => !c.plan).length;
 
+  function abrirRevision(c: ContratoView) {
+    setErrorRevision("");
+    setFormRevision({ documentoId: c.documentoId, estado: c.revisionEstado, notas: c.revisionNotas ?? "" });
+    setAbiertoRevision(true);
+  }
+
+  async function guardarRevision() {
+    setErrorRevision("");
+    setGuardandoRevision(true);
+    const r = await guardarRevisionAction(formRevision.documentoId, formRevision.estado, formRevision.notas);
+    setGuardandoRevision(false);
+    if (!r.ok) {
+      setErrorRevision(r.error);
+      return;
+    }
+    setAbiertoRevision(false);
+    router.refresh();
+  }
+
   return (
     <>
       <PageTitle
@@ -235,6 +269,7 @@ export default function ContratosClient({
               <th className="eyebrow text-muted px-3 py-3 text-right">Total</th>
               <th className="eyebrow text-muted px-3 py-3">Próximo pago</th>
               <th className="eyebrow text-muted px-3 py-3">Abogado</th>
+              {esAdmin && <th className="eyebrow text-muted px-3 py-3">Revisión</th>}
               <th className="eyebrow text-muted px-3 py-3 text-right">Acciones</th>
             </tr>
           </thead>
@@ -282,6 +317,13 @@ export default function ContratosClient({
                   )}
                 </td>
                 <td className="px-3 py-3 text-muted">{c.abogado}</td>
+                {esAdmin && (
+                  <td className="px-3 py-3">
+                    <span className={`px-2 py-1 rounded-md text-[11.5px] font-bold ${ESTILO_REVISION[c.revisionEstado]}`}>
+                      {ETIQUETA_REVISION[c.revisionEstado]}
+                    </span>
+                  </td>
+                )}
                 <td className="px-3 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <button
@@ -300,13 +342,23 @@ export default function ContratosClient({
                     >
                       <Pencil size={16} />
                     </button>
+                    {esAdmin && (
+                      <button
+                        onClick={() => abrirRevision(c)}
+                        title="Checklist de revisión"
+                        aria-label="Checklist de revisión"
+                        className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"
+                      >
+                        <ClipboardCheck size={16} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
             ))}
             {contratos.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-5 py-10 text-center text-muted">
+                <td colSpan={esAdmin ? 9 : 8} className="px-5 py-10 text-center text-muted">
                   Todavía no hay contratos subidos.
                 </td>
               </tr>
@@ -352,6 +404,39 @@ export default function ContratosClient({
           <p className="col-span-full text-[13px] text-danger bg-danger-wash rounded-lg px-3 py-2">{error}</p>
         )}
       </Modal>
+
+      {esAdmin && (
+        <Modal
+          open={abiertoRevision}
+          onClose={() => setAbiertoRevision(false)}
+          title="Checklist de revisión"
+          onSubmit={guardarRevision}
+          submitLabel={guardandoRevision ? "Guardando…" : "Guardar"}
+        >
+          <Field label="Estado" full>
+            <Select
+              options={ETIQUETAS_REVISION}
+              value={ETIQUETA_REVISION[formRevision.estado]}
+              onChange={(e) =>
+                setFormRevision((f) => ({
+                  ...f,
+                  estado: ESTADOS_REVISION.find((s) => ETIQUETA_REVISION[s] === e.target.value) ?? "pendiente",
+                }))
+              }
+            />
+          </Field>
+          <Field label="Notas" full>
+            <Input
+              value={formRevision.notas}
+              onChange={(e) => setFormRevision((f) => ({ ...f, notas: e.target.value }))}
+              placeholder="Qué falta corregir…"
+            />
+          </Field>
+          {errorRevision && (
+            <p className="col-span-full text-[13px] text-danger bg-danger-wash rounded-lg px-3 py-2">{errorRevision}</p>
+          )}
+        </Modal>
+      )}
 
       <Modal
         open={abiertoExpediente}
@@ -430,6 +515,20 @@ export default function ContratosClient({
                   <p className="text-[13.5px] text-ink">{verDetalle.plan?.notas ?? "—"}</p>
                 </div>
               </div>
+              {esAdmin && (
+                <div className="flex items-start gap-2.5 px-6 py-2.5">
+                  <ClipboardCheck size={15} className="text-muted shrink-0 mt-0.5" />
+                  <div>
+                    <p className="eyebrow text-muted">Revisión</p>
+                    <span className={`inline-block px-2 py-0.5 rounded-md text-[11.5px] font-bold ${ESTILO_REVISION[verDetalle.revisionEstado]}`}>
+                      {ETIQUETA_REVISION[verDetalle.revisionEstado]}
+                    </span>
+                    {verDetalle.revisionNotas && (
+                      <p className="text-[13px] text-ink mt-1">{verDetalle.revisionNotas}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-line">
               <button onClick={() => setVerDetalle(null)} className="px-4 py-2 rounded-lg border border-line text-[13px] hover:border-navy/40 transition-colors">

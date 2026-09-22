@@ -33,6 +33,18 @@ export function tienePagosPendientes(tipo: string): boolean {
   return tipo !== "todo_inicio";
 }
 
+const ESTADOS_REVISION = ["pendiente", "aprobado", "corregir"] as const;
+export type EstadoRevision = (typeof ESTADOS_REVISION)[number];
+export const ETIQUETA_REVISION: Record<EstadoRevision, string> = {
+  pendiente: "Sin revisar",
+  aprobado: "Revisado",
+  corregir: "Hay que corregir",
+};
+
+export function esEstadoRevision(v: string): v is EstadoRevision {
+  return (ESTADOS_REVISION as readonly string[]).includes(v);
+}
+
 export type ContratoView = {
   documentoId: string;
   nombre: string;
@@ -43,6 +55,8 @@ export type ContratoView = {
   numeroExpediente: string;
   cliente: string;
   abogado: string;
+  revisionEstado: EstadoRevision;
+  revisionNotas: string | null;
   plan: {
     tipo: string;
     etiqueta: string;
@@ -90,6 +104,8 @@ export async function listarContratos(alcance: Alcance): Promise<ContratoView[]>
       numeroExpediente: d.expediente.numeroInterno ?? "—",
       cliente: d.expediente.cliente?.nombre ?? "Sin cliente",
       abogado: d.expediente.abogadoResponsable?.nombre ?? "Sin asignar",
+      revisionEstado: esEstadoRevision(d.revisionEstado ?? "") ? (d.revisionEstado as EstadoRevision) : "pendiente",
+      revisionNotas: d.revisionNotas,
       plan: p
         ? {
             tipo: p.tipo,
@@ -163,6 +179,14 @@ export async function guardarPlanPago(d: DatosPlan): Promise<{ eventoCreado: boo
   });
 
   return { eventoCreado: !!id };
+}
+
+// Checklist de revisión del Lic. sobre el PDF subido — solo admin lo toca (ver actions.ts).
+export async function guardarRevisionContrato(documentoId: string, estado: EstadoRevision, notas: string | null) {
+  await prisma.documento.update({
+    where: { id: documentoId },
+    data: { revisionEstado: estado, revisionNotas: notas },
+  });
 }
 
 // Expedientes a los que se les puede subir un contrato.

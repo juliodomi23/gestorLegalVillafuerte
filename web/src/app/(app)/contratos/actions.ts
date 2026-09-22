@@ -1,9 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireSession } from "@/lib/guard";
+import { requireSession, requireAdmin } from "@/lib/guard";
 import { prisma } from "@/lib/prisma";
-import { guardarPlanPago, esTipoPlan, type DatosPlan } from "@/lib/services/contratos";
+import {
+  guardarPlanPago,
+  esTipoPlan,
+  guardarRevisionContrato,
+  esEstadoRevision,
+  type DatosPlan,
+} from "@/lib/services/contratos";
 
 export type ResultadoPlan =
   | { ok: true; eventoCreado: boolean }
@@ -56,5 +62,24 @@ export async function guardarPlanAction(form: {
     return { ok: true, eventoCreado: r.eventoCreado };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "No se pudo guardar el plan" };
+  }
+}
+
+export type ResultadoRevision = { ok: true } | { ok: false; error: string };
+
+// Checklist de revisión: solo el admin (el Lic.) lo puede marcar.
+export async function guardarRevisionAction(
+  documentoId: string,
+  estado: string,
+  notas: string
+): Promise<ResultadoRevision> {
+  try {
+    await requireAdmin();
+    if (!esEstadoRevision(estado)) return { ok: false, error: "Estado de revisión inválido" };
+    await guardarRevisionContrato(documentoId, estado, notas.trim() || null);
+    revalidatePath("/contratos");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "No se pudo guardar la revisión" };
   }
 }

@@ -435,6 +435,10 @@ model Documento {
   subidoPor    String?  @map("subido_por") @db.Uuid
   creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
+  // Checklist de revisión del Lic. (solo admin): null = todavía pendiente de revisar.
+  revisionEstado String? @map("revision_estado") // pendiente | aprobado | corregir
+  revisionNotas  String? @map("revision_notas")
+
   expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   actuacion  Actuacion? @relation(fields: [actuacionId], references: [id], onDelete: SetNull)
   usuario    Usuario?   @relation(fields: [subidoPor], references: [id])
