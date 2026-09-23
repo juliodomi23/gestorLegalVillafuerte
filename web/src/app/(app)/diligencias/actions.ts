@@ -17,7 +17,6 @@ export type FormDiligencia = {
   cliente: string;
   sucursal: string;
   abogado: string;
-  fecha?: string; // yyyy-mm-dd
   renglones: FormRenglon[];
 };
 
@@ -48,7 +47,6 @@ export async function crearDiligenciaAction(form: FormDiligencia) {
       clienteNombre: form.cliente.trim() || null,
       abogadoId,
       sucursalId,
-      ...(form.fecha ? { fecha: new Date(form.fecha) } : {}),
       renglones: {
         create: renglones.map((r) => ({
           descripcion: r.descripcion.trim() || null,
@@ -67,7 +65,6 @@ export type FormEdicionDiligencia = {
   cliente: string;
   sucursal: string;
   abogado: string;
-  fecha: string;
 };
 
 // Editar una diligencia ya registrada (por si faltó algo). Sin restricción de día:
@@ -85,7 +82,6 @@ export async function editarDiligenciaAction(id: string, form: FormEdicionDilige
       clienteNombre: form.cliente.trim() || null,
       abogadoId,
       sucursalId,
-      ...(form.fecha ? { fecha: new Date(form.fecha) } : {}),
     },
   });
   revalidatePath("/diligencias");

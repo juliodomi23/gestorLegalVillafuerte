@@ -19,8 +19,7 @@ import {
 
 export type DiligenciaView = {
   id: string;
-  fecha: string; // dd/mm/yyyy
-  fechaISO: string; // yyyy-mm-dd, para editar
+  fecha: string; // dd/mm/yyyy, la del primer concepto
   folio: string | null;
   cliente: string;
   sucursal: string;
@@ -44,7 +43,7 @@ function totalDe(d: DiligenciaView) {
 }
 
 const vacioRenglon: FormRenglon = { fecha: hoy(), descripcion: "", asunto: "", importe: "" };
-const vacioNueva = { cliente: "", sucursal: "", abogado: "", fecha: hoy(), renglones: [{ ...vacioRenglon }] };
+const vacioNueva = { cliente: "", sucursal: "", abogado: "", renglones: [{ ...vacioRenglon }] };
 
 // Renglones dentro del formulario de "Nueva diligencia" (fila editable, sin guardar
 // hasta enviar el formulario completo — a diferencia de FilaRenglones, que sí guarda
@@ -63,7 +62,8 @@ function RenglonesForm({ renglones, onChange }: { renglones: FormRenglon[]; onCh
       <span className="eyebrow text-muted block mb-1.5">Conceptos</span>
       <div className="space-y-2">
         {renglones.map((r, i) => (
-          <div key={i} className="grid grid-cols-[1fr_1fr_110px_28px] gap-1.5 items-center">
+          <div key={i} className="grid grid-cols-[140px_1fr_1fr_110px_28px] gap-1.5 items-center">
+            <Input type="date" value={r.fecha} onChange={(e) => set(i, "fecha", e.target.value)} required />
             <Input value={r.descripcion} onChange={(e) => set(i, "descripcion", e.target.value)} placeholder="Se fue al juzgado a..." autoFocus={i === 0} />
             <Input value={r.asunto} onChange={(e) => set(i, "asunto", e.target.value)} placeholder="Copias, viáticos..." />
             <Input type="number" min="0" step="0.01" value={r.importe} onChange={(e) => set(i, "importe", e.target.value)} placeholder="$0.00" />
@@ -222,7 +222,7 @@ export default function DiligenciasClient({
 
   function abrirEditar(d: DiligenciaView) {
     setEditando(d.id);
-    setForm({ cliente: d.cliente, sucursal: d.sucursal, abogado: d.abogado, fecha: d.fechaISO, renglones: [{ ...vacioRenglon }] });
+    setForm({ cliente: d.cliente, sucursal: d.sucursal, abogado: d.abogado, renglones: [{ ...vacioRenglon }] });
     setOpen(true);
   }
 
@@ -230,7 +230,7 @@ export default function DiligenciasClient({
     setSaving(true);
     try {
       if (editando) {
-        await editarDiligenciaAction(editando, { cliente: form.cliente, sucursal: form.sucursal, abogado: form.abogado, fecha: form.fecha ?? hoy() });
+        await editarDiligenciaAction(editando, { cliente: form.cliente, sucursal: form.sucursal, abogado: form.abogado });
         setOpen(false);
       } else {
         const id = await crearDiligenciaAction(form);
@@ -358,9 +358,6 @@ export default function DiligenciasClient({
       <Modal open={open} onClose={() => setOpen(false)} title={editando ? "Editar diligencia" : "Nueva diligencia"} onSubmit={guardar} submitLabel={saving ? "Guardando…" : editando ? "Guardar cambios" : "Registrar"}>
         <Field label="Cliente" full>
           <Input value={form.cliente} onChange={(e) => setForm((f) => ({ ...f, cliente: e.target.value }))} placeholder="Nombre del cliente" autoFocus required />
-        </Field>
-        <Field label="Fecha">
-          <Input type="date" value={form.fecha ?? hoy()} onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))} required />
         </Field>
         <Field label="Sucursal">
           <Select options={sucursales} value={form.sucursal} onChange={(e) => setForm((f) => ({ ...f, sucursal: e.target.value }))} required />

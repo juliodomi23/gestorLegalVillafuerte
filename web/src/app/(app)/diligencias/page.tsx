@@ -22,14 +22,15 @@ export default async function DiligenciasPage() {
   ]);
 
   const diligencias: DiligenciaView[] = rows.map((d) => {
-    const f = d.fecha instanceof Date ? d.fecha : new Date(d.fecha);
+    // La fecha de la fila es la del primer concepto (la de la diligencia solo es un respaldo).
+    const base = d.renglones[0]?.fecha ?? d.fecha;
+    const f = base instanceof Date ? base : new Date(base);
     const dd = String(f.getUTCDate()).padStart(2, "0");
     const mm = String(f.getUTCMonth() + 1).padStart(2, "0");
     const yyyy = String(f.getUTCFullYear());
     return {
       id: d.id,
       fecha: `${dd}/${mm}/${yyyy}`,
-      fechaISO: `${yyyy}-${mm}-${dd}`,
       folio: d.folio ?? null,
       cliente: d.cliente?.nombre ?? d.clienteNombre ?? "Sin cliente",
       sucursal: d.sucursal?.nombre ?? "",
