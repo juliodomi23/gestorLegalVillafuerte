@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { rangoDelDiaDespacho as rangoDelDia } from "@/lib/fecha";
+import { normalizarTelefono, crearDetectorLlegada } from "@/lib/citas-reporte-regla";
 
 function horaLocal(fecha: Date): string {
   return fecha.toLocaleTimeString("es-MX", {
@@ -14,15 +15,6 @@ function horaLocal(fecha: Date): string {
   });
 }
 
-// Un teléfono mexicano comparable: solo dígitos y sin el 52/521 de país.
-// "+52 961 264 1203", "9612641203" y "5219612641203" tienen que casar entre sí.
-export function normalizarTelefono(tel?: string | null): string {
-  const d = String(tel ?? "").replace(/\D/g, "");
-  if (d.length > 10 && d.startsWith("521")) return d.slice(3);
-  if (d.length > 10 && d.startsWith("52")) return d.slice(2);
-  return d.slice(-10);
-}
-
 // El teléfono a la vista: el del campo, o el que venga dentro del nombre.
 // Las citas del bot llegan como "Asesoría Eunice ‪+52 961 264 1203‬" con el campo
 // teléfono vacío, y ese número es justo lo que hace falta para llamarles.
@@ -31,16 +23,6 @@ export function telefonoVisible(telefono?: string | null, nombre?: string | null
   if (delCampo.length === 10) return delCampo;
   const delNombre = normalizarTelefono(String(nombre ?? "").replace(/\D/g, "").slice(-10));
   return delNombre.length === 10 ? delNombre : "";
-}
-
-// Nombre comparable: sin acentos, sin dobles espacios, en minúsculas.
-export function normalizarNombre(nombre?: string | null): string {
-  return String(nombre ?? "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 export type CitadoDelDia = {
@@ -187,29 +169,10 @@ export async function noShowsDelDia(fechaISO: string): Promise<NoShow[]> {
     }),
   ]);
 
-  const telefonosAtendidos = new Set(
-    asesorias.map((a) => normalizarTelefono(a.telefono)).filter((t) => t.length === 10)
-  );
-  const nombresAtendidos = asesorias
-    .map((a) => normalizarNombre(a.nombre))
-    .filter((n) => n.length >= 5);
+  const llego = crearDetectorLlegada(asesorias);
 
   return citas
-    .filter((c) => {
-      const nombre = c.cliente?.nombre ?? c.clienteNombre ?? "";
-      const tel = normalizarTelefono(c.cliente?.telefono ?? c.telefono);
-      // El teléfono puede venir dentro del nombre ("Asesoría Eunice 961 264 1203").
-      const telEnNombre = normalizarTelefono(nombre.replace(/\D/g, "").slice(-10));
-
-      if (tel.length === 10 && telefonosAtendidos.has(tel)) return false;
-      if (telEnNombre.length === 10 && telefonosAtendidos.has(telEnNombre)) return false;
-
-      const n = normalizarNombre(nombre);
-      if (n.length >= 5 && nombresAtendidos.some((a) => a.includes(n) || n.includes(a))) {
-        return false;
-      }
-      return true;
-    })
+    .filter((c) => !llego({ nombre: c.cliente?.nombre ?? c.clienteNombre ?? "", telefono: c.cliente?.telefono ?? c.telefono }))
     .map((c) => {
       const nombre = c.cliente?.nombre ?? c.clienteNombre ?? "Sin nombre";
       return {
