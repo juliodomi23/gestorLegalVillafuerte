@@ -8,6 +8,7 @@ import { Hoja, Campo, Sel, Area, Seccion, Casillas } from "@/components/hoja";
 import { useConfirm } from "@/components/confirm";
 import type { StatusAsesoria } from "@/lib/constants";
 import { Modal, Field, Textarea } from "@/components/modal";
+import FirmaContratoModal, { type AsesoriaFirma } from "./firma-contrato-modal";
 import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction, cambiarStatusAsesoriaAction, guardarSeguimientoAsesoriaAction } from "./actions";
 
 export type AsesoriaView = {
@@ -59,7 +60,7 @@ function formatFecha(f: string) {
   return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
-function DaySection({ fecha, rows, onEdit, onDelete, onSeguimiento }: { fecha: string; rows: AsesoriaView[]; onEdit: (r: AsesoriaView) => void; onDelete: (id: string) => void; onSeguimiento: (r: AsesoriaView) => void }) {
+function DaySection({ fecha, rows, onEdit, onDelete, onSeguimiento, onFirmar }: { fecha: string; rows: AsesoriaView[]; onEdit: (r: AsesoriaView) => void; onDelete: (id: string) => void; onSeguimiento: (r: AsesoriaView) => void; onFirmar: (r: AsesoriaView) => void }) {
   const [open, setOpen] = useState(true);
   const recaudado = rows.filter((r) => r.pago).reduce((s, r) => s + r.monto, 0);
   return (
@@ -102,7 +103,8 @@ function DaySection({ fecha, rows, onEdit, onDelete, onSeguimiento }: { fecha: s
                         {(Object.entries(statusInfo) as [StatusAsesoria, { label: string; cls: string }][]).map(([key, info]) => (
                           <button
                             key={key}
-                            onMouseDown={() => cambiarStatusAsesoriaAction(a.id, key)}
+                            onMouseDown={() => { if (key !== "contrato_firmado") cambiarStatusAsesoriaAction(a.id, key); }}
+                            onClick={() => { if (key === "contrato_firmado" && a.status !== key) onFirmar(a); }}
                             className={`w-full text-left px-3 py-1.5 text-[12px] font-bold hover:bg-paper transition-colors ${key === a.status ? "opacity-50 cursor-default" : ""}`}
                           >
                             <span className={`px-1.5 py-0.5 rounded ${info.cls}`}>{info.label}</span>
@@ -188,6 +190,8 @@ export default function AsesoriasClient({
   // Nota de seguimiento: se escribe desde la tabla, aparte de la hoja.
   const [seguimiento, setSeguimiento] = useState<{ id: string; nombre: string } | null>(null);
   const [notaSeguimiento, setNotaSeguimiento] = useState("");
+  // Asesoría que se está marcando como "Contrato firmado" (pide el PDF del contrato).
+  const [firmando, setFirmando] = useState<AsesoriaFirma | null>(null);
   const confirmar = useConfirm();
   const router = useRouter();
 
@@ -348,7 +352,9 @@ export default function AsesoriasClient({
       </div>
 
       {porDia.length === 0 && <Card className="p-10 text-center text-muted text-[14px]">Sin asesorías para esta sucursal.</Card>}
-      {porDia.map(([fecha, rows]) => <DaySection key={fecha} fecha={fecha} rows={rows} onEdit={abrirEditar} onDelete={borrar} onSeguimiento={abrirSeguimiento} />)}
+      {porDia.map(([fecha, rows]) => <DaySection key={fecha} fecha={fecha} rows={rows} onEdit={abrirEditar} onDelete={borrar} onSeguimiento={abrirSeguimiento} onFirmar={(a) => setFirmando({ id: a.id, nombre: a.nombre })} />)}
+
+      <FirmaContratoModal asesoria={firmando} onClose={() => setFirmando(null)} />
 
       <Modal
         open={!!seguimiento}

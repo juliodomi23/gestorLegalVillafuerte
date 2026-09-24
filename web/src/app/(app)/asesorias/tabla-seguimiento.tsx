@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Phone } from "lucide-react";
 import { Card } from "@/components/ui";
+import FirmaContratoModal, { type AsesoriaFirma } from "./firma-contrato-modal";
 import { guardarSeguimientoCitaAction, guardarSeguimientoAsesoriaLlamadaAction } from "./actions";
 
 export type FilaSeguimiento = {
@@ -27,7 +28,7 @@ const ESTADOS = [
   { value: "descartado", label: "Descartado", cls: "bg-danger-wash text-danger" },
 ];
 
-function Fila({ f, origen }: { f: FilaSeguimiento; origen: Origen }) {
+function Fila({ f, origen, onFirmar }: { f: FilaSeguimiento; origen: Origen; onFirmar: (a: AsesoriaFirma) => void }) {
   const [estado, setEstado] = useState(f.seguimientoEstado);
   const [nota, setNota] = useState(f.seguimientoNota);
   const [fecha, setFecha] = useState(f.seguimientoFecha);
@@ -77,6 +78,16 @@ function Fila({ f, origen }: { f: FilaSeguimiento; origen: Origen }) {
           className="w-full px-2 py-1 rounded bg-surface border border-line focus:border-navy/40 focus:outline-none text-[12.5px] placeholder:text-muted/60"
         />
       </td>
+      {origen === "asesoria" && (
+        <td className="px-3 py-3 text-right">
+          <button
+            onClick={() => onFirmar({ id: f.id, nombre: f.cliente })}
+            className="px-2.5 py-1 rounded-md bg-success-wash text-success text-[12px] font-bold hover:opacity-80 transition-opacity whitespace-nowrap"
+          >
+            Firmó contrato
+          </button>
+        </td>
+      )}
     </tr>
   );
 }
@@ -93,8 +104,10 @@ export default function TablaSeguimiento({
   vacio: string;
 }) {
   const porContactar = filas.filter((f) => !f.seguimientoEstado).length;
+  const [firmando, setFirmando] = useState<AsesoriaFirma | null>(null);
   return (
     <>
+      <FirmaContratoModal asesoria={firmando} onClose={() => setFirmando(null)} />
       <div className="grid grid-cols-2 gap-4 mb-6 max-w-md">
         <Card className="p-5">
           <p className="eyebrow text-muted">En la lista</p>
@@ -116,12 +129,13 @@ export default function TablaSeguimiento({
               <th className="eyebrow text-muted px-3 py-3">Estado</th>
               <th className="eyebrow text-muted px-3 py-3">Fecha llamada</th>
               <th className="eyebrow text-muted px-3 py-3">Nota</th>
+              {origen === "asesoria" && <th className="px-3 py-3" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
-            {filas.map((f) => <Fila key={f.id} f={f} origen={origen} />)}
+            {filas.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} />)}
             {filas.length === 0 && (
-              <tr><td colSpan={7} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
+              <tr><td colSpan={8} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
             )}
           </tbody>
         </table>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { resolverAbogado, resolverSucursal, asignarFolio } from "@/lib/services/resolvers";
 import { fechaFirmaSiAplica } from "@/lib/services/asesorias";
 import { requireSession, type Sesion } from "@/lib/guard";
+import { crearExpedienteAction, crearClienteRapidoAction } from "../expedientes/actions";
 import type { StatusAsesoria } from "@/lib/constants";
 
 export type FormAsesoria = {
@@ -174,6 +175,35 @@ export async function guardarSeguimientoAsesoriaLlamadaAction(
     },
   });
   revalidatePath("/asesorias/ya-asesoraron");
+}
+
+/**
+ * Deja listo el expediente donde se va a guardar el contrato de esta asesoría: reusa el que
+ * ya tenga ligado o lo crea con los datos de la hoja. Devuelve el id del expediente.
+ */
+export async function prepararExpedienteContratoAsesoriaAction(id: string): Promise<string> {
+  await requireSession();
+  const a = await prisma.asesoria.findUnique({
+    where: { id },
+    include: { abogado: { select: { nombre: true } }, sucursal: { select: { nombre: true } } },
+  });
+  if (!a) throw new Error("La asesoría ya no existe");
+  if (a.expedienteId) return a.expedienteId;
+
+  const cliente = await crearClienteRapidoAction(a.nombre ?? "Sin nombre", a.telefono ?? undefined);
+  const exp = await crearExpedienteAction({
+    clienteId: cliente.id,
+    clienteNombre: cliente.nombre,
+    numeroJudicial: "",
+    materia: "Otros",
+    etapa: "",
+    abogado: a.abogado?.nombre ?? "",
+    sucursal: a.sucursal?.nombre ?? "",
+    rolCliente: "",
+    cuantia: "",
+  });
+  await prisma.asesoria.update({ where: { id }, data: { expedienteId: exp.id, clienteId: cliente.id } });
+  return exp.id;
 }
 
 export async function borrarAsesoriaAction(id: string) {
