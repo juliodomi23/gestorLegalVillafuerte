@@ -257,7 +257,7 @@ export default function TablaSeguimiento({
               <th className="eyebrow text-muted px-3 py-3">Persona</th>
               <th className="eyebrow text-muted px-3 py-3">Sucursal</th>
               <th className="eyebrow text-muted px-3 py-3">Abogado</th>
-              <th className="eyebrow text-muted px-3 py-3">Llamó</th>
+              <th className="eyebrow text-muted px-3 py-3">Abogado que llamó</th>
               <th className="eyebrow text-muted px-3 py-3">Estado</th>
               <th className="eyebrow text-muted px-3 py-3">Fecha llamada</th>
               <th className="eyebrow text-muted px-3 py-3">Nota</th>
