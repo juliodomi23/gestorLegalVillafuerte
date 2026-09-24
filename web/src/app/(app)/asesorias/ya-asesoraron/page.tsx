@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { hoyDespacho } from "@/lib/fecha";
 import { prisma } from "@/lib/prisma";
 import { alcanceDe, porAbogado } from "@/lib/alcance";
 import { PageTitle } from "@/components/ui";
@@ -42,7 +43,7 @@ export default async function YaAsesoraronPage() {
         title="Ya asesoraron"
         subtitle="Tus asesorados que todavía no firman contrato (cada abogado ve los suyos). Al firmar salen solos de esta lista."
       />
-      <TablaSeguimiento filas={filas} origen="asesoria" encabezadoFecha="Asesoría" vacio="Nadie pendiente por ahora." filtrarPor="abogado" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} />
+      <TablaSeguimiento filas={filas} origen="asesoria" encabezadoFecha="Asesoría" vacio="Nadie pendiente por ahora." filtrarPor="abogado" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} hoy={hoyDespacho()} miNombre={session?.user?.name ?? ""} esAdmin={session?.user?.rol === "admin"} />
     </>
   );
 }

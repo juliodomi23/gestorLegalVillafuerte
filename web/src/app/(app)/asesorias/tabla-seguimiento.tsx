@@ -39,11 +39,17 @@ function Fila({
   origen,
   onFirmar,
   onAgendar,
+  hoy,
+  miNombre,
+  esAdmin,
 }: {
   f: FilaSeguimiento;
   origen: Origen;
   onFirmar: (a: AsesoriaFirma) => void;
   onAgendar: (f: FilaSeguimiento) => void;
+  hoy: string;
+  miNombre: string;
+  esAdmin: boolean;
 }) {
   const [estado, setEstado] = useState(f.seguimientoEstado);
   const [nota, setNota] = useState(f.seguimientoNota);
@@ -53,9 +59,15 @@ function Fila({
 
   function guardar(cambios: Partial<{ estado: string; nota: string; fecha: string }>) {
     const siguiente = { estado, nota, fecha, ...cambios };
+    // Sin fecha no hay bloqueo del día: al llamar se registra hoy.
+    if (!siguiente.fecha) { siguiente.fecha = hoy; setFecha(hoy); }
     const accion = origen === "cita" ? guardarSeguimientoCitaAction : guardarSeguimientoAsesoriaLlamadaAction;
     startTransition(async () => { setLlamo(await accion(f.id, siguiente)); });
   }
+
+  // Ya la llamó otra persona hoy: se bloquea el resto del día (igual que en Prospectos). Quien
+  // llamó y el admin sí pueden seguir editando; mañana se libera sola.
+  const bloqueada = !!llamo && fecha === hoy && llamo !== miNombre && !esAdmin;
 
   return (
     <tr className="hover:bg-paper/40 transition-colors">
@@ -72,6 +84,8 @@ function Fila({
       <td className="px-3 py-3">
         <select
           value={estado}
+          disabled={bloqueada}
+          title={bloqueada ? `Ya la llamó ${llamo} hoy` : undefined}
           onChange={(e) => {
             const nuevo = e.target.value;
             setEstado(nuevo);
@@ -87,6 +101,7 @@ function Fila({
         <input
           type="date"
           value={fecha}
+          disabled={bloqueada}
           onChange={(e) => { setFecha(e.target.value); guardar({ fecha: e.target.value }); }}
           className="px-2 py-1 rounded border border-line text-[12px] bg-transparent"
         />
@@ -95,6 +110,7 @@ function Fila({
         <input
           type="text"
           value={nota}
+          disabled={bloqueada}
           onChange={(e) => setNota(e.target.value)}
           onBlur={() => { if (nota !== f.seguimientoNota) guardar({ nota }); }}
           placeholder="Nota de la llamada…"
@@ -123,6 +139,9 @@ export default function TablaSeguimiento({
   filtrarPor,
   sucursales,
   abogados,
+  hoy,
+  miNombre,
+  esAdmin,
 }: {
   filas: FilaSeguimiento[];
   origen: Origen;
@@ -132,6 +151,9 @@ export default function TablaSeguimiento({
   filtrarPor?: "abogado" | "sucursal";
   sucursales: string[];
   abogados: string[];
+  hoy: string;
+  miNombre: string;
+  esAdmin: boolean;
 }) {
   const [filtro, setFiltro] = useState("");
   const opciones = filtrarPor ? [...new Set(filas.map((f) => f[filtrarPor]))].sort() : [];
@@ -228,7 +250,7 @@ export default function TablaSeguimiento({
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
-            {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} onAgendar={abrirModalCita} />)}
+            {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} onAgendar={abrirModalCita} hoy={hoy} miNombre={miNombre} esAdmin={esAdmin} />)}
             {visibles.length === 0 && (
               <tr><td colSpan={9} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
             )}

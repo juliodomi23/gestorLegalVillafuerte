@@ -1,3 +1,6 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { hoyDespacho } from "@/lib/fecha";
 import { prisma } from "@/lib/prisma";
 import { telefonoVisible } from "@/lib/services/envios";
 import { normalizarTelefono } from "@/lib/citas-reporte-regla";
@@ -8,6 +11,7 @@ const TZ = "America/Mexico_City";
 const DIAS = 45;
 
 export default async function NoAsistieronPage() {
+  const session = await getServerSession(authOptions);
   const [sucursalesDb, abogadosDb] = await Promise.all([
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
@@ -62,7 +66,7 @@ export default async function NoAsistieronPage() {
         title="No asistieron"
         subtitle={`Citas marcadas “No asistió” en los últimos ${DIAS} días. Lista general para todos: llámales y busquen reagendar la cita.`}
       />
-      <TablaSeguimiento filas={filas} origen="cita" encabezadoFecha="Cita" vacio="Nadie por ahora." filtrarPor="sucursal" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} />
+      <TablaSeguimiento filas={filas} origen="cita" encabezadoFecha="Cita" vacio="Nadie por ahora." filtrarPor="sucursal" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} hoy={hoyDespacho()} miNombre={session?.user?.name ?? ""} esAdmin={session?.user?.rol === "admin"} />
     </>
   );
 }
