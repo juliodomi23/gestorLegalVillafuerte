@@ -136,6 +136,17 @@ export async function marcarAgendoCitaPorConversacion(conversationId: string) {
   return actualizarEstadoProspecto(p.id, "agendo_cita");
 }
 
+// El nombre que el cliente dio en el chat (se guarda al registrar al prospecto, justo después de
+// que lo dice). Sirve para no confiar en el nombre que la IA repite más tarde al agendar.
+export async function nombreDeProspectoPorConversacion(conversationId: string): Promise<string | null> {
+  const p = await prisma.prospecto.findFirst({
+    where: { conversationId },
+    orderBy: { creadoEn: "desc" },
+    select: { nombre: true },
+  });
+  return p?.nombre ?? null;
+}
+
 export type ResumenAbogado = {
   abogadoId: string;
   nombre: string;
