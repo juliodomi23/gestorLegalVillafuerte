@@ -9,6 +9,11 @@ export default async function YaAsesoraronPage() {
   const session = await getServerSession(authOptions);
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
+  const [sucursalesDb, abogadosDb] = await Promise.all([
+    prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
+    prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+  ]);
+
   // Ya llegaron a su asesoría: los "Contrato firmado" salen solos porque solo entra "pendiente".
   const asesorias = await prisma.asesoria.findMany({
     where: { status: "pendiente", ...porAbogado(alcance) },
@@ -24,6 +29,7 @@ export default async function YaAsesoraronPage() {
     telefono: a.telefono ?? "",
     sucursal: a.sucursal?.nombre ?? "—",
     abogado: a.abogado?.nombre ?? "—",
+    llamo: a.seguimientoAbogado ?? "",
     seguimientoEstado: a.seguimientoEstado ?? "",
     seguimientoNota: a.seguimiento ?? "",
     seguimientoFecha: a.seguimientoFecha?.toISOString().slice(0, 10) ?? "",
@@ -36,7 +42,7 @@ export default async function YaAsesoraronPage() {
         title="Ya asesoraron"
         subtitle="Tus asesorados que todavía no firman contrato (cada abogado ve los suyos). Al firmar salen solos de esta lista."
       />
-      <TablaSeguimiento filas={filas} origen="asesoria" encabezadoFecha="Asesoría" vacio="Nadie pendiente por ahora." filtrarPor="abogado" />
+      <TablaSeguimiento filas={filas} origen="asesoria" encabezadoFecha="Asesoría" vacio="Nadie pendiente por ahora." filtrarPor="abogado" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} />
     </>
   );
 }

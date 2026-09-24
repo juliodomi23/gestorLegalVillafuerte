@@ -312,6 +312,7 @@ model Cita {
   seguimientoEstado String?   @map("seguimiento_estado") // no_contesto | llamar_despues | agendo_cita | descartado
   seguimientoNota   String?   @map("seguimiento_nota")
   seguimientoFecha  DateTime? @map("seguimiento_fecha") @db.Date
+  seguimientoAbogado String?  @map("seguimiento_abogado") // quién hizo la llamada
   creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   cliente    Cliente?    @relation(fields: [clienteId], references: [id])
@@ -352,6 +353,7 @@ model Asesoria {
   // Llamada de seguimiento (submenú "Ya asesoraron"); la nota es `seguimiento`. null = por contactar.
   seguimientoEstado String?   @map("seguimiento_estado") // no_contesto | llamar_despues | agendo_cita | descartado
   seguimientoFecha  DateTime? @map("seguimiento_fecha") @db.Date
+  seguimientoAbogado String?  @map("seguimiento_abogado") // quién hizo la llamada
   status        String   @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
   // Cuándo pasó a "contrato_firmado" (para el ranking de Prospectos). Se pone una sola
   // vez, la primera vez que llega a ese status; no se mueve si después se reasigna o

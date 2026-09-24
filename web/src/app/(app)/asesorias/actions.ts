@@ -142,7 +142,7 @@ export async function guardarSeguimientoCitaAction(
   id: string,
   seguimiento: { estado: string; nota: string; fecha: string }
 ) {
-  await requireSession();
+  const sesion = await requireSession();
   if (seguimiento.estado && !ESTADOS_SEGUIMIENTO_CITA.includes(seguimiento.estado)) {
     throw new Error("Estado inválido");
   }
@@ -152,9 +152,11 @@ export async function guardarSeguimientoCitaAction(
       seguimientoEstado: seguimiento.estado || null,
       seguimientoNota: seguimiento.nota.trim() || null,
       seguimientoFecha: seguimiento.fecha ? new Date(seguimiento.fecha) : null,
+      seguimientoAbogado: sesion.nombre,
     },
   });
   revalidatePath("/asesorias/no-asistieron");
+  return sesion.nombre;
 }
 
 /** Llamada de seguimiento a quien ya asesoró y no firma (submenú "Ya asesoraron"). */
@@ -162,7 +164,7 @@ export async function guardarSeguimientoAsesoriaLlamadaAction(
   id: string,
   seguimiento: { estado: string; nota: string; fecha: string }
 ) {
-  await requireSession();
+  const sesion = await requireSession();
   if (seguimiento.estado && !ESTADOS_SEGUIMIENTO_CITA.includes(seguimiento.estado)) {
     throw new Error("Estado inválido");
   }
@@ -172,9 +174,11 @@ export async function guardarSeguimientoAsesoriaLlamadaAction(
       seguimientoEstado: seguimiento.estado || null,
       seguimiento: seguimiento.nota.trim() || null,
       seguimientoFecha: seguimiento.fecha ? new Date(seguimiento.fecha) : null,
+      seguimientoAbogado: sesion.nombre,
     },
   });
   revalidatePath("/asesorias/ya-asesoraron");
+  return sesion.nombre;
 }
 
 /**

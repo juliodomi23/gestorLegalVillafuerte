@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Phone } from "lucide-react";
 import { Card, FilterSelect } from "@/components/ui";
+import { Modal, Field, Input, Select, Textarea } from "@/components/modal";
+import { crearCitaAction } from "../agenda/actions";
 import FirmaContratoModal, { type AsesoriaFirma } from "./firma-contrato-modal";
 import { guardarSeguimientoCitaAction, guardarSeguimientoAsesoriaLlamadaAction } from "./actions";
 
@@ -13,6 +16,7 @@ export type FilaSeguimiento = {
   telefono: string;
   sucursal: string;
   abogado: string;
+  llamo: string; // quién hizo la llamada de seguimiento
   seguimientoEstado: string;
   seguimientoNota: string;
   seguimientoFecha: string; // yyyy-mm-dd
@@ -28,16 +32,29 @@ const ESTADOS = [
   { value: "descartado", label: "Descartado", cls: "bg-danger-wash text-danger" },
 ];
 
-function Fila({ f, origen, onFirmar }: { f: FilaSeguimiento; origen: Origen; onFirmar: (a: AsesoriaFirma) => void }) {
+const CITA_VACIA = { fecha: "", hora: "", sucursal: "", abogado: "", asunto: "" };
+
+function Fila({
+  f,
+  origen,
+  onFirmar,
+  onAgendar,
+}: {
+  f: FilaSeguimiento;
+  origen: Origen;
+  onFirmar: (a: AsesoriaFirma) => void;
+  onAgendar: (f: FilaSeguimiento) => void;
+}) {
   const [estado, setEstado] = useState(f.seguimientoEstado);
   const [nota, setNota] = useState(f.seguimientoNota);
   const [fecha, setFecha] = useState(f.seguimientoFecha);
+  const [llamo, setLlamo] = useState(f.llamo);
   const [, startTransition] = useTransition();
 
   function guardar(cambios: Partial<{ estado: string; nota: string; fecha: string }>) {
     const siguiente = { estado, nota, fecha, ...cambios };
     const accion = origen === "cita" ? guardarSeguimientoCitaAction : guardarSeguimientoAsesoriaLlamadaAction;
-    startTransition(() => { accion(f.id, siguiente); });
+    startTransition(async () => { setLlamo(await accion(f.id, siguiente)); });
   }
 
   return (
@@ -51,10 +68,16 @@ function Fila({ f, origen, onFirmar }: { f: FilaSeguimiento; origen: Origen; onF
       </td>
       <td className="px-3 py-3 text-muted">{f.sucursal}</td>
       <td className="px-3 py-3 text-muted">{f.abogado}</td>
+      <td className="px-3 py-3 text-muted">{llamo || "—"}</td>
       <td className="px-3 py-3">
         <select
           value={estado}
-          onChange={(e) => { setEstado(e.target.value); guardar({ estado: e.target.value }); }}
+          onChange={(e) => {
+            const nuevo = e.target.value;
+            setEstado(nuevo);
+            guardar({ estado: nuevo });
+            if (nuevo === "agendo_cita" && estado !== "agendo_cita") onAgendar(f);
+          }}
           className={`px-2 py-1 rounded text-[11.5px] font-bold border-0 cursor-pointer ${ESTADOS.find((e) => e.value === estado)?.cls}`}
         >
           {ESTADOS.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
@@ -98,6 +121,8 @@ export default function TablaSeguimiento({
   encabezadoFecha,
   vacio,
   filtrarPor,
+  sucursales,
+  abogados,
 }: {
   filas: FilaSeguimiento[];
   origen: Origen;
@@ -105,15 +130,73 @@ export default function TablaSeguimiento({
   vacio: string;
   /** Muestra un filtro por esa columna (abogado o sucursal) cuando hay más de un valor. */
   filtrarPor?: "abogado" | "sucursal";
+  sucursales: string[];
+  abogados: string[];
 }) {
   const [filtro, setFiltro] = useState("");
   const opciones = filtrarPor ? [...new Set(filas.map((f) => f[filtrarPor]))].sort() : [];
   const visibles = filtro && filtrarPor ? filas.filter((f) => f[filtrarPor] === filtro) : filas;
   const porContactar = visibles.filter((f) => !f.seguimientoEstado).length;
   const [firmando, setFirmando] = useState<AsesoriaFirma | null>(null);
+  const router = useRouter();
+
+  // Al marcar "Agendó cita" se abre el mismo formulario que en Prospectos, para que la cita
+  // quede real en Agenda con fecha y hora.
+  const [citaDe, setCitaDe] = useState<FilaSeguimiento | null>(null);
+  const [citaForm, setCitaForm] = useState(CITA_VACIA);
+  const [citaGuardando, setCitaGuardando] = useState(false);
+
+  function abrirModalCita(f: FilaSeguimiento) {
+    setCitaForm({
+      ...CITA_VACIA,
+      sucursal: sucursales.includes(f.sucursal) ? f.sucursal : "",
+      abogado: abogados.includes(f.abogado) ? f.abogado : "",
+    });
+    setCitaDe(f);
+  }
+
+  async function guardarCita() {
+    if (!citaDe) return;
+    setCitaGuardando(true);
+    await crearCitaAction({
+      cliente: citaDe.cliente,
+      asunto: citaForm.asunto,
+      telefono: citaDe.telefono,
+      fecha: citaForm.fecha,
+      hora: citaForm.hora,
+      sucursal: citaForm.sucursal,
+      abogado: citaForm.abogado,
+    });
+    setCitaGuardando(false);
+    setCitaDe(null);
+    router.refresh();
+  }
   return (
     <>
       <FirmaContratoModal asesoria={firmando} onClose={() => setFirmando(null)} />
+      <Modal
+        open={!!citaDe}
+        onClose={() => setCitaDe(null)}
+        title={`Agendar cita — ${citaDe?.cliente ?? ""}`}
+        onSubmit={guardarCita}
+        submitLabel={citaGuardando ? "Guardando…" : "Agendar cita"}
+      >
+        <Field label="Fecha">
+          <Input type="date" value={citaForm.fecha} onChange={(e) => setCitaForm((c) => ({ ...c, fecha: e.target.value }))} required />
+        </Field>
+        <Field label="Hora">
+          <Input type="time" value={citaForm.hora} onChange={(e) => setCitaForm((c) => ({ ...c, hora: e.target.value }))} />
+        </Field>
+        <Field label="Sucursal">
+          <Select options={sucursales} value={citaForm.sucursal} onChange={(e) => setCitaForm((c) => ({ ...c, sucursal: e.target.value }))} />
+        </Field>
+        <Field label="Abogado">
+          <Select options={abogados} value={citaForm.abogado} onChange={(e) => setCitaForm((c) => ({ ...c, abogado: e.target.value }))} />
+        </Field>
+        <Field label="Motivo" full>
+          <Textarea value={citaForm.asunto} onChange={(e) => setCitaForm((c) => ({ ...c, asunto: e.target.value }))} />
+        </Field>
+      </Modal>
       <div className="grid grid-cols-2 gap-4 mb-6 max-w-md">
         <Card className="p-5">
           <p className="eyebrow text-muted">En la lista</p>
@@ -137,6 +220,7 @@ export default function TablaSeguimiento({
               <th className="eyebrow text-muted px-3 py-3">Persona</th>
               <th className="eyebrow text-muted px-3 py-3">Sucursal</th>
               <th className="eyebrow text-muted px-3 py-3">Abogado</th>
+              <th className="eyebrow text-muted px-3 py-3">Llamó</th>
               <th className="eyebrow text-muted px-3 py-3">Estado</th>
               <th className="eyebrow text-muted px-3 py-3">Fecha llamada</th>
               <th className="eyebrow text-muted px-3 py-3">Nota</th>
@@ -144,9 +228,9 @@ export default function TablaSeguimiento({
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
-            {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} />)}
+            {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} onAgendar={abrirModalCita} />)}
             {visibles.length === 0 && (
-              <tr><td colSpan={8} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
+              <tr><td colSpan={9} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
             )}
           </tbody>
         </table>

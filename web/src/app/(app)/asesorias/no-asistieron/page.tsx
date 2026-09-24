@@ -8,6 +8,10 @@ const TZ = "America/Mexico_City";
 const DIAS = 45;
 
 export default async function NoAsistieronPage() {
+  const [sucursalesDb, abogadosDb] = await Promise.all([
+    prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
+    prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+  ]);
   const desde = new Date(Date.now() - DIAS * 86_400_000);
   const [citas, asesorias] = await Promise.all([
     prisma.cita.findMany({
@@ -44,6 +48,7 @@ export default async function NoAsistieronPage() {
       telefono: telefonoVisible(c.cliente?.telefono ?? c.telefono, nombre),
       sucursal: c.sucursal?.nombre ?? "—",
       abogado: c.abogado?.nombre ?? "—",
+      llamo: c.seguimientoAbogado ?? "",
       seguimientoEstado: c.seguimientoEstado ?? "",
       seguimientoNota: c.seguimientoNota ?? "",
       seguimientoFecha: c.seguimientoFecha?.toISOString().slice(0, 10) ?? "",
@@ -57,7 +62,7 @@ export default async function NoAsistieronPage() {
         title="No asistieron"
         subtitle={`Citas marcadas “No asistió” en los últimos ${DIAS} días. Lista general para todos: llámales y busquen reagendar la cita.`}
       />
-      <TablaSeguimiento filas={filas} origen="cita" encabezadoFecha="Cita" vacio="Nadie por ahora." filtrarPor="sucursal" />
+      <TablaSeguimiento filas={filas} origen="cita" encabezadoFecha="Cita" vacio="Nadie por ahora." filtrarPor="sucursal" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} />
     </>
   );
 }
