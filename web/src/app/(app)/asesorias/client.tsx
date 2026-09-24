@@ -8,6 +8,7 @@ import { Hoja, Campo, Sel, Area, Seccion, Casillas } from "@/components/hoja";
 import { useConfirm } from "@/components/confirm";
 import type { StatusAsesoria } from "@/lib/constants";
 import { Modal, Field, Textarea } from "@/components/modal";
+import SeguimientoCitas, { type CitaSeguimientoView } from "./seguimiento-citas";
 import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction, cambiarStatusAsesoriaAction, guardarSeguimientoAsesoriaAction } from "./actions";
 
 export type AsesoriaView = {
@@ -154,6 +155,7 @@ function fechaAIso(f: string) {
 
 export default function AsesoriasClient({
   asesorias,
+  citasSeguimiento,
   sucursales,
   abogados,
   turnoTuxtla,
@@ -161,6 +163,7 @@ export default function AsesoriasClient({
   sesionRol,
 }: {
   asesorias: AsesoriaView[];
+  citasSeguimiento: CitaSeguimientoView[];
   sucursales: string[];
   abogados: string[];
   /** A quién le toca la siguiente asesoría de Tuxtla (sugerencia, se puede cambiar). */
@@ -349,6 +352,8 @@ export default function AsesoriasClient({
 
       {porDia.length === 0 && <Card className="p-10 text-center text-muted text-[14px]">Sin asesorías para esta sucursal.</Card>}
       {porDia.map(([fecha, rows]) => <DaySection key={fecha} fecha={fecha} rows={rows} onEdit={abrirEditar} onDelete={borrar} onSeguimiento={abrirSeguimiento} />)}
+
+      <SeguimientoCitas citas={citasSeguimiento} />
 
       <Modal
         open={!!seguimiento}

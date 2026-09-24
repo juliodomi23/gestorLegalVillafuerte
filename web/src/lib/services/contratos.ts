@@ -58,6 +58,8 @@ export type ContratoView = {
   abogado: string;
   revisionEstado: EstadoRevision;
   revisionNotas: string | null;
+  /** yyyy-mm-dd; solo el admin la captura (ver guardarProrrogaAction). */
+  prorrogaHasta: string | null;
   plan: {
     tipo: string;
     etiqueta: string;
@@ -129,6 +131,7 @@ export async function listarContratos(alcance: Alcance): Promise<ContratoView[]>
       abogado: d.expediente.abogadoResponsable?.nombre ?? "Sin asignar",
       revisionEstado: esEstadoRevision(d.revisionEstado ?? "") ? (d.revisionEstado as EstadoRevision) : "pendiente",
       revisionNotas: d.revisionNotas,
+      prorrogaHasta: d.prorrogaHasta ? d.prorrogaHasta.toISOString().slice(0, 10) : null,
       plan: p
         ? {
             tipo: p.tipo,
@@ -216,6 +219,13 @@ export async function guardarRevisionContrato(documentoId: string, estado: Estad
   await prisma.documento.update({
     where: { id: documentoId },
     data: { revisionEstado: estado, revisionNotas: notas },
+  });
+}
+
+export async function guardarProrrogaContrato(documentoId: string, fecha: string | null) {
+  await prisma.documento.update({
+    where: { id: documentoId },
+    data: { prorrogaHasta: fecha ? new Date(fecha) : null },
   });
 }
 

@@ -1,6 +1,7 @@
 import { autorizado, noAutorizado, ok, fail, leerBody } from "@/lib/api";
 import { crearExpediente } from "@/lib/services/expedientes";
 import { guardarPlanPago } from "@/lib/services/contratos";
+import { marcarFirmadaPorContrato } from "@/lib/services/asesorias";
 
 // El bot manda un contrato leído de WhatsApp: crea cliente + expediente (uno
 // nuevo por contrato, igual que si se diera de alta a mano) con el PDF ya
@@ -33,6 +34,8 @@ export async function POST(req: Request) {
       sucursal: d.sucursal,
       documento: { nombre: d.nombreArchivo, linkDrive: d.linkDrive, tipo: "contrato" },
     });
+
+    await marcarFirmadaPorContrato(exp.id).catch(() => {});
 
     let planCreado = false;
     const monto = Number(d.monto);

@@ -7,6 +7,7 @@ import {
   guardarPlanPago,
   esTipoPlan,
   guardarRevisionContrato,
+  guardarProrrogaContrato,
   esEstadoRevision,
   type DatosPlan,
 } from "@/lib/services/contratos";
@@ -62,6 +63,18 @@ export async function guardarPlanAction(form: {
     return { ok: true, eventoCreado: r.eventoCreado };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "No se pudo guardar el plan" };
+  }
+}
+
+// Prórroga de pago: solo el admin la captura.
+export async function guardarProrrogaAction(documentoId: string, fecha: string): Promise<ResultadoRevision> {
+  try {
+    await requireAdmin();
+    await guardarProrrogaContrato(documentoId, fecha || null);
+    revalidatePath("/contratos");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "No se pudo guardar la prórroga" };
   }
 }
 

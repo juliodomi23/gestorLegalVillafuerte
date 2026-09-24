@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
-import { guardarPlanAction, guardarRevisionAction } from "./actions";
+import { guardarPlanAction, guardarRevisionAction, guardarProrrogaAction } from "./actions";
 import { crearExpedienteAction, crearClienteRapidoAction } from "@/app/(app)/expedientes/actions";
 import { ETIQUETA_PLAN, ETIQUETA_REVISION, type ContratoView, type EstadoRevision } from "@/lib/services/contratos";
 import { MATERIAS, ETAPAS } from "@/lib/constants";
@@ -274,6 +274,7 @@ export default function ContratosClient({
               <th className="eyebrow text-muted px-3 py-3">Plan</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Total</th>
               <th className="eyebrow text-muted px-3 py-3">Próximo pago</th>
+              {esAdmin && <th className="eyebrow text-muted px-3 py-3">Prórroga hasta</th>}
               <th className="eyebrow text-muted px-3 py-3">Abogado</th>
               {esAdmin && <th className="eyebrow text-muted px-3 py-3">Revisión</th>}
               <th className="eyebrow text-muted px-3 py-3 text-right">Acciones</th>
@@ -291,7 +292,7 @@ export default function ContratosClient({
             ))}
             {contratos.length === 0 && (
               <tr>
-                <td colSpan={esAdmin ? 10 : 8} className="px-5 py-10 text-center text-muted">
+                <td colSpan={esAdmin ? 11 : 8} className="px-5 py-10 text-center text-muted">
                   Todavía no hay contratos subidos.
                 </td>
               </tr>
@@ -505,11 +506,13 @@ function FilaContrato({
 }) {
   const [expandido, setExpandido] = useState(false);
   const [estado, setEstado] = useState(c.revisionEstado);
+  const [prorroga, setProrroga] = useState(c.prorrogaHasta ?? "");
   const [notas, setNotas] = useState(c.revisionNotas ?? "");
   const [notasGuardadas, setNotasGuardadas] = useState(c.revisionNotas ?? "");
   const notaEnfocada = useRef(false);
 
   useEffect(() => { setEstado(c.revisionEstado); }, [c.revisionEstado]);
+  useEffect(() => { setProrroga(c.prorrogaHasta ?? ""); }, [c.prorrogaHasta]);
   useEffect(() => {
     if (notaEnfocada.current) return;
     setNotas(c.revisionNotas ?? "");
@@ -575,6 +578,17 @@ function FilaContrato({
             "—"
           )}
         </td>
+        {esAdmin && (
+          <td className="px-3 py-3">
+            <input
+              type="date"
+              value={prorroga}
+              onChange={(e) => { setProrroga(e.target.value); guardarProrrogaAction(c.documentoId, e.target.value); }}
+              title="Hasta cuándo se le dio prórroga de pago"
+              className="px-2 py-1 rounded border border-line text-[12px] bg-transparent"
+            />
+          </td>
+        )}
         <td className="px-3 py-3 text-muted">{c.abogado}</td>
         {esAdmin && (
           <td className="px-3 py-3">
@@ -615,7 +629,7 @@ function FilaContrato({
       {esAdmin && expandido && (
         <tr className="bg-paper/40">
           <td />
-          <td colSpan={9} className="px-4 py-2">
+          <td colSpan={10} className="px-4 py-2">
             <input
               type="text"
               value={notas}

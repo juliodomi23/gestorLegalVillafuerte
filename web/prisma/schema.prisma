@@ -307,6 +307,11 @@ model Cita {
   estado         String   @default("agendada") // agendada | confirmada | asesorada | cancelada | no_show
   origen         String   @default("manual") // bot_externo | manual
   googleEventId  String?  @map("google_event_id")
+  // Seguimiento de llamada a quien no asistió / ya se asesoró (pantalla Asesorías).
+  // null = todavía por contactar.
+  seguimientoEstado String?   @map("seguimiento_estado") // no_contesto | llamar_despues | agendo_cita | descartado
+  seguimientoNota   String?   @map("seguimiento_nota")
+  seguimientoFecha  DateTime? @map("seguimiento_fecha") @db.Date
   creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   cliente    Cliente?    @relation(fields: [clienteId], references: [id])
@@ -438,6 +443,8 @@ model Documento {
   // Checklist de revisión del Lic. (solo admin): null = todavía pendiente de revisar.
   revisionEstado String? @map("revision_estado") // pendiente | aprobado | corregir
   revisionNotas  String? @map("revision_notas")
+  // Solo admin: hasta cuándo se le dio prórroga de pago a este contrato.
+  prorrogaHasta  DateTime? @map("prorroga_hasta") @db.Date
 
   expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   actuacion  Actuacion? @relation(fields: [actuacionId], references: [id], onDelete: SetNull)

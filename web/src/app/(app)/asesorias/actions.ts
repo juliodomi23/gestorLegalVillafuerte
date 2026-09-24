@@ -134,6 +134,28 @@ export async function cambiarStatusAsesoriaAction(id: string, status: StatusAses
   revalidatePath("/asesorias");
 }
 
+const ESTADOS_SEGUIMIENTO_CITA = ["no_contesto", "llamar_despues", "agendo_cita", "descartado"];
+
+/** Llamada de seguimiento a quien no asistió o ya se asesoró (sección de citas en Asesorías). */
+export async function guardarSeguimientoCitaAction(
+  id: string,
+  seguimiento: { estado: string; nota: string; fecha: string }
+) {
+  await requireSession();
+  if (seguimiento.estado && !ESTADOS_SEGUIMIENTO_CITA.includes(seguimiento.estado)) {
+    throw new Error("Estado inválido");
+  }
+  await prisma.cita.update({
+    where: { id },
+    data: {
+      seguimientoEstado: seguimiento.estado || null,
+      seguimientoNota: seguimiento.nota.trim() || null,
+      seguimientoFecha: seguimiento.fecha ? new Date(seguimiento.fecha) : null,
+    },
+  });
+  revalidatePath("/asesorias");
+}
+
 export async function borrarAsesoriaAction(id: string) {
   await requireSession();
   await prisma.asesoria.delete({ where: { id } });

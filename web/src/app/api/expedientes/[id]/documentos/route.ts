@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { tieneAccesoExpediente } from "@/lib/alcance";
+import { marcarFirmadaPorContrato } from "@/lib/services/asesorias";
 
 const UPLOADS_DIR = join(process.cwd(), "uploads");
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024; // un PDF legal no debería pasar de esto
@@ -66,6 +67,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       subidoPor: session?.user?.id ?? null,
     },
   });
+
+  // Subir un contrato firmado cierra la asesoría de esa persona (ver Asesorías).
+  if (tipo === "contrato") await marcarFirmadaPorContrato(params.id).catch(() => {});
 
   return NextResponse.json({
     id: doc.id,
