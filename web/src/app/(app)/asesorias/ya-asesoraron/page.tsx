@@ -34,9 +34,9 @@ export default async function YaAsesoraronPage() {
       <PageTitle
         eyebrow="Asesorías"
         title="Ya asesoraron"
-        subtitle="Llegaron a su asesoría y todavía no firman contrato. Al firmar salen solos de esta lista."
+        subtitle="Tus asesorados que todavía no firman contrato (cada abogado ve los suyos). Al firmar salen solos de esta lista."
       />
-      <TablaSeguimiento filas={filas} origen="asesoria" encabezadoFecha="Asesoría" vacio="Nadie pendiente por ahora." />
+      <TablaSeguimiento filas={filas} origen="asesoria" encabezadoFecha="Asesoría" vacio="Nadie pendiente por ahora." filtrarPor="abogado" />
     </>
   );
 }

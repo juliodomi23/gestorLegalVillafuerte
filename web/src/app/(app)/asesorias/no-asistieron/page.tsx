@@ -1,7 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { alcanceDe, porAgenda } from "@/lib/alcance";
 import { telefonoVisible } from "@/lib/services/envios";
 import { normalizarTelefono } from "@/lib/citas-reporte-regla";
 import { PageTitle } from "@/components/ui";
@@ -11,13 +8,12 @@ const TZ = "America/Mexico_City";
 const DIAS = 45;
 
 export default async function NoAsistieronPage() {
-  const session = await getServerSession(authOptions);
-  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
-
   const desde = new Date(Date.now() - DIAS * 86_400_000);
   const [citas, asesorias] = await Promise.all([
     prisma.cita.findMany({
-      where: { estado: "no_show", fechaHora: { gte: desde }, ...porAgenda(alcance) },
+      // Sin filtro por abogado/sucursal a propósito: es una lista general para que cualquiera
+      // llame y busque reagendar.
+      where: { estado: "no_show", fechaHora: { gte: desde } },
       include: { cliente: true, abogado: true, sucursal: true },
       orderBy: { fechaHora: "desc" },
       take: 300,
@@ -59,9 +55,9 @@ export default async function NoAsistieronPage() {
       <PageTitle
         eyebrow="Asesorías"
         title="No asistieron"
-        subtitle={`Citas marcadas “No asistió” en los últimos ${DIAS} días. Llámales para reagendar.`}
+        subtitle={`Citas marcadas “No asistió” en los últimos ${DIAS} días. Lista general para todos: llámales y busquen reagendar la cita.`}
       />
-      <TablaSeguimiento filas={filas} origen="cita" encabezadoFecha="Cita" vacio="Nadie por ahora." />
+      <TablaSeguimiento filas={filas} origen="cita" encabezadoFecha="Cita" vacio="Nadie por ahora." filtrarPor="sucursal" />
     </>
   );
 }

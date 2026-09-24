@@ -67,7 +67,7 @@ export default function FirmaContratoModal({
     <Modal
       open={!!asesoria}
       onClose={cerrar}
-      title={`Contrato de ${asesoria?.nombre ?? ""}`}
+      title={`Nuevo contrato de ${asesoria?.nombre ?? ""}`}
       onSubmit={subir}
       submitLabel={guardando ? "Guardando…" : "Subir contrato y marcar firmado"}
     >

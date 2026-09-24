@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Phone } from "lucide-react";
-import { Card } from "@/components/ui";
+import { Card, FilterSelect } from "@/components/ui";
 import FirmaContratoModal, { type AsesoriaFirma } from "./firma-contrato-modal";
 import { guardarSeguimientoCitaAction, guardarSeguimientoAsesoriaLlamadaAction } from "./actions";
 
@@ -84,7 +84,7 @@ function Fila({ f, origen, onFirmar }: { f: FilaSeguimiento; origen: Origen; onF
             onClick={() => onFirmar({ id: f.id, nombre: f.cliente })}
             className="px-2.5 py-1 rounded-md bg-success-wash text-success text-[12px] font-bold hover:opacity-80 transition-opacity whitespace-nowrap"
           >
-            Firmó contrato
+            + Nuevo contrato
           </button>
         </td>
       )}
@@ -97,13 +97,19 @@ export default function TablaSeguimiento({
   origen,
   encabezadoFecha,
   vacio,
+  filtrarPor,
 }: {
   filas: FilaSeguimiento[];
   origen: Origen;
   encabezadoFecha: string;
   vacio: string;
+  /** Muestra un filtro por esa columna (abogado o sucursal) cuando hay más de un valor. */
+  filtrarPor?: "abogado" | "sucursal";
 }) {
-  const porContactar = filas.filter((f) => !f.seguimientoEstado).length;
+  const [filtro, setFiltro] = useState("");
+  const opciones = filtrarPor ? [...new Set(filas.map((f) => f[filtrarPor]))].sort() : [];
+  const visibles = filtro && filtrarPor ? filas.filter((f) => f[filtrarPor] === filtro) : filas;
+  const porContactar = visibles.filter((f) => !f.seguimientoEstado).length;
   const [firmando, setFirmando] = useState<AsesoriaFirma | null>(null);
   return (
     <>
@@ -111,13 +117,18 @@ export default function TablaSeguimiento({
       <div className="grid grid-cols-2 gap-4 mb-6 max-w-md">
         <Card className="p-5">
           <p className="eyebrow text-muted">En la lista</p>
-          <p className="num text-[34px] font-semibold leading-none mt-3 text-ink">{filas.length}</p>
+          <p className="num text-[34px] font-semibold leading-none mt-3 text-ink">{visibles.length}</p>
         </Card>
         <Card className="p-5">
           <p className="eyebrow text-muted">Por contactar</p>
           <p className="num text-[34px] font-semibold leading-none mt-3 text-amber">{porContactar}</p>
         </Card>
       </div>
+      {filtrarPor && opciones.length > 1 && (
+        <div className="mb-4">
+          <FilterSelect label={filtrarPor === "abogado" ? "Abogado" : "Sucursal"} value={filtro} onChange={setFiltro} options={opciones} />
+        </div>
+      )}
       <Card className="overflow-x-auto">
         <table className="w-full min-w-[900px] text-[13px]">
           <thead>
@@ -133,8 +144,8 @@ export default function TablaSeguimiento({
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
-            {filas.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} />)}
-            {filas.length === 0 && (
+            {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} />)}
+            {visibles.length === 0 && (
               <tr><td colSpan={8} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
             )}
           </tbody>
