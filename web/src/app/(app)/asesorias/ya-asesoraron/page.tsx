@@ -2,13 +2,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { hoyDespacho } from "@/lib/fecha";
 import { prisma } from "@/lib/prisma";
-import { alcanceDe, porAbogado } from "@/lib/alcance";
 import { PageTitle } from "@/components/ui";
 import TablaSeguimiento, { type FilaSeguimiento } from "../tabla-seguimiento";
 
 export default async function YaAsesoraronPage() {
   const session = await getServerSession(authOptions);
-  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
   const [sucursalesDb, abogadosDb] = await Promise.all([
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
@@ -17,7 +15,7 @@ export default async function YaAsesoraronPage() {
 
   // Ya llegaron a su asesoría: los "Contrato firmado" salen solos porque solo entra "pendiente".
   const asesorias = await prisma.asesoria.findMany({
-    where: { status: "pendiente", ...porAbogado(alcance) },
+    where: { status: "pendiente" },
     include: { sucursal: true, abogado: true },
     orderBy: { fecha: "desc" },
     take: 300,
@@ -41,7 +39,7 @@ export default async function YaAsesoraronPage() {
       <PageTitle
         eyebrow="Asesorías"
         title="Ya asesoraron"
-        subtitle="Tus asesorados que todavía no firman contrato (cada abogado ve los suyos). Al firmar salen solos de esta lista."
+        subtitle="Asesorados que todavía no firman contrato (todos los abogados ven la lista completa). Al firmar salen solos de esta lista."
       />
       <TablaSeguimiento filas={filas} origen="asesoria" encabezadoFecha="Asesoría" vacio="Nadie pendiente por ahora." filtrarPor="abogado" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} hoy={hoyDespacho()} miNombre={session?.user?.name ?? ""} esAdmin={session?.user?.rol === "admin"} />
     </>
