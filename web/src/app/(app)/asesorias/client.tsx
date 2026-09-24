@@ -324,6 +324,8 @@ export default function AsesoriasClient({
         ))}
       </div>
 
+      <SeguimientoCitas citas={citasSeguimiento} />
+
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar prospecto o asunto…" />
         <FilterSelect label="Abogado" value={fAbogado} onChange={setFAbogado} options={abogados} />
@@ -352,8 +354,6 @@ export default function AsesoriasClient({
 
       {porDia.length === 0 && <Card className="p-10 text-center text-muted text-[14px]">Sin asesorías para esta sucursal.</Card>}
       {porDia.map(([fecha, rows]) => <DaySection key={fecha} fecha={fecha} rows={rows} onEdit={abrirEditar} onDelete={borrar} onSeguimiento={abrirSeguimiento} />)}
-
-      <SeguimientoCitas citas={citasSeguimiento} />
 
       <Modal
         open={!!seguimiento}

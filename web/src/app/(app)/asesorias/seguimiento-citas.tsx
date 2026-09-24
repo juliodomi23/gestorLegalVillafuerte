@@ -119,7 +119,7 @@ function Grupo({ titulo, ayuda, citas }: { titulo: string; ayuda: string; citas:
 
 export default function SeguimientoCitas({ citas }: { citas: CitaSeguimientoView[] }) {
   return (
-    <div className="mt-8">
+    <div className="mb-6">
       <h2 className="font-serif text-[17px] text-ink mb-3">Seguimiento de citas</h2>
       <Grupo
         titulo="No asistieron"
