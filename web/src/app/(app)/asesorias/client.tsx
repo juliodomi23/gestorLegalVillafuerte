@@ -8,7 +8,6 @@ import { Hoja, Campo, Sel, Area, Seccion, Casillas } from "@/components/hoja";
 import { useConfirm } from "@/components/confirm";
 import type { StatusAsesoria } from "@/lib/constants";
 import { Modal, Field, Textarea } from "@/components/modal";
-import SeguimientoCitas, { type CitaSeguimientoView } from "./seguimiento-citas";
 import { crearAsesoriaAction, editarAsesoriaAction, borrarAsesoriaAction, cambiarStatusAsesoriaAction, guardarSeguimientoAsesoriaAction } from "./actions";
 
 export type AsesoriaView = {
@@ -155,7 +154,6 @@ function fechaAIso(f: string) {
 
 export default function AsesoriasClient({
   asesorias,
-  citasSeguimiento,
   sucursales,
   abogados,
   turnoTuxtla,
@@ -163,7 +161,6 @@ export default function AsesoriasClient({
   sesionRol,
 }: {
   asesorias: AsesoriaView[];
-  citasSeguimiento: CitaSeguimientoView[];
   sucursales: string[];
   abogados: string[];
   /** A quién le toca la siguiente asesoría de Tuxtla (sugerencia, se puede cambiar). */
@@ -323,8 +320,6 @@ export default function AsesoriasClient({
           </Card>
         ))}
       </div>
-
-      <SeguimientoCitas citas={citasSeguimiento} />
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar prospecto o asunto…" />

@@ -2,22 +2,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AsesoriasClient, { type AsesoriaView } from "./client";
-import type { CitaSeguimientoView } from "./seguimiento-citas";
 import type { StatusAsesoria } from "@/lib/constants";
-import { alcanceDe, porAbogado, porAgenda } from "@/lib/alcance";
+import { alcanceDe, porAbogado } from "@/lib/alcance";
 import { abogadoEnTurnoTuxtla } from "@/lib/services/resolvers";
-import { clavesFirmadas } from "@/lib/services/asesorias";
-import { telefonoVisible } from "@/lib/services/envios";
-import { normalizarNombre } from "@/lib/citas-reporte-regla";
-
-const TZ = "America/Mexico_City";
-const DIAS_SEGUIMIENTO_CITAS = 45;
 
 export default async function AsesoriasPage() {
   const session = await getServerSession(authOptions);
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
 
-  const [rows, sucursalesDb, abogadosDb, citasRows, firmadas] = await Promise.all([
+  const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.asesoria.findMany({
       where: porAbogado(alcance),
       include: { sucursal: true, abogado: true },
@@ -26,42 +19,7 @@ export default async function AsesoriasPage() {
     }),
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
-    prisma.cita.findMany({
-      where: {
-        estado: { in: ["no_show", "asesorada"] },
-        fechaHora: { gte: new Date(Date.now() - DIAS_SEGUIMIENTO_CITAS * 86_400_000) },
-        ...porAgenda(alcance),
-      },
-      include: { cliente: true, abogado: true, sucursal: true },
-      orderBy: { fechaHora: "desc" },
-      take: 300,
-    }),
-    clavesFirmadas(),
   ]);
-
-  // Quien ya firmó contrato deja de necesitar seguimiento (solo aplica a los que sí llegaron).
-  const citasSeguimiento: CitaSeguimientoView[] = citasRows
-    .map((c) => {
-      const nombre = c.cliente?.nombre ?? c.clienteNombre ?? "";
-      return { c, nombre, telefono: telefonoVisible(c.cliente?.telefono ?? c.telefono, nombre) };
-    })
-    .filter(
-      ({ c, nombre, telefono }) =>
-        c.estado !== "asesorada" ||
-        !(firmadas.has(`tel:${telefono}`) || firmadas.has(`nom:${normalizarNombre(nombre)}`))
-    )
-    .map(({ c, nombre, telefono }) => ({
-      id: c.id,
-      fecha: c.fechaHora.toLocaleDateString("es-MX", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }),
-      cliente: nombre || "—",
-      telefono,
-      sucursal: c.sucursal?.nombre ?? "—",
-      abogado: c.abogado?.nombre ?? "—",
-      estado: c.estado as "no_show" | "asesorada",
-      seguimientoEstado: c.seguimientoEstado ?? "",
-      seguimientoNota: c.seguimientoNota ?? "",
-      seguimientoFecha: c.seguimientoFecha?.toISOString().slice(0, 10) ?? "",
-    }));
 
   const asesorias: AsesoriaView[] = rows.map((a) => {
     const f = a.fecha instanceof Date ? a.fecha : new Date(a.fecha);
@@ -111,7 +69,6 @@ export default async function AsesoriasPage() {
   return (
     <AsesoriasClient
       asesorias={asesorias}
-      citasSeguimiento={citasSeguimiento}
       sucursales={sucursales}
       abogados={abogados}
       turnoTuxtla={turnoTuxtla}

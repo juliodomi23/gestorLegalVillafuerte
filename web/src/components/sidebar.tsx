@@ -33,6 +33,8 @@ type Item = {
   label: string;
   icon: LucideIcon;
   soloAdmin?: boolean;
+  // Entradas anidadas bajo este item (se pintan indentadas).
+  sub?: { href: string; label: string }[];
   // Se muestra solo a quien tiene el permiso de Productividad (admins incluidos).
   soloProductividad?: boolean;
 };
@@ -53,7 +55,15 @@ const grupos: { titulo: string; items: Item[] }[] = [
     items: [
       { href: "/clientes", label: "Clientes", icon: Users },
       { href: "/prospectos", label: "Prospectos", icon: UserSearch },
-      { href: "/asesorias", label: "Asesorías", icon: ClipboardList },
+      {
+        href: "/asesorias",
+        label: "Asesorías",
+        icon: ClipboardList,
+        sub: [
+          { href: "/asesorias/no-asistieron", label: "No asistieron" },
+          { href: "/asesorias/ya-asesoraron", label: "Ya asesoraron" },
+        ],
+      },
       { href: "/seguimientos", label: "Seguimientos", icon: PhoneCall },
       { href: "/contratos", label: "Contratos", icon: FileSignature },
     ],
@@ -127,21 +137,37 @@ export function Sidebar({
           return (
             <div key={g.titulo} className="mb-2">
               <p className="eyebrow text-white/30 px-5 mb-2 mt-3">{g.titulo}</p>
-              {items.map(({ href, label, icon: Icon }) => {
-                const activo = pathname === href || pathname.startsWith(href + "/");
+              {items.map(({ href, label, icon: Icon, sub }) => {
+                // Con submenú, el padre solo se ilumina en su propia página.
+                const activo = sub ? pathname === href : pathname === href || pathname.startsWith(href + "/");
                 return (
-                  <Link
-                    key={href}
-                    href={href}
-                    data-tour={`nav-${href.slice(1)}`}
-                    onClick={onClose}
-                    className={`flex items-center gap-3 px-5 py-2.5 border-l-[3px] transition-colors ${
-                      activo ? "text-white bg-white/[.06] border-amber" : "border-transparent hover:bg-white/[.04]"
-                    }`}
-                  >
-                    <Icon size={18} strokeWidth={1.75} />
-                    {label}
-                  </Link>
+                  <div key={href}>
+                    <Link
+                      href={href}
+                      data-tour={`nav-${href.slice(1)}`}
+                      onClick={onClose}
+                      className={`flex items-center gap-3 px-5 py-2.5 border-l-[3px] transition-colors ${
+                        activo ? "text-white bg-white/[.06] border-amber" : "border-transparent hover:bg-white/[.04]"
+                      }`}
+                    >
+                      <Icon size={18} strokeWidth={1.75} />
+                      {label}
+                    </Link>
+                    {sub?.map((s) => (
+                      <Link
+                        key={s.href}
+                        href={s.href}
+                        onClick={onClose}
+                        className={`block pl-[52px] pr-5 py-1.5 text-[13px] border-l-[3px] transition-colors ${
+                          pathname === s.href
+                            ? "text-white bg-white/[.06] border-amber"
+                            : "text-white/60 border-transparent hover:bg-white/[.04] hover:text-white"
+                        }`}
+                      >
+                        {s.label}
+                      </Link>
+                    ))}
+                  </div>
                 );
               })}
             </div>

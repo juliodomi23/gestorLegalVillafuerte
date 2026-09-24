@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { resolverSucursal, resolverAbogado, asignarFolio } from "./resolvers";
 import { hoyDespacho } from "@/lib/fecha";
 import type { Prisma } from "@prisma/client";
-import { normalizarTelefono, normalizarNombre } from "@/lib/citas-reporte-regla";
+import { normalizarTelefono } from "@/lib/citas-reporte-regla";
 
 // Se pone la primera vez que el status llega a "contrato_firmado"; si ya tenía fecha
 // (o el status nuevo es otro) se deja igual, para no perder el día real de la firma
@@ -155,24 +155,6 @@ export async function registrarAsesoria(d: DatosAsesoria) {
       origen: d.origen ?? "whatsapp",
     },
   });
-}
-
-// Claves (teléfono de 10 dígitos y nombre normalizado) de quienes ya firmaron contrato,
-// para sacarlos del seguimiento de citas: una cita del bot no trae clienteId, solo
-// nombre/teléfono, así que el cruce con Asesorías tiene que ser por esos datos.
-export async function clavesFirmadas(): Promise<Set<string>> {
-  const firmadas = await prisma.asesoria.findMany({
-    where: { status: "contrato_firmado" },
-    select: { telefono: true, nombre: true },
-  });
-  const claves = new Set<string>();
-  for (const a of firmadas) {
-    const tel = normalizarTelefono(a.telefono);
-    if (tel.length === 10) claves.add(`tel:${tel}`);
-    const nombre = normalizarNombre(a.nombre);
-    if (nombre) claves.add(`nom:${nombre}`);
-  }
-  return claves;
 }
 
 // Al subir un contrato, la asesoría pendiente de esa persona pasa sola a "contrato_firmado".

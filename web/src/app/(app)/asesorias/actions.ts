@@ -153,7 +153,27 @@ export async function guardarSeguimientoCitaAction(
       seguimientoFecha: seguimiento.fecha ? new Date(seguimiento.fecha) : null,
     },
   });
-  revalidatePath("/asesorias");
+  revalidatePath("/asesorias/no-asistieron");
+}
+
+/** Llamada de seguimiento a quien ya asesoró y no firma (submenú "Ya asesoraron"). */
+export async function guardarSeguimientoAsesoriaLlamadaAction(
+  id: string,
+  seguimiento: { estado: string; nota: string; fecha: string }
+) {
+  await requireSession();
+  if (seguimiento.estado && !ESTADOS_SEGUIMIENTO_CITA.includes(seguimiento.estado)) {
+    throw new Error("Estado inválido");
+  }
+  await prisma.asesoria.update({
+    where: { id },
+    data: {
+      seguimientoEstado: seguimiento.estado || null,
+      seguimiento: seguimiento.nota.trim() || null,
+      seguimientoFecha: seguimiento.fecha ? new Date(seguimiento.fecha) : null,
+    },
+  });
+  revalidatePath("/asesorias/ya-asesoraron");
 }
 
 export async function borrarAsesoriaAction(id: string) {

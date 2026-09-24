@@ -349,6 +349,9 @@ model Asesoria {
   monto        Decimal? @db.Decimal(14, 2)
   presupuestoTexto      String?  @map("presupuesto_texto")
   seguimiento  String?
+  // Llamada de seguimiento (submenú "Ya asesoraron"); la nota es `seguimiento`. null = por contactar.
+  seguimientoEstado String?   @map("seguimiento_estado") // no_contesto | llamar_despues | agendo_cita | descartado
+  seguimientoFecha  DateTime? @map("seguimiento_fecha") @db.Date
   status        String   @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
   // Cuándo pasó a "contrato_firmado" (para el ranking de Prospectos). Se pone una sola
   // vez, la primera vez que llega a ese status; no se mueve si después se reasigna o
