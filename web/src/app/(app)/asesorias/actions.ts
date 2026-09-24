@@ -137,10 +137,19 @@ export async function cambiarStatusAsesoriaAction(id: string, status: StatusAses
 
 const ESTADOS_SEGUIMIENTO_CITA = ["no_contesto", "llamar_despues", "agendo_cita", "descartado"];
 
+type SeguimientoLlamada = { estado: string; nota: string; fecha: string; llamo?: string };
+
+// Quién hizo la llamada: cada quien queda con su nombre de perfil; solo el admin puede
+// registrarla a nombre de otro abogado (o dejarla vacía, con "").
+function quienLlamo(sesion: Sesion, pedido: string | undefined) {
+  if (sesion.rol !== "admin") return sesion.nombre;
+  return pedido === undefined ? sesion.nombre : pedido || null;
+}
+
 /** Llamada de seguimiento a quien no asistió o ya se asesoró (sección de citas en Asesorías). */
 export async function guardarSeguimientoCitaAction(
   id: string,
-  seguimiento: { estado: string; nota: string; fecha: string }
+  seguimiento: SeguimientoLlamada
 ) {
   const sesion = await requireSession();
   if (seguimiento.estado && !ESTADOS_SEGUIMIENTO_CITA.includes(seguimiento.estado)) {
@@ -152,17 +161,17 @@ export async function guardarSeguimientoCitaAction(
       seguimientoEstado: seguimiento.estado || null,
       seguimientoNota: seguimiento.nota.trim() || null,
       seguimientoFecha: seguimiento.fecha ? new Date(seguimiento.fecha) : null,
-      seguimientoAbogado: sesion.nombre,
+      seguimientoAbogado: quienLlamo(sesion, seguimiento.llamo),
     },
   });
   revalidatePath("/asesorias/no-asistieron");
-  return sesion.nombre;
+  return quienLlamo(sesion, seguimiento.llamo) ?? "";
 }
 
 /** Llamada de seguimiento a quien ya asesoró y no firma (submenú "Ya asesoraron"). */
 export async function guardarSeguimientoAsesoriaLlamadaAction(
   id: string,
-  seguimiento: { estado: string; nota: string; fecha: string }
+  seguimiento: SeguimientoLlamada
 ) {
   const sesion = await requireSession();
   if (seguimiento.estado && !ESTADOS_SEGUIMIENTO_CITA.includes(seguimiento.estado)) {
@@ -174,11 +183,11 @@ export async function guardarSeguimientoAsesoriaLlamadaAction(
       seguimientoEstado: seguimiento.estado || null,
       seguimiento: seguimiento.nota.trim() || null,
       seguimientoFecha: seguimiento.fecha ? new Date(seguimiento.fecha) : null,
-      seguimientoAbogado: sesion.nombre,
+      seguimientoAbogado: quienLlamo(sesion, seguimiento.llamo),
     },
   });
   revalidatePath("/asesorias/ya-asesoraron");
-  return sesion.nombre;
+  return quienLlamo(sesion, seguimiento.llamo) ?? "";
 }
 
 /**

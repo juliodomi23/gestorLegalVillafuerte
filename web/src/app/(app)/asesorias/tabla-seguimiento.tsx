@@ -42,6 +42,7 @@ function Fila({
   hoy,
   miNombre,
   esAdmin,
+  abogados,
 }: {
   f: FilaSeguimiento;
   origen: Origen;
@@ -50,6 +51,7 @@ function Fila({
   hoy: string;
   miNombre: string;
   esAdmin: boolean;
+  abogados: string[];
 }) {
   const [estado, setEstado] = useState(f.seguimientoEstado);
   const [nota, setNota] = useState(f.seguimientoNota);
@@ -57,8 +59,8 @@ function Fila({
   const [llamo, setLlamo] = useState(f.llamo);
   const [, startTransition] = useTransition();
 
-  function guardar(cambios: Partial<{ estado: string; nota: string; fecha: string }>) {
-    const siguiente = { estado, nota, fecha, ...cambios };
+  function guardar(cambios: Partial<{ estado: string; nota: string; fecha: string; llamo: string }>) {
+    const siguiente = { estado, nota, fecha, llamo: llamo || miNombre, ...cambios };
     // Sin fecha no hay bloqueo del día: al llamar se registra hoy.
     if (!siguiente.fecha) { siguiente.fecha = hoy; setFecha(hoy); }
     const accion = origen === "cita" ? guardarSeguimientoCitaAction : guardarSeguimientoAsesoriaLlamadaAction;
@@ -80,7 +82,20 @@ function Fila({
       </td>
       <td className="px-3 py-3 text-muted">{f.sucursal}</td>
       <td className="px-3 py-3 text-muted">{f.abogado}</td>
-      <td className="px-3 py-3 text-muted">{llamo || "—"}</td>
+      <td className="px-3 py-3 text-muted">
+        {esAdmin ? (
+          <select
+            value={llamo}
+            onChange={(e) => { setLlamo(e.target.value); guardar({ llamo: e.target.value }); }}
+            className="px-2 py-1 rounded border border-line text-[12px] bg-transparent max-w-[170px]"
+          >
+            <option value="">—</option>
+            {(abogados.includes(llamo) || !llamo ? abogados : [llamo, ...abogados]).map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        ) : (
+          llamo || "—"
+        )}
+      </td>
       <td className="px-3 py-3">
         <select
           value={estado}
@@ -250,7 +265,7 @@ export default function TablaSeguimiento({
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
-            {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} onAgendar={abrirModalCita} hoy={hoy} miNombre={miNombre} esAdmin={esAdmin} />)}
+            {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} onAgendar={abrirModalCita} hoy={hoy} miNombre={miNombre} esAdmin={esAdmin} abogados={abogados} />)}
             {visibles.length === 0 && (
               <tr><td colSpan={9} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
             )}
