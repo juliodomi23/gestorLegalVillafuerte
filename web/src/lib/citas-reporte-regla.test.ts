@@ -1,7 +1,7 @@
 // Check del conteo de citas del tablero. Correr con:
 //   node --experimental-strip-types src/lib/citas-reporte-regla.test.ts
 import assert from "node:assert/strict";
-import { contarCitas, tasaAsistencia } from "./citas-reporte-regla.ts";
+import { citaFueAtendida, contarCitas, crearDetectorLlegada, tasaAsistencia } from "./citas-reporte-regla.ts";
 
 const hoy = "2026-09-23";
 const asesorias = { "2026-09-21": [{ nombre: "Juan Pérez López", telefono: "9612641203" }] };
@@ -21,5 +21,9 @@ assert.equal(tasaAsistencia(c), 67);
 
 // Sin citas vencidas no hay porcentaje.
 assert.equal(tasaAsistencia(contarCitas([], {}, hoy)), null);
+
+const detectarLlegada = crearDetectorLlegada(asesorias["2026-09-21"]);
+assert.equal(citaFueAtendida({ estado: "confirmada", nombre: "Juan Perez", telefono: null }, detectarLlegada), true);
+assert.equal(citaFueAtendida({ estado: "no_show", nombre: "Juan Perez", telefono: null }, detectarLlegada), false);
 
 console.log("ok");

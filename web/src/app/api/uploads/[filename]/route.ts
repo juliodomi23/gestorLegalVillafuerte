@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "fs/promises";
+import { stat } from "fs/promises";
+import { createReadStream } from "fs";
 import { join } from "path";
+import { Readable } from "stream";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -27,11 +29,13 @@ export async function GET(_req: NextRequest, { params }: { params: { filename: s
   }
   const filepath = join(process.cwd(), "uploads", name);
   try {
-    const data = await readFile(filepath);
-    return new NextResponse(data, {
+    const archivo = await stat(filepath);
+    const stream = createReadStream(filepath);
+    return new NextResponse(Readable.toWeb(stream) as ReadableStream, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename="${name}"`,
+        "Content-Length": String(archivo.size),
         "Cache-Control": "private, max-age=3600",
       },
     });

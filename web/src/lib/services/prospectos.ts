@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { porAbogado, type Alcance } from "@/lib/alcance";
-import { hoyDespacho, OFFSET_DESPACHO } from "@/lib/fecha";
+import { hoyDespacho, OFFSET_DESPACHO, TZ_DESPACHO } from "@/lib/fecha";
 import { lunesDe } from "@/lib/services/productividad";
+import { citaFueAtendida, crearDetectorLlegada, type AsesoriaDelDia } from "@/lib/citas-reporte-regla";
 
 export const ANIO_PROSPECTOS = 2026;
 
@@ -167,9 +168,9 @@ export type ResumenAbogado = {
 
 // Cuánto está llamando cada abogado a partir de que empezaron el lunes las llamadas
 // a prospectos: llamadas hechas (fechaContacto), cuántas agendaron cita, y cuántas de
-// esas citas realmente se dieron (Cita.estado = "asesorada"; no hay liga directa
-// prospecto→cita, así que la cita cuenta por su propio abogadoId, no por el del
-// prospecto — es una aproximación, no un cruce exacto por persona).
+// esas citas realmente se dieron. Una cita cuenta si se marcó como "asesorada" o
+// si hay una asesoría del mismo día que coincide por teléfono o nombre. No hay liga
+// directa prospecto→cita, así que la cita cuenta por su propio abogadoId.
 //
 // mes/anio: qué mes reportar (1-12). Por defecto el mes en curso. Un abogado puede
 // estar llamando prospectos viejos (ej. registrados en agosto) — esas llamadas cuentan
@@ -201,7 +202,7 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
   const hoyUTC = new Date(`${hoy}T00:00:00.000Z`);
   const hoyInicioMx = new Date(`${hoy}T00:00:00${OFFSET_DESPACHO}`);
 
-  const [abogados, llamadasMes, agendadasMes, citasMes, contratosMes] = await Promise.all([
+  const [abogados, llamadasMes, agendadasMes, citasDelPeriodo, asesoriasDelPeriodo, contratosMes] = await Promise.all([
     prisma.usuario.findMany({
       where: { activo: true },
       orderBy: { nombre: "asc" },
@@ -229,10 +230,22 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
     prisma.cita.findMany({
       where: {
         abogadoId: { not: null },
-        estado: "asesorada",
         fechaHora: { gte: new Date(`${inicioMes}T00:00:00${OFFSET_DESPACHO}`), lt: new Date(`${finMes}T00:00:00${OFFSET_DESPACHO}`) },
       },
-      select: { abogadoId: true, fechaHora: true },
+      select: {
+        abogadoId: true,
+        fechaHora: true,
+        estado: true,
+        clienteNombre: true,
+        telefono: true,
+        cliente: { select: { nombre: true, telefono: true } },
+      },
+    }),
+    prisma.asesoria.findMany({
+      where: {
+        fecha: { gte: new Date(`${inicioMes}T00:00:00.000Z`), lt: new Date(`${finMes}T00:00:00.000Z`) },
+      },
+      select: { fecha: true, nombre: true, telefono: true },
     }),
     // Firmaron: fechaFirma es fecha pura (medianoche UTC), como fechaContacto.
     prisma.asesoria.findMany({
@@ -244,6 +257,26 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
       select: { abogadoId: true, fechaFirma: true },
     }),
   ]);
+
+  const asesoriasPorDia: Record<string, AsesoriaDelDia[]> = {};
+  for (const asesoria of asesoriasDelPeriodo) {
+    const dia = asesoria.fecha.toISOString().slice(0, 10);
+    (asesoriasPorDia[dia] ??= []).push(asesoria);
+  }
+
+  const detectoresLlegada: Record<string, ReturnType<typeof crearDetectorLlegada>> = {};
+  const citasMes = citasDelPeriodo.filter((cita) => {
+    const dia = cita.fechaHora.toLocaleDateString("en-CA", { timeZone: TZ_DESPACHO });
+    detectoresLlegada[dia] ??= crearDetectorLlegada(asesoriasPorDia[dia] ?? []);
+    return citaFueAtendida(
+      {
+        estado: cita.estado,
+        nombre: cita.cliente?.nombre ?? cita.clienteNombre ?? "",
+        telefono: cita.cliente?.telefono ?? cita.telefono,
+      },
+      detectoresLlegada[dia]
+    );
+  });
 
   const porAbogadoId = new Map<string, ResumenAbogado>(
     abogados.map((a) => [

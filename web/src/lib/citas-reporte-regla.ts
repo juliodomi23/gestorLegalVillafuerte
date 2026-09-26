@@ -42,6 +42,17 @@ export function crearDetectorLlegada(asesorias: AsesoriaDelDia[]) {
   };
 }
 
+// Una asesoría registrada confirma que la persona sí acudió, incluso si en Agenda
+// nadie alcanzó a cambiar manualmente el estado de la cita a "asesorada".
+// Una baja o no-show explícito conserva prioridad para no revivir una cita cerrada.
+export function citaFueAtendida(
+  cita: CitaBasica & { estado: string },
+  detectarLlegada: ReturnType<typeof crearDetectorLlegada>
+): boolean {
+  if (cita.estado === "cancelada" || cita.estado === "no_show") return false;
+  return cita.estado === "asesorada" || detectarLlegada(cita);
+}
+
 export type CitaParaContar = CitaBasica & {
   fechaDia: string; // yyyy-MM-dd, en hora del despacho
   estado: string;
