@@ -33,7 +33,6 @@ const vacio = { cliente: "", tipoCaso: "", abogado: "", sucursal: "", telefono: 
 export type ResumenAbogadoSeguimiento = {
   abogadoId: string;
   nombre: string;
-  expedientesActivos: number;
   carteraSeguimiento: number;
   llamadosSemana: number;
   faltanSemana: number;
@@ -46,9 +45,8 @@ function ResumenPorAbogado({ resumen }: { resumen: ResumenAbogadoSeguimiento[] }
       <div className="px-5 py-3.5 border-b border-line">
         <h3 className="font-serif text-[17px] text-ink">Por abogado</h3>
         <p className="text-[12px] text-muted mt-0.5">
-          Son dos conteos distintos: <b>expedientes</b> son casos legales abiertos; <b>clientes en
-          seguimiento</b> son personas a las que hay que volver a llamar (con o sin expediente). No
-          tienen por qué coincidir.
+          <b>Clientes en seguimiento</b> son personas a las que hay que volver a llamar (con o sin
+          expediente abierto).
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -56,7 +54,6 @@ function ResumenPorAbogado({ resumen }: { resumen: ResumenAbogadoSeguimiento[] }
           <thead>
             <tr className="border-b border-line text-left bg-paper/50">
               <th className="eyebrow text-muted px-4 py-2">Abogado</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right" title="Casos legales abiertos asignados a este abogado (tabla Expedientes)">Expedientes activos</th>
               <th className="eyebrow text-muted px-2 py-2 text-right" title="Personas con llamada de seguimiento activa asignadas a este abogado (tabla Seguimientos, independiente de si tienen expediente)">Clientes en seguimiento</th>
               <th className="eyebrow text-muted px-2 py-2 text-right">Llamó esta semana</th>
               <th className="eyebrow text-muted px-4 py-2 text-right">Le faltó llamar</th>
@@ -66,7 +63,6 @@ function ResumenPorAbogado({ resumen }: { resumen: ResumenAbogadoSeguimiento[] }
             {resumen.map((r) => (
               <tr key={r.abogadoId}>
                 <td className="px-4 py-2.5 font-bold text-ink">{r.nombre}</td>
-                <td className="px-2 py-2.5 num text-right">{r.expedientesActivos}</td>
                 <td className="px-2 py-2.5 num text-right">{r.carteraSeguimiento}</td>
                 <td className="px-2 py-2.5 num text-right text-success font-bold">{r.llamadosSemana}</td>
                 <td className={`px-4 py-2.5 num text-right font-bold ${r.faltanSemana > 0 ? "text-danger" : "text-muted"}`}>{r.faltanSemana}</td>

@@ -7,7 +7,10 @@ function fmtDate(d: Date): string {
 }
 
 function diasHasta(d: Date): number {
-  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  // ponytail: hoy.setHours(0,0,0,0) usa la hora del servidor (UTC), no la de
+  // México — cerca de medianoche marcaba "vencido" un día antes de tiempo.
+  const hoyMx = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  const hoy = new Date(`${hoyMx}T00:00:00Z`);
   return Math.round((d.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
 }
 
