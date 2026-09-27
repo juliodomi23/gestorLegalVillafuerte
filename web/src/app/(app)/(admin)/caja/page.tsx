@@ -19,7 +19,7 @@ export default async function CajaPage() {
     prisma.movimientoCaja.findMany({
       include: {
         sucursal: true,
-        expediente: { select: { numeroInterno: true } },
+        expediente: { select: { id: true, numeroInterno: true } },
       },
       orderBy: { fecha: "desc" },
       take: 300, // ponytail: tope simple en vez de paginación; subir o paginar de verdad si el despacho pasa de esto
@@ -29,7 +29,7 @@ export default async function CajaPage() {
       where: { fechaProxPago: { not: null } },
       include: {
         expediente: {
-          select: { numeroInterno: true, cliente: { select: { nombre: true } } },
+          select: { id: true, numeroInterno: true, cliente: { select: { nombre: true } } },
         },
       },
       orderBy: { fechaProxPago: "asc" },
@@ -42,6 +42,7 @@ export default async function CajaPage() {
     sucursal: m.sucursal?.nombre ?? "—",
     concepto: m.concepto ?? "—",
     expediente: m.expediente?.numeroInterno ?? null,
+    expedienteId: m.expediente?.id ?? null,
     tipo: m.tipo === "egreso" ? "Egreso" : "Ingreso",
     monto: Number(m.monto),
     origen: m.origen === "whatsapp" ? "WhatsApp" : "Web",
@@ -51,6 +52,7 @@ export default async function CajaPage() {
     .filter((p) => p.fechaProxPago)
     .map((p) => ({
       expediente: p.expediente?.numeroInterno ?? "—",
+      expedienteId: p.expedienteId,
       cliente: p.expediente?.cliente?.nombre ?? "—",
       tipo: p.tipo,
       monto: p.montoPeriodico ? Number(p.montoPeriodico) : Number(p.montoFinal ?? p.montoTotal),

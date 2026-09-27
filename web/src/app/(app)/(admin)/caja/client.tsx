@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Plus, Trash2, Bell } from "lucide-react";
+import Link from "next/link";
 import { PageTitle, Card, FilterSelect, SearchBox, OrigenChip } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
@@ -13,6 +14,7 @@ export type MovimientoView = {
   sucursal: string;
   concepto: string;
   expediente: string | null;
+  expedienteId: string | null;
   tipo: "Ingreso" | "Egreso";
   monto: number;
   origen: "WhatsApp" | "Web";
@@ -20,6 +22,7 @@ export type MovimientoView = {
 
 export type ProximoPagoView = {
   expediente: string;
+  expedienteId: string | null;
   cliente: string;
   tipo: string;
   monto: number;
@@ -128,7 +131,15 @@ export default function CajaClient({
                 <td className="px-5 py-3.5 num">{m.fecha}</td>
                 <td className="px-3 py-3.5">{m.sucursal}</td>
                 <td className="px-3 py-3.5">{m.concepto}</td>
-                <td className="px-3 py-3.5 exp-no text-muted">{m.expediente ?? "—"}</td>
+                <td className="px-3 py-3.5 exp-no text-muted">
+                  {m.expediente && m.expedienteId ? (
+                    <Link href={`/expedientes/${m.expedienteId}`} className="text-navy hover:underline">
+                      {m.expediente}
+                    </Link>
+                  ) : (
+                    m.expediente ?? "—"
+                  )}
+                </td>
                 <td className="px-3 py-3.5"><span className={`font-bold ${m.tipo === "Ingreso" ? "text-success" : "text-danger"}`}>{m.tipo}</span></td>
                 <td className="px-3 py-3.5 num text-right font-bold">{fmt(m.monto)}</td>
                 <td className="px-3 py-3.5"><OrigenChip origen={m.origen} /></td>
@@ -171,7 +182,15 @@ export default function CajaClient({
               <tbody className="divide-y divide-line/70">
                 {proximosPagos.map((p, i) => (
                   <tr key={i} className={`transition-colors ${p.diasRestantes < 0 ? "bg-danger-wash/20" : p.diasRestantes <= 3 ? "bg-amber-wash/30" : "hover:bg-paper/60"}`}>
-                    <td className="px-5 py-3.5 exp-no font-bold">{p.expediente}</td>
+                    <td className="px-5 py-3.5 exp-no font-bold">
+                      {p.expedienteId ? (
+                        <Link href={`/expedientes/${p.expedienteId}`} className="text-navy hover:underline">
+                          {p.expediente}
+                        </Link>
+                      ) : (
+                        p.expediente
+                      )}
+                    </td>
                     <td className="px-3 py-3.5">{p.cliente}</td>
                     <td className="px-3 py-3.5 text-muted">{PLAN_LABELS[p.tipo] ?? p.tipo}</td>
                     <td className="px-3 py-3.5 num text-right font-bold">{fmt(p.monto)}</td>
