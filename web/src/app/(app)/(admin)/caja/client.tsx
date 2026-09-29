@@ -71,8 +71,14 @@ const PRECIOS_COBRO: Record<string, number> = {
   asesoria_promocion: 500,
   asesoria_regular: 600,
 };
+const COMISIONES_COBRO: Record<string, number> = {
+  confirmacion_cita: 10,
+  llamada_asesoria: 15,
+  asesoria_promocion: 25,
+  asesoria_regular: 25,
+};
 function comisionAutomatica(servicio: string) {
-  return ((PRECIOS_COBRO[servicio] * 0.0399 + 3)).toFixed(2);
+  return (COMISIONES_COBRO[servicio] ?? 0).toFixed(2);
 }
 const cobroVacio = { servicio: "llamada_asesoria", comision: comisionAutomatica("llamada_asesoria"), concepto: "", email: "" };
 
@@ -259,7 +265,7 @@ export default function CajaClient({
             <option value="asesoria_regular">Asesoría regular · $600</option>
           </select>
         </Field>
-        <Field label="Comisión automática (3.99% + $3)">
+        <Field label="Comisión incluida en el total">
           <Input
             inputMode="decimal"
             value={formCobro.comision}
