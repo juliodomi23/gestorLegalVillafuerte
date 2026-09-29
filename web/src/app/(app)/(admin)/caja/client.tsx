@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Trash2, Bell, ExternalLink, CreditCard } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Trash2, Bell, ExternalLink, CreditCard, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { PageTitle, Card, FilterSelect, SearchBox, OrigenChip } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
@@ -52,7 +53,8 @@ const PLAN_LABELS: Record<string, string> = {
 const SERVICIO_LABELS: Record<string, string> = {
   llamada_asesoria: "Llamada de asesoría",
   confirmacion_cita: "Confirmación de cita",
-  asesoria_presencial: "Asesoría presencial",
+  asesoria_promocion: "Asesoría presencial · promoción",
+  asesoria_regular: "Asesoría presencial · precio regular",
 };
 const PAGO_ESTADO: Record<string, { label: string; cls: string }> = {
   pending: { label: "Pendiente", cls: "bg-amber-wash text-amber" },
@@ -63,6 +65,7 @@ const PAGO_ESTADO: Record<string, { label: string; cls: string }> = {
 };
 
 const vacio = { tipo: "Ingreso", concepto: "", monto: "", sucursal: "", expediente: "" };
+const cobroVacio = { servicio: "llamada_asesoria", comision: "", concepto: "", email: "" };
 
 function fmt(n: number) {
   return "$" + n.toLocaleString("es-MX");
@@ -84,7 +87,14 @@ export default function CajaClient({
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
+  const [openCobro, setOpenCobro] = useState(false);
+  const [formCobro, setFormCobro] = useState(cobroVacio);
+  const [generandoCobro, setGenerandoCobro] = useState(false);
+  const [errorCobro, setErrorCobro] = useState("");
+  const [linkGenerado, setLinkGenerado] = useState("");
+  const [copiado, setCopiado] = useState(false);
   const confirmar = useConfirm();
+  const router = useRouter();
 
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
 
@@ -107,6 +117,39 @@ export default function CajaClient({
     setSaving(false);
     setForm(vacio);
     setOpen(false);
+  }
+
+  async function generarLink() {
+    setGenerandoCobro(true);
+    setErrorCobro("");
+    setLinkGenerado("");
+    try {
+      const respuesta = await fetch("/api/pagos/link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          servicio: formCobro.servicio,
+          comision: Number(formCobro.comision.replace(/[$,]/g, "")),
+          concepto: formCobro.concepto || undefined,
+          email: formCobro.email || undefined,
+        }),
+      });
+      const resultado = await respuesta.json();
+      if (!respuesta.ok || !resultado.ok) throw new Error(resultado.error || "No fue posible generar el enlace.");
+      setLinkGenerado(resultado.linkPago);
+      router.refresh();
+    } catch (error) {
+      setErrorCobro(error instanceof Error ? error.message : "No fue posible generar el enlace.");
+    } finally {
+      setGenerandoCobro(false);
+    }
+  }
+
+  async function copiarLink() {
+    if (!linkGenerado) return;
+    await navigator.clipboard.writeText(linkGenerado);
+    setCopiado(true);
+    window.setTimeout(() => setCopiado(false), 1800);
   }
 
   const mesActual = new Date().toLocaleDateString("es-MX", { month: "long", year: "numeric" });
@@ -188,6 +231,57 @@ export default function CajaClient({
         <Field label="Expediente (opcional)"><Input value={form.expediente} onChange={(e) => set("expediente", e.target.value)} placeholder="EXP-2026-0142" /></Field>
       </Modal>
 
+      <Modal
+        open={openCobro}
+        onClose={() => { setOpenCobro(false); setErrorCobro(""); setLinkGenerado(""); setFormCobro(cobroVacio); }}
+        title="Generar enlace de Mercado Pago"
+        onSubmit={generarLink}
+        submitLabel={generandoCobro ? "Generando…" : "Generar enlace"}
+      >
+        <Field label="Servicio" full>
+          <select
+            className="w-full px-3 py-2 rounded-lg bg-surface border border-line text-[13.5px] focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40"
+            value={formCobro.servicio}
+            onChange={(e) => setFormCobro((f) => ({ ...f, servicio: e.target.value }))}
+          >
+            <option value="confirmacion_cita">Confirmación de cita · $100</option>
+            <option value="llamada_asesoria">Llamada de asesoría · $300</option>
+            <option value="asesoria_promocion">Asesoría promoción · $500</option>
+            <option value="asesoria_regular">Asesoría regular · $600</option>
+          </select>
+        </Field>
+        <Field label="Comisión a cobrar">
+          <Input
+            inputMode="decimal"
+            value={formCobro.comision}
+            onChange={(e) => setFormCobro((f) => ({ ...f, comision: e.target.value }))}
+            placeholder="Ej. 18.50"
+            required
+          />
+        </Field>
+        <Field label="Correo del cliente (opcional)">
+          <Input type="email" value={formCobro.email} onChange={(e) => setFormCobro((f) => ({ ...f, email: e.target.value }))} placeholder="cliente@correo.com" />
+        </Field>
+        <Field label="Concepto (opcional)" full>
+          <Input value={formCobro.concepto} onChange={(e) => setFormCobro((f) => ({ ...f, concepto: e.target.value }))} placeholder="Nombre del cliente o detalle del cobro" />
+        </Field>
+        <p className="col-span-full text-[12.5px] text-muted leading-relaxed">
+          El total será el precio del servicio más la comisión indicada. El cobro aparecerá en esta tabla y se actualizará automáticamente cuando Mercado Pago confirme la operación.
+        </p>
+        {errorCobro && <p className="col-span-full rounded-lg bg-danger-wash px-3 py-2 text-[13px] text-danger">{errorCobro}</p>}
+        {linkGenerado && (
+          <div className="col-span-full rounded-lg border border-success/30 bg-success-wash p-3">
+            <p className="text-[12px] font-bold text-success mb-2">Enlace listo para compartir</p>
+            <div className="flex items-center gap-2">
+              <input readOnly value={linkGenerado} className="min-w-0 flex-1 bg-white border border-line rounded-md px-2.5 py-2 text-[12px]" />
+              <button type="button" onClick={copiarLink} className="inline-flex items-center gap-1.5 rounded-md bg-navy px-3 py-2 text-[12px] font-bold text-white">
+                {copiado ? <Check size={15} /> : <Copy size={15} />} {copiado ? "Copiado" : "Copiar"}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {proximosPagos.length > 0 && (
         <div className="mt-8">
           <div className="flex items-center gap-2 mb-3">
@@ -244,6 +338,10 @@ export default function CajaClient({
         <div className="flex items-center gap-2 mb-3">
           <CreditCard size={16} className="text-navy" />
           <h2 className="font-serif text-[17px] text-ink">Cobros de Mercado Pago</h2>
+          <span className="flex-1" />
+          <button onClick={() => setOpenCobro(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
+            <CreditCard size={16} /> Generar enlace
+          </button>
         </div>
         <Card className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-[13.5px]">
