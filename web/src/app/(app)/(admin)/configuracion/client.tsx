@@ -15,6 +15,7 @@ export type UsuarioView = {
   telefonoWhatsapp: string | null;
   pin: string | null;
   verProductividad: boolean;
+  verTodasAsesorias: boolean;
   recibeEnvio: string | null;
   sucursal: string | null;
   sucursalId: string | null;
@@ -29,6 +30,7 @@ const ENVIO_TODAS = "Citados de todo el despacho (8:00)";
 const vacio = {
   nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", telefonoWhatsapp: "", pin: "",
   verProductividad: false,
+  verTodasAsesorias: false,
   recibeEnvio: "",
   sucursalesACargo: [] as string[],
   personasACargo: [] as string[],
@@ -99,6 +101,7 @@ export default function ConfiguracionClient({
       telefonoWhatsapp: u.telefonoWhatsapp ?? "",
       pin: u.pin ?? "",
       verProductividad: u.verProductividad,
+      verTodasAsesorias: u.verTodasAsesorias,
       recibeEnvio: u.recibeEnvio ?? "",
       sucursalesACargo: u.sucursalesACargo.map((s) => s.id),
       personasACargo: u.personasACargo.map((p) => p.id),
@@ -291,6 +294,20 @@ export default function ConfiguracionClient({
               Ver Productividad
               <span className="block text-[12.5px] text-muted">
                 La rutina del Coordinador de Operaciones. Los admin la ven siempre.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2.5 text-[13.5px] cursor-pointer mt-3">
+            <input
+              type="checkbox"
+              checked={form.verTodasAsesorias}
+              onChange={(e) => setForm((f) => ({ ...f, verTodasAsesorias: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 accent-navy shrink-0"
+            />
+            <span>
+              Ver todas las asesorías
+              <span className="block text-[12.5px] text-muted">
+                Permite consultar todas las sucursales sin dar acceso administrativo.
               </span>
             </span>
           </label>

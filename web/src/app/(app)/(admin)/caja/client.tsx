@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Trash2, Bell } from "lucide-react";
+import { Plus, Trash2, Bell, ExternalLink, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { PageTitle, Card, FilterSelect, SearchBox, OrigenChip } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
@@ -30,11 +30,36 @@ export type ProximoPagoView = {
   diasRestantes: number;
 };
 
+export type PagoMercadoPagoView = {
+  id: string;
+  fecha: string;
+  cliente: string;
+  servicio: string;
+  montoBase: number;
+  comision: number;
+  montoTotal: number;
+  estado: string;
+  linkPago: string | null;
+  externalReference: string;
+};
+
 const PLAN_LABELS: Record<string, string> = {
   todo_inicio:  "Todo al inicio",
   inicio_final: "Inicial + Final",
   quincenal:    "Quincenal",
   mensual:      "Mensual",
+};
+const SERVICIO_LABELS: Record<string, string> = {
+  llamada_asesoria: "Llamada de asesoría",
+  confirmacion_cita: "Confirmación de cita",
+  asesoria_presencial: "Asesoría presencial",
+};
+const PAGO_ESTADO: Record<string, { label: string; cls: string }> = {
+  pending: { label: "Pendiente", cls: "bg-amber-wash text-amber" },
+  approved: { label: "Aprobado", cls: "bg-success-wash text-success" },
+  rejected: { label: "Rechazado", cls: "bg-danger-wash text-danger" },
+  cancelled: { label: "Cancelado", cls: "bg-line/60 text-muted" },
+  refunded: { label: "Reembolsado", cls: "bg-blue-50 text-blue-700" },
 };
 
 const vacio = { tipo: "Ingreso", concepto: "", monto: "", sucursal: "", expediente: "" };
@@ -47,10 +72,12 @@ export default function CajaClient({
   movimientos,
   sucursales,
   proximosPagos,
+  pagos,
 }: {
   movimientos: MovimientoView[];
   sucursales: string[];
   proximosPagos: ProximoPagoView[];
+  pagos: PagoMercadoPagoView[];
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [fSucursal, setFSucursal] = useState("");
@@ -212,6 +239,49 @@ export default function CajaClient({
           </Card>
         </div>
       )}
+
+      <div className="mt-8">
+        <div className="flex items-center gap-2 mb-3">
+          <CreditCard size={16} className="text-navy" />
+          <h2 className="font-serif text-[17px] text-ink">Cobros de Mercado Pago</h2>
+        </div>
+        <Card className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-[13.5px]">
+            <thead>
+              <tr className="border-b border-line text-left">
+                <th className="eyebrow text-muted px-5 py-3">Fecha</th>
+                <th className="eyebrow text-muted px-3 py-3">Cliente</th>
+                <th className="eyebrow text-muted px-3 py-3">Servicio</th>
+                <th className="eyebrow text-muted px-3 py-3 text-right">Precio base</th>
+                <th className="eyebrow text-muted px-3 py-3 text-right">Comisión</th>
+                <th className="eyebrow text-muted px-3 py-3 text-right">Total</th>
+                <th className="eyebrow text-muted px-3 py-3">Estado</th>
+                <th className="eyebrow text-muted px-3 py-3 text-right">Enlace</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line/70">
+              {pagos.map((p) => {
+                const estado = PAGO_ESTADO[p.estado] ?? { label: p.estado, cls: "bg-line/60 text-muted" };
+                return (
+                  <tr key={p.id} className="hover:bg-paper/60 transition-colors">
+                    <td className="px-5 py-3.5 num">{p.fecha}</td>
+                    <td className="px-3 py-3.5 font-bold">{p.cliente}</td>
+                    <td className="px-3 py-3.5">{SERVICIO_LABELS[p.servicio] ?? p.servicio}</td>
+                    <td className="px-3 py-3.5 num text-right">{fmt(p.montoBase)}</td>
+                    <td className="px-3 py-3.5 num text-right text-muted">{fmt(p.comision)}</td>
+                    <td className="px-3 py-3.5 num text-right font-bold">{fmt(p.montoTotal)}</td>
+                    <td className="px-3 py-3.5"><span className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${estado.cls}`}>{estado.label}</span></td>
+                    <td className="px-3 py-3.5 text-right">
+                      {p.linkPago ? <a href={p.linkPago} target="_blank" rel="noopener noreferrer" title={p.externalReference} className="inline-flex p-1.5 rounded-md text-navy hover:bg-navy/[.06]"><ExternalLink size={15} /></a> : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+              {pagos.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-muted">Todavía no hay cobros de Mercado Pago registrados.</td></tr>}
+            </tbody>
+          </table>
+        </Card>
+      </div>
     </>
   );
 }

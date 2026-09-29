@@ -7,6 +7,10 @@ import TablaSeguimiento, { type FilaSeguimiento } from "../tabla-seguimiento";
 
 export default async function YaAsesoraronPage() {
   const session = await getServerSession(authOptions);
+  const usuarioActual = session?.user?.id
+    ? await prisma.usuario.findUnique({ where: { id: session.user.id }, select: { verProductividad: true } })
+    : null;
+  const puedeCorregirLlamada = session?.user?.rol === "admin" || !!usuarioActual?.verProductividad;
 
   const [sucursalesDb, abogadosDb] = await Promise.all([
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
@@ -16,7 +20,7 @@ export default async function YaAsesoraronPage() {
   // Ya llegaron a su asesoría: los "Contrato firmado" salen solos porque solo entra "pendiente".
   const asesorias = await prisma.asesoria.findMany({
     where: { status: "pendiente" },
-    include: { sucursal: true, abogado: true },
+    include: { sucursal: true, abogado: true, abogadoAgendo: true },
     orderBy: { fecha: "desc" },
     take: 300,
   });
@@ -28,6 +32,7 @@ export default async function YaAsesoraronPage() {
     telefono: a.telefono ?? "",
     sucursal: a.sucursal?.nombre ?? "—",
     abogado: a.abogado?.nombre ?? "—",
+    abogadoAgendo: a.abogadoAgendo?.nombre ?? a.abogado?.nombre ?? "—",
     llamo: a.seguimientoAbogado ?? "",
     seguimientoEstado: a.seguimientoEstado ?? "",
     seguimientoNota: a.seguimiento ?? "",
@@ -41,7 +46,7 @@ export default async function YaAsesoraronPage() {
         title="Ya asesoraron"
         subtitle="Asesorados que todavía no firman contrato (todos los abogados ven la lista completa). Al firmar salen solos de esta lista."
       />
-      <TablaSeguimiento filas={filas} origen="asesoria" encabezadoFecha="Asesoría" vacio="Nadie pendiente por ahora." filtrarPor="abogado" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} hoy={hoyDespacho()} miNombre={session?.user?.name ?? ""} esAdmin={session?.user?.rol === "admin"} />
+      <TablaSeguimiento filas={filas} origen="asesoria" encabezadoFecha="Asesoría" vacio="Nadie pendiente por ahora." filtrarPor="abogado" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} hoy={hoyDespacho()} miNombre={session?.user?.name ?? ""} puedeCorregirLlamada={puedeCorregirLlamada} />
     </>
   );
 }

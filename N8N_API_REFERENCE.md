@@ -144,10 +144,14 @@ Audiencias programadas para ese día. Para CRON de recordatorios (default: hoy).
   "pagoAsesoria": true,
   "monto": 500,
   "abogado": "Christian",
+  "abogadoAgendo": "Karen",
   "sucursal": "Tuxtla",
   "origen": "whatsapp"
 }
 ```
+
+`abogado` es quien atendió y `abogadoAgendo` quien realizó la cita. Si es la misma persona,
+se manda el mismo nombre en ambos campos.
 
 ---
 
@@ -246,10 +250,40 @@ A quién hay que llamar hoy. Para el CRON matutino.
 ### `POST /seguimientos/:id/llamada`
 
 El abogado confirma que llamó. Avanza automáticamente el `proximoLlamado` según la frecuencia.
+Los seguimientos con estado `inactivo` no avanzan ni aparecen como pendientes.
 
 ---
 
-## 8. Caja
+## 8. Pagos de Mercado Pago
+
+### `POST /pagos` — registrar preferencia o notificación de pago
+
+**Body:**
+```json
+{
+  "externalReference": "confirmacion-100-abc123",
+  "servicio": "confirmacion_cita",
+  "concepto": "Confirmación de cita",
+  "montoBase": 100,
+  "comision": 5.10,
+  "estado": "pending",
+  "linkPago": "https://link.mercadopago.com.mx/...",
+  "mpPreferenceId": "123456789",
+  "citaId": "uuid-opcional"
+}
+```
+
+El endpoint hace `upsert` por `externalReference`, por lo que las notificaciones repetidas no
+duplican el cobro. `montoTotal` se calcula como `montoBase + comision`. Estados permitidos:
+`pending`, `approved`, `rejected`, `cancelled`, `refunded`.
+
+### `GET /pagos?externalReference=confirmacion-100-abc123`
+
+Consulta el cobro y su estado actual.
+
+---
+
+## 9. Caja
 
 ### `POST /caja` — registrar movimiento
 

@@ -20,6 +20,7 @@ export type AsesoriaView = {
   asunto: string;
   sucursal: string;
   abogado: string;
+  abogadoAgendo: string;
   pago: boolean;
   monto: number;
   status: StatusAsesoria;
@@ -73,13 +74,14 @@ function DaySection({ fecha, rows, onEdit, onDelete, onSeguimiento, onFirmar }: 
       </button>
       {open && (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-[13px]">
+          <table className="w-full min-w-[940px] text-[13px]">
             <thead>
               <tr className="border-t border-b border-line text-left bg-surface">
                 <th className="eyebrow text-muted px-3 py-2.5">Folio</th>
                 <th className="eyebrow text-muted px-5 py-2.5">Prospecto</th>
                 <th className="eyebrow text-muted px-3 py-2.5">Asunto</th>
-                <th className="eyebrow text-muted px-3 py-2.5">Abogado</th>
+                <th className="eyebrow text-muted px-3 py-2.5">Atendió</th>
+                <th className="eyebrow text-muted px-3 py-2.5">Agendó</th>
                 <th className="eyebrow text-muted px-3 py-2.5">Pagó</th>
                 <th className="eyebrow text-muted px-3 py-2.5">Status</th>
                 <th className="eyebrow text-muted px-3 py-2.5">Seguimiento</th>
@@ -93,6 +95,7 @@ function DaySection({ fecha, rows, onEdit, onDelete, onSeguimiento, onFirmar }: 
                   <td className="px-5 py-3"><p className="font-bold text-ink">{a.nombre}</p><p className="text-[11.5px] num text-muted">{a.telefono || "—"}</p></td>
                   <td className="px-3 py-3 text-ink">{a.asunto || "—"}</td>
                   <td className="px-3 py-3 text-muted">{a.abogado || "—"}</td>
+                  <td className="px-3 py-3 text-muted">{a.abogadoAgendo || "—"}</td>
                   <td className="px-3 py-3">{a.pago ? <span className="text-success font-bold num">${a.monto.toLocaleString("es-MX")}</span> : <span className="text-muted">No</span>}</td>
                   <td className="px-3 py-3">
                     <div className="relative group inline-block">
@@ -142,7 +145,7 @@ function DaySection({ fecha, rows, onEdit, onDelete, onSeguimiento, onFirmar }: 
 
 const TABS_FIJAS = ["Todas"];
 const vacio = {
-  nombre: "", telefono: "", asunto: "", sucursal: "", abogado: "", pago: "No", monto: "", status: "Pendiente",
+  nombre: "", telefono: "", asunto: "", sucursal: "", abogado: "", abogadoAgendo: "", pago: "No", monto: "", status: "Pendiente",
   edad: "", sexo: "", estadoCivil: "", escolaridad: "", domicilio: "", nacionalidad: "Mexicana", ocupacion: "",
   correo: "", domicilioLaboral: "", hijos: "", nombreHijos: "", presupuestoTexto: "",
   fecha: "", // yyyy-mm-dd, solo se usa al editar
@@ -204,6 +207,10 @@ export default function AsesoriasClient({
     () => (form.abogado && !abogados.includes(form.abogado) ? [form.abogado, ...abogados] : abogados),
     [form.abogado, abogados]
   );
+  const opcionesAbogadoAgendo = useMemo(
+    () => (form.abogadoAgendo && !abogados.includes(form.abogadoAgendo) ? [form.abogadoAgendo, ...abogados] : abogados),
+    [form.abogadoAgendo, abogados]
+  );
 
   // Aviso del turno: solo al registrar una asesoría nueva de Tuxtla (al editar el
   // abogado ya está decidido) y solo para quien asigna.
@@ -248,7 +255,12 @@ export default function AsesoriasClient({
     // asesorías rotan, viene ya puesto el que sigue en el turno (y se puede cambiar).
     const sucursal = tabActiva !== "Todas" ? tabActiva : "";
     const enTurno = /tuxtla/i.test(sucursal) ? turnoTuxtla ?? "" : "";
-    setForm({ ...vacio, sucursal, abogado: puedeAsignar ? enTurno : sesionNombre });
+    setForm({
+      ...vacio,
+      sucursal,
+      abogado: puedeAsignar ? enTurno : sesionNombre,
+      abogadoAgendo: sesionNombre,
+    });
     setFolioHoja(null);
     setFechaHoja(hoyLargo());
     setOpen(true);
@@ -257,7 +269,7 @@ export default function AsesoriasClient({
     setError(null);
     setEditId(a.id);
     setForm({
-      nombre: a.nombre, telefono: a.telefono, asunto: a.asunto, sucursal: a.sucursal, abogado: a.abogado,
+      nombre: a.nombre, telefono: a.telefono, asunto: a.asunto, sucursal: a.sucursal, abogado: a.abogado, abogadoAgendo: a.abogadoAgendo,
       pago: a.pago ? "Sí" : "No", monto: a.pago ? String(a.monto) : "", status: statusInfo[a.status].label,
       edad: a.edad, sexo: a.sexo, estadoCivil: a.estadoCivil, escolaridad: a.escolaridad, domicilio: a.domicilio,
       nacionalidad: a.nacionalidad, ocupacion: a.ocupacion, correo: a.correo, domicilioLaboral: a.domicilioLaboral,
@@ -289,7 +301,7 @@ export default function AsesoriasClient({
     try {
       const pago = form.pago === "Sí";
       const data = {
-        nombre: form.nombre, telefono: form.telefono, asunto: form.asunto, sucursal: form.sucursal, abogado: form.abogado,
+        nombre: form.nombre, telefono: form.telefono, asunto: form.asunto, sucursal: form.sucursal, abogado: form.abogado, abogadoAgendo: form.abogadoAgendo,
         pago, monto: pago ? Number(form.monto.replace(/\D/g, "")) || null : null,
         status: (labelToStatus[form.status] ?? "pendiente") as StatusAsesoria,
         edad: form.edad, sexo: form.sexo, estadoCivil: form.estadoCivil, escolaridad: form.escolaridad,
@@ -434,6 +446,7 @@ export default function AsesoriasClient({
         {/* Obligatorio para quien puede asignar: si se deja vacío la asesoría queda a nombre
             de quien captura y nunca le llega al abogado que va a atender al cliente. */}
         {puedeAsignar && <Sel label="Abogado que atendió" col={5} value={form.abogado} onChange={(v) => set("abogado", v)} options={opcionesAbogado} required />}
+        <Sel label="Abogado que agendó" col={5} value={form.abogadoAgendo} onChange={(v) => set("abogadoAgendo", v)} options={opcionesAbogadoAgendo} required />
         {avisoTurno && (
           <p className="col-span-12 text-[12.5px] text-muted">
             Turno de Tuxtla: le toca a <strong className="text-ink">{avisoTurno}</strong>. Ya viene

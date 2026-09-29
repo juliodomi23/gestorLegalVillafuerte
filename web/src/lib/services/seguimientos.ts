@@ -50,6 +50,7 @@ export async function seguimientosPendientes() {
 export async function marcarLlamada(id: string) {
   const s = await prisma.seguimiento.findUnique({ where: { id } });
   if (!s) throw new Error("Seguimiento no encontrado");
+  if (s.estado !== "activo") throw new Error("El seguimiento está inactivo");
   const hoy = new Date();
   return prisma.seguimiento.update({
     where: { id },

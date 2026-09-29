@@ -46,7 +46,7 @@ export default async function SeguimientosPage() {
 
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.seguimiento.findMany({
-      where: { estado: "activo", ...porSeguimiento(alcance) },
+      where: porSeguimiento(alcance),
       include: { cliente: true, abogado: true, sucursal: true },
       orderBy: { proximoLlamado: "asc" },
     }),
@@ -57,9 +57,10 @@ export default async function SeguimientosPage() {
   // Para que el Lic. Christian vea de un vistazo quién está llamando y quién no:
   // de los seguimientos ya filtrados, cuántos se llamaron esta semana y cuántos
   // se quedaron sin llamar.
+  const rowsActivos = rows.filter((s) => s.estado === "activo");
   const resumenAbogados = verResumen
     ? abogadosDb.map((u) => {
-        const propios = rows.filter((s) => s.abogadoId === u.id);
+        const propios = rowsActivos.filter((s) => s.abogadoId === u.id);
         const llamadosSemana = propios.filter((s) => calcLlamoEstaSemana(s.ultimoContacto)).length;
         return {
           abogadoId: u.id,
@@ -81,7 +82,8 @@ export default async function SeguimientosPage() {
     ultimoContacto: fmtDate(s.ultimoContacto),
     proximoLlamado: fmtDate(s.proximoLlamado),
     frecuencia: s.frecuenciaDias ?? 7,
-    alerta: calcAlerta(s.proximoLlamado),
+    estado: s.estado === "activo" ? "activo" : "inactivo",
+    alerta: s.estado === "activo" ? calcAlerta(s.proximoLlamado) : null,
     llamoEstaSemana: calcLlamoEstaSemana(s.ultimoContacto),
     notas: s.notas ?? "",
   }));

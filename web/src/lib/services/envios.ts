@@ -71,6 +71,7 @@ export type AsesoriaDelDia = {
   telefono: string;
   tema: string;
   abogado: string;
+  abogadoAgendo: string;
   pago: boolean;
   status: string;
 };
@@ -85,7 +86,10 @@ export async function asesoriasDelDia(
       fecha: new Date(fechaISO),
       ...(sucursal ? { sucursal: { nombre: sucursal } } : {}),
     },
-    include: { abogado: { select: { nombre: true } } },
+    include: {
+      abogado: { select: { nombre: true } },
+      abogadoAgendo: { select: { nombre: true } },
+    },
     orderBy: { creadoEn: "asc" },
   });
 
@@ -95,6 +99,7 @@ export async function asesoriasDelDia(
     telefono: a.telefono ?? "",
     tema: a.tema ?? "—",
     abogado: a.abogado?.nombre ?? "Sin asignar",
+    abogadoAgendo: a.abogadoAgendo?.nombre ?? a.abogado?.nombre ?? "Sin asignar",
     pago: a.pagoAsesoria,
     status: a.status,
   }));

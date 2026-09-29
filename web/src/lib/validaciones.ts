@@ -41,6 +41,7 @@ export const usuarioSchema = z.object({
   recibeEnvio: z.string().trim().max(60).default(""),
   // Acceso a la sección de Productividad sin necesidad de ser admin.
   verProductividad: z.boolean().default(false),
+  verTodasAsesorias: z.boolean().default(false),
   // Un encargado puede llevar varias sucursales y varias personas a la vez.
   sucursalesACargo: z.array(z.string().uuid()).default([]),
   personasACargo: z.array(z.string().uuid()).default([]),

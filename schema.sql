@@ -82,6 +82,7 @@ CREATE TABLE usuarios (
                          CHECK (rol IN ('admin','abogado','asistente')),
   sucursal_encargada_id uuid REFERENCES sucursales(id) ON DELETE SET NULL,
   activo               boolean NOT NULL DEFAULT true,
+  ver_todas_asesorias  boolean NOT NULL DEFAULT false,
   creado_en            timestamptz NOT NULL DEFAULT now()
 );
 
@@ -273,11 +274,36 @@ CREATE TABLE asesorias (
                   CHECK (status IN ('pendiente','contrato_firmado','no_regreso','descartado')),
   url_documento text,                   -- link Drive al contrato/doc generado por el bot
   abogado_id    uuid REFERENCES usuarios(id) ON DELETE SET NULL,
+  abogado_agendo_id uuid REFERENCES usuarios(id) ON DELETE SET NULL,
   origen        text NOT NULL DEFAULT 'web' CHECK (origen IN ('web','whatsapp')),
   creado_en     timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_asesorias_status ON asesorias(status);
+CREATE INDEX idx_asesorias_abogado_agendo ON asesorias(abogado_agendo_id);
+
+CREATE TABLE pagos (
+  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  cliente_id         uuid REFERENCES clientes(id) ON DELETE SET NULL,
+  cita_id            uuid REFERENCES citas(id) ON DELETE SET NULL,
+  asesoria_id        uuid REFERENCES asesorias(id) ON DELETE SET NULL,
+  servicio           text NOT NULL,
+  concepto           text,
+  monto_base         numeric(14,2) NOT NULL,
+  comision           numeric(14,2) NOT NULL DEFAULT 0,
+  monto_total        numeric(14,2) NOT NULL,
+  estado             text NOT NULL DEFAULT 'pending'
+                       CHECK (estado IN ('pending','approved','rejected','cancelled','refunded')),
+  link_pago          text,
+  external_reference text NOT NULL UNIQUE,
+  mp_payment_id      text UNIQUE,
+  mp_preference_id   text,
+  fecha_pago         timestamptz,
+  creado_en          timestamptz NOT NULL DEFAULT now(),
+  actualizado_en     timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_pagos_estado_creado ON pagos(estado, creado_en DESC);
 
 
 -- =====================================================================
@@ -297,7 +323,7 @@ CREATE TABLE seguimientos (
   frecuencia_dias integer,               -- cada cuántos días (7, 15, 30…)
   notas           text,
   estado          text NOT NULL DEFAULT 'activo'
-                    CHECK (estado IN ('activo','suspendido','cerrado')),
+                    CHECK (estado IN ('activo','inactivo')),
   creado_en       timestamptz NOT NULL DEFAULT now()
 );
 

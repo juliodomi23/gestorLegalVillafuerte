@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, Phone, MessageCircle, PhoneCall } from "lucide-react";
+import { Plus, Pencil, Phone, MessageCircle, PhoneCall, PauseCircle, PlayCircle } from "lucide-react";
 import { PageTitle, Card, FilterSelect, SearchBox } from "@/components/ui";
 import { Modal, Field, Input, Select, Textarea } from "@/components/modal";
-import { useConfirm } from "@/components/confirm";
-import { crearSeguimientoAction, editarSeguimientoAction, marcarLlamadoAction, borrarSeguimientoAction } from "./actions";
+import { crearSeguimientoAction, editarSeguimientoAction, marcarLlamadoAction, cambiarEstadoSeguimientoAction } from "./actions";
 
 export type SeguimientoView = {
   id: string;
@@ -17,6 +16,7 @@ export type SeguimientoView = {
   ultimoContacto: string;
   proximoLlamado: string;
   frecuencia: number;
+  estado: "activo" | "inactivo";
   alerta: "hoy" | "atrasado" | null;
   llamoEstaSemana: boolean;
   /** Historial de lo que se le dijo al cliente, la llamada más reciente arriba. */
@@ -28,7 +28,7 @@ const alertaInfo = {
   atrasado: { label: "Atrasado",   cls: "bg-danger-wash text-danger" },
 } as const;
 
-const vacio = { cliente: "", tipoCaso: "", abogado: "", sucursal: "", telefono: "", frecuencia: "7", notas: "" };
+const vacio = { cliente: "", tipoCaso: "", abogado: "", sucursal: "", telefono: "", frecuencia: "7", notas: "", estado: "activo" };
 
 export type ResumenAbogadoSeguimiento = {
   abogadoId: string;
@@ -89,6 +89,7 @@ export default function SeguimientosClient({
   const [busqueda, setBusqueda] = useState("");
   const [fAbogado, setFAbogado] = useState("");
   const [fSucursal, setFSucursal] = useState("");
+  const [fEstado, setFEstado] = useState("");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(vacio);
@@ -96,22 +97,23 @@ export default function SeguimientosClient({
   // Modal de "Llamé": pide qué se le dijo al cliente antes de marcar la llamada.
   const [llamada, setLlamada] = useState<{ id: string; cliente: string } | null>(null);
   const [nota, setNota] = useState("");
-  const confirmar = useConfirm();
-
   function set(c: keyof typeof vacio, v: string) { setForm((f) => ({ ...f, [c]: v })); }
 
-  const activos = seguimientos.length;
-  const porLlamarHoy = seguimientos.filter((s) => s.alerta === "hoy").length;
-  const atrasados = seguimientos.filter((s) => s.alerta === "atrasado").length;
-  const abogadosConCartera = new Set(seguimientos.map((s) => s.abogado)).size;
+  const seguimientosActivos = seguimientos.filter((s) => s.estado === "activo");
+  const activos = seguimientosActivos.length;
+  const inactivos = seguimientos.length - activos;
+  const porLlamarHoy = seguimientosActivos.filter((s) => s.alerta === "hoy").length;
+  const atrasados = seguimientosActivos.filter((s) => s.alerta === "atrasado").length;
+  const abogadosConCartera = new Set(seguimientosActivos.map((s) => s.abogado)).size;
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return seguimientos
       .filter((s) => !q || s.cliente.toLowerCase().includes(q) || s.tipoCaso.toLowerCase().includes(q))
       .filter((s) => !fAbogado || s.abogado === fAbogado)
-      .filter((s) => !fSucursal || s.sucursal === fSucursal);
-  }, [seguimientos, busqueda, fAbogado, fSucursal]);
+      .filter((s) => !fSucursal || s.sucursal === fSucursal)
+      .filter((s) => !fEstado || (fEstado === "Activo" ? s.estado === "activo" : s.estado === "inactivo"));
+  }, [seguimientos, busqueda, fAbogado, fSucursal, fEstado]);
 
   function abrirNuevo() { setEditId(null); setForm(vacio); setOpen(true); }
   function abrirEditar(s: SeguimientoView) {
@@ -119,11 +121,8 @@ export default function SeguimientosClient({
     // La tabla pinta "—" cuando el dato está vacío; si se carga tal cual al formulario,
     // ese guion se guarda como texto.
     const sinGuion = (v: string) => (v === "—" ? "" : v);
-    setForm({ cliente: s.cliente, tipoCaso: sinGuion(s.tipoCaso), abogado: sinGuion(s.abogado), sucursal: sinGuion(s.sucursal), telefono: sinGuion(s.telefono), frecuencia: String(s.frecuencia), notas: s.notas });
+    setForm({ cliente: s.cliente, tipoCaso: sinGuion(s.tipoCaso), abogado: sinGuion(s.abogado), sucursal: sinGuion(s.sucursal), telefono: sinGuion(s.telefono), frecuencia: String(s.frecuencia), notas: s.notas, estado: s.estado });
     setOpen(true);
-  }
-  async function borrar(id: string) {
-    if (await confirmar({ titulo: "¿Eliminar este seguimiento?", peligro: true, confirmLabel: "Eliminar" })) await borrarSeguimientoAction(id);
   }
   async function registrarLlamada() {
     if (!llamada) return;
@@ -134,7 +133,7 @@ export default function SeguimientosClient({
   }
   async function guardar() {
     setSaving(true);
-    const data = { cliente: form.cliente, tipoCaso: form.tipoCaso, abogado: form.abogado, sucursal: form.sucursal, telefono: form.telefono, frecuencia: parseInt(form.frecuencia) || 7, notas: form.notas };
+    const data = { cliente: form.cliente, tipoCaso: form.tipoCaso, abogado: form.abogado, sucursal: form.sucursal, telefono: form.telefono, frecuencia: parseInt(form.frecuencia) || 7, notas: form.notas, estado: form.estado as "activo" | "inactivo" };
     if (editId) { await editarSeguimientoAction(editId, data); } else { await crearSeguimientoAction(data); }
     setSaving(false);
     setOpen(false);
@@ -146,11 +145,12 @@ export default function SeguimientosClient({
 
       <ResumenPorAbogado resumen={resumenAbogados} />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {[
           { label: "Seguimientos activos", valor: String(activos),              color: "text-ink"    },
           { label: "Por llamar hoy",       valor: String(porLlamarHoy),         color: "text-amber"  },
           { label: "Atrasados",            valor: String(atrasados),            color: "text-danger" },
+          { label: "Inactivos",            valor: String(inactivos),            color: "text-muted"   },
           { label: "Abogados con cartera", valor: String(abogadosConCartera),   color: "text-ink"    },
         ].map((k) => (
           <Card key={k.label} className="p-5">
@@ -164,6 +164,7 @@ export default function SeguimientosClient({
         <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar cliente o caso…" />
         <FilterSelect label="Abogado" value={fAbogado} onChange={setFAbogado} options={abogados} />
         <FilterSelect label="Sucursal" value={fSucursal} onChange={setFSucursal} options={sucursales} />
+        <FilterSelect label="Estado" value={fEstado} onChange={setFEstado} options={["Activo", "Inactivo"]} />
         <span className="flex-1" />
         <button onClick={abrirNuevo} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">
           <Plus size={18} strokeWidth={1.75} /> Nuevo seguimiento
@@ -181,13 +182,14 @@ export default function SeguimientosClient({
               <th className="eyebrow text-muted px-3 py-3">Última llamada</th>
               <th className="eyebrow text-muted px-3 py-3">Próximo llamado</th>
               <th className="eyebrow text-muted px-3 py-3">Cada</th>
+              <th className="eyebrow text-muted px-3 py-3">Estado</th>
               <th className="eyebrow text-muted px-3 py-3">Observaciones</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
             {visibles.map((s) => (
-              <tr key={s.id} className={`transition-colors ${s.llamoEstaSemana ? "bg-success-wash/30" : "bg-danger-wash/20"}`}>
+              <tr key={s.id} className={`transition-colors ${s.estado === "inactivo" ? "bg-line/20 text-muted" : s.llamoEstaSemana ? "bg-success-wash/30" : "bg-danger-wash/20"}`}>
                 <td className="px-5 py-3.5 font-bold">{s.cliente}</td>
                 <td className="px-3 py-3.5">{s.tipoCaso}</td>
                 <td className="px-3 py-3.5">{s.abogado}</td>
@@ -200,20 +202,31 @@ export default function SeguimientosClient({
                   {s.alerta && <span className={`ml-2 px-2 py-0.5 rounded text-[11px] font-bold ${alertaInfo[s.alerta].cls}`}>{alertaInfo[s.alerta].label}</span>}
                 </td>
                 <td className="px-3 py-3.5 num text-muted">{s.frecuencia} días</td>
+                <td className="px-3 py-3.5">
+                  <span className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${s.estado === "activo" ? "bg-success-wash text-success" : "bg-line/60 text-muted"}`}>
+                    {s.estado === "activo" ? "Activo" : "Inactivo"}
+                  </span>
+                </td>
                 {/* Última llamada arriba; el historial completo se ve al editar. */}
                 <td className="px-3 py-3.5 text-muted max-w-[260px]">
                   <span className="line-clamp-2" title={s.notas}>{s.notas.split("\n")[0] || "—"}</span>
                 </td>
                 <td className="px-3 py-3.5">
                   <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => { setNota(""); setLlamada({ id: s.id, cliente: s.cliente }); }} className="flex items-center gap-1 px-2 py-1 rounded-md border border-line text-[12px] font-bold hover:border-navy/40 transition-colors"><PhoneCall size={14} /> Llamé</button>
+                    {s.estado === "activo" && <button onClick={() => { setNota(""); setLlamada({ id: s.id, cliente: s.cliente }); }} className="flex items-center gap-1 px-2 py-1 rounded-md border border-line text-[12px] font-bold hover:border-navy/40 transition-colors"><PhoneCall size={14} /> Llamé</button>}
                     <button onClick={() => abrirEditar(s)} className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"><Pencil size={16} /></button>
-                    <button onClick={() => borrar(s.id)} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors"><Trash2 size={16} /></button>
+                    <button
+                      onClick={() => cambiarEstadoSeguimientoAction(s.id, s.estado === "activo" ? "inactivo" : "activo")}
+                      title={s.estado === "activo" ? "Marcar inactivo" : "Reactivar"}
+                      className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"
+                    >
+                      {s.estado === "activo" ? <PauseCircle size={16} /> : <PlayCircle size={16} />}
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
-            {visibles.length === 0 && <tr><td colSpan={9} className="px-5 py-10 text-center text-muted">Sin resultados.</td></tr>}
+            {visibles.length === 0 && <tr><td colSpan={10} className="px-5 py-10 text-center text-muted">Sin resultados.</td></tr>}
           </tbody>
         </table>
         <p className="text-[12px] text-muted px-5 py-3 flex items-center gap-1.5">
@@ -228,6 +241,7 @@ export default function SeguimientosClient({
         <Field label="Abogado"><Select options={abogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} /></Field>
         <Field label="Sucursal"><Select options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} /></Field>
         <Field label="Llamar cada (días)" full><Input type="number" value={form.frecuencia} onChange={(e) => set("frecuencia", e.target.value)} placeholder="7" /></Field>
+        <Field label="Estado" full><Select options={["activo", "inactivo"]} value={form.estado} onChange={(e) => set("estado", e.target.value)} /></Field>
         <Field label="Observaciones (historial de llamadas)" full>
           <Textarea rows={5} value={form.notas} onChange={(e) => set("notas", e.target.value)} placeholder="Qué se le ha dicho al cliente…" />
         </Field>

@@ -52,9 +52,32 @@ Requerido: `cliente`. El bloque `termino` es opcional. Devuelve el expediente cr
 ### `POST /api/n8n/asesorias` — registrar prospecto/asesoría
 ```json
 { "nombre": "Laura Méndez", "telefono": "9611112233", "tema": "Divorcio",
-  "abogado": "Ana", "sucursal": "Tuxtla", "pagoAsesoria": true, "monto": 500 }
+  "abogado": "Ana", "abogadoAgendo": "Karen", "sucursal": "Tuxtla",
+  "pagoAsesoria": true, "monto": 500 }
 ```
 Requerido: `nombre`.
+
+`abogado` identifica a quien atendió; `abogadoAgendo` identifica a quien hizo la cita. Si
+coinciden, se pueden mandar con el mismo nombre.
+
+### `POST /api/n8n/pagos` — registrar o actualizar un cobro de Mercado Pago
+```json
+{
+  "externalReference": "asesoria-300-abc123",
+  "servicio": "llamada_asesoria",
+  "concepto": "Asesoría por llamada",
+  "montoBase": 300,
+  "comision": 13.25,
+  "estado": "pending",
+  "linkPago": "https://link.mercadopago.com.mx/...",
+  "mpPreferenceId": "123456789"
+}
+```
+
+Requeridos: `externalReference`, `servicio` y `montoBase`. El backend calcula
+`montoTotal = montoBase + comision`. El mismo endpoint recibe las actualizaciones del webhook
+(`approved`, `rejected`, `cancelled` o `refunded`) sin duplicar el cobro. Si se manda `citaId`
+y el pago queda `approved`, la cita cambia a `confirmada`.
 
 ### `POST /api/n8n/caja` — registrar movimiento / corte de caja
 ```json
@@ -95,6 +118,9 @@ Para el CRON de alertas. Devuelve términos no cumplidos que vencen dentro de N 
 
 ### `GET /api/n8n/seguimientos/pendientes` — a quién llamar hoy
 Para el CRON matutino. Devuelve los seguimientos activos cuyo próximo llamado es hoy o antes.
+
+### `GET /api/n8n/pagos?externalReference=asesoria-300-abc123` — consultar cobro
+Devuelve el desglose de importe base, comisión, total y estado de Mercado Pago.
 
 ---
 

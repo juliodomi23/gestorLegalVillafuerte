@@ -16,6 +16,7 @@ export type FilaSeguimiento = {
   telefono: string;
   sucursal: string;
   abogado: string;
+  abogadoAgendo?: string;
   llamo: string; // quién hizo la llamada de seguimiento
   seguimientoEstado: string;
   seguimientoNota: string;
@@ -41,7 +42,7 @@ function Fila({
   onAgendar,
   hoy,
   miNombre,
-  esAdmin,
+  puedeCorregirLlamada,
   abogados,
 }: {
   f: FilaSeguimiento;
@@ -50,7 +51,7 @@ function Fila({
   onAgendar: (f: FilaSeguimiento) => void;
   hoy: string;
   miNombre: string;
-  esAdmin: boolean;
+  puedeCorregirLlamada: boolean;
   abogados: string[];
 }) {
   const [estado, setEstado] = useState(f.seguimientoEstado);
@@ -69,7 +70,10 @@ function Fila({
 
   // Ya la llamó otra persona hoy: se bloquea el resto del día (igual que en Prospectos). Quien
   // llamó y el admin sí pueden seguir editando; mañana se libera sola.
-  const bloqueada = !!llamo && fecha === hoy && llamo !== miNombre && !esAdmin;
+  const bloqueada = !!llamo && fecha === hoy && llamo !== miNombre && !puedeCorregirLlamada;
+  const opcionesLlamo = puedeCorregirLlamada
+    ? abogados
+    : [...new Set([llamo, miNombre].filter(Boolean))];
 
   return (
     <tr className="hover:bg-paper/40 transition-colors">
@@ -82,19 +86,18 @@ function Fila({
       </td>
       <td className="px-3 py-3 text-muted">{f.sucursal}</td>
       <td className="px-3 py-3 text-muted">{f.abogado}</td>
+      {origen === "asesoria" && <td className="px-3 py-3 text-muted">{f.abogadoAgendo || "—"}</td>}
       <td className="px-3 py-3 text-muted">
-        {esAdmin ? (
-          <select
-            value={llamo}
-            onChange={(e) => { setLlamo(e.target.value); guardar({ llamo: e.target.value }); }}
-            className="px-2 py-1 rounded border border-line text-[12px] bg-transparent max-w-[170px]"
-          >
-            <option value="">—</option>
-            {(abogados.includes(llamo) || !llamo ? abogados : [llamo, ...abogados]).map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        ) : (
-          llamo || "—"
-        )}
+        <select
+          value={llamo}
+          disabled={bloqueada}
+          title={bloqueada ? `Ya la llamó ${llamo} hoy` : undefined}
+          onChange={(e) => { setLlamo(e.target.value); guardar({ llamo: e.target.value }); }}
+          className="px-2 py-1 rounded border border-line text-[12px] bg-transparent max-w-[170px] disabled:opacity-60"
+        >
+          <option value="">Seleccionar…</option>
+          {(opcionesLlamo.includes(llamo) || !llamo ? opcionesLlamo : [llamo, ...opcionesLlamo]).map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
       </td>
       <td className="px-3 py-3">
         <select
@@ -156,7 +159,7 @@ export default function TablaSeguimiento({
   abogados,
   hoy,
   miNombre,
-  esAdmin,
+  puedeCorregirLlamada,
 }: {
   filas: FilaSeguimiento[];
   origen: Origen;
@@ -168,7 +171,7 @@ export default function TablaSeguimiento({
   abogados: string[];
   hoy: string;
   miNombre: string;
-  esAdmin: boolean;
+  puedeCorregirLlamada: boolean;
 }) {
   const [filtro, setFiltro] = useState("");
   const opciones = filtrarPor ? [...new Set(filas.map((f) => f[filtrarPor]))].sort() : [];
@@ -256,7 +259,8 @@ export default function TablaSeguimiento({
               <th className="eyebrow text-muted px-5 py-3">{encabezadoFecha}</th>
               <th className="eyebrow text-muted px-3 py-3">Persona</th>
               <th className="eyebrow text-muted px-3 py-3">Sucursal</th>
-              <th className="eyebrow text-muted px-3 py-3">Abogado</th>
+              <th className="eyebrow text-muted px-3 py-3">Abogado que atendió</th>
+              {origen === "asesoria" && <th className="eyebrow text-muted px-3 py-3">Abogado que agendó</th>}
               <th className="eyebrow text-muted px-3 py-3">Abogado que llamó</th>
               <th className="eyebrow text-muted px-3 py-3">Estado</th>
               <th className="eyebrow text-muted px-3 py-3">Fecha llamada</th>
@@ -265,9 +269,9 @@ export default function TablaSeguimiento({
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
-            {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} onAgendar={abrirModalCita} hoy={hoy} miNombre={miNombre} esAdmin={esAdmin} abogados={abogados} />)}
+            {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} onAgendar={abrirModalCita} hoy={hoy} miNombre={miNombre} puedeCorregirLlamada={puedeCorregirLlamada} abogados={abogados} />)}
             {visibles.length === 0 && (
-              <tr><td colSpan={9} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
+              <tr><td colSpan={origen === "asesoria" ? 10 : 9} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
             )}
           </tbody>
         </table>

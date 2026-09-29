@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services/resolvers";
 import { requireSession } from "@/lib/guard";
 import { sumarDias } from "@/lib/fecha";
+import { hoyDespacho } from "@/lib/fecha";
+
+export type EstadoSeguimiento = "activo" | "inactivo";
 
 export type FormSeguimiento = {
   cliente: string;
@@ -13,6 +16,7 @@ export type FormSeguimiento = {
   sucursal: string;
   frecuencia: number;
   notas?: string;
+  estado: EstadoSeguimiento;
 };
 
 export async function crearSeguimientoAction(form: FormSeguimiento) {
@@ -35,7 +39,7 @@ export async function crearSeguimientoAction(form: FormSeguimiento) {
       fechaInicio: hoy,
       ultimoContacto: hoy,
       proximoLlamado: sumarDias(hoy, form.frecuencia),
-      estado: "activo",
+      estado: form.estado,
     },
   });
   revalidatePath("/seguimientos");
@@ -55,6 +59,7 @@ export async function editarSeguimientoAction(id: string, form: FormSeguimiento)
       abogadoId,
       sucursalId,
       notas: form.notas || null,
+      estado: form.estado,
     },
   });
   // El teléfono vive en el cliente, no en el seguimiento: si no se copia aquí,
@@ -73,7 +78,7 @@ export async function editarSeguimientoAction(id: string, form: FormSeguimiento)
 export async function marcarLlamadoAction(id: string, observaciones?: string) {
   await requireSession();
   const s = await prisma.seguimiento.findUnique({ where: { id } });
-  if (!s) return;
+  if (!s || s.estado !== "activo") return;
   const hoy = new Date();
   const nota = observaciones?.trim();
   const entrada = nota ? `${hoy.toLocaleDateString("es-MX")} — ${nota}` : null;
@@ -83,6 +88,25 @@ export async function marcarLlamadoAction(id: string, observaciones?: string) {
       ultimoContacto: hoy,
       proximoLlamado: sumarDias(hoy, s.frecuenciaDias ?? 7),
       ...(entrada ? { notas: s.notas ? `${entrada}\n${s.notas}` : entrada } : {}),
+    },
+  });
+  revalidatePath("/seguimientos");
+}
+
+export async function cambiarEstadoSeguimientoAction(id: string, estado: EstadoSeguimiento) {
+  await requireSession();
+  const actual = await prisma.seguimiento.findUnique({ where: { id } });
+  if (!actual) return;
+
+  const hoy = new Date(`${hoyDespacho()}T00:00:00.000Z`);
+  const reactivarVencido =
+    estado === "activo" && (!actual.proximoLlamado || actual.proximoLlamado < hoy);
+
+  await prisma.seguimiento.update({
+    where: { id },
+    data: {
+      estado,
+      ...(reactivarVencido ? { proximoLlamado: hoy } : {}),
     },
   });
   revalidatePath("/seguimientos");

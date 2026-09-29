@@ -23,33 +23,33 @@ model Configuracion {
 }
 
 model Sucursal {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nombre     String
-  direccion  String?
-  telefono   String?
-  ultimoFolio Int     @default(0) @map("ultimo_folio")
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre                String
+  direccion             String?
+  telefono              String?
+  ultimoFolio           Int      @default(0) @map("ultimo_folio")
   // Contador propio para diligencias: comparte sucursal con asesorías pero NO el
   // consecutivo — si usara ultimo_folio, el primer folio de diligencias arrancaría
   // donde iban las asesorías en vez de en 001.
-  ultimoFolioDiligencia Int @default(0) @map("ultimo_folio_diligencia")
+  ultimoFolioDiligencia Int      @default(0) @map("ultimo_folio_diligencia")
   // Geocerca del reloj checador: sin lat/lon, esta sucursal no valida ubicación al checar.
-  lat         Float?
-  lon         Float?
-  radioM      Int      @default(100) @map("radio_m")
-  horaEntrada String?  @map("hora_entrada") // HH:MM, opcional (para puntualidad)
-  creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  lat                   Float?
+  lon                   Float?
+  radioM                Int      @default(100) @map("radio_m")
+  horaEntrada           String?  @map("hora_entrada") // HH:MM, opcional (para puntualidad)
+  creadoEn              DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  usuarios     Usuario[] @relation("UsuarioSucursal")
-  encargados   Usuario[] @relation("EncargadoSucursal")
-  encargadosACargo Usuario[] @relation("EncargadoSucursales")
-  expedientes  Expediente[]
-  movimientos  MovimientoCaja[]
-  llamadas     Llamada[]
-  asesorias    Asesoria[]
-  seguimientos Seguimiento[]
-  citas        Cita[]
-  checadas     Checada[]
-  diligencias  Diligencia[]
+  usuarios         Usuario[]        @relation("UsuarioSucursal")
+  encargados       Usuario[]        @relation("EncargadoSucursal")
+  encargadosACargo Usuario[]        @relation("EncargadoSucursales")
+  expedientes      Expediente[]
+  movimientos      MovimientoCaja[]
+  llamadas         Llamada[]
+  asesorias        Asesoria[]
+  seguimientos     Seguimiento[]
+  citas            Cita[]
+  checadas         Checada[]
+  diligencias      Diligencia[]
 
   @@map("sucursales")
 }
@@ -80,28 +80,31 @@ model CatJuzgado {
 }
 
 model Usuario {
-  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sucursalId           String?  @map("sucursal_id") @db.Uuid
-  nombre               String
-  email                String?  @unique
-  passwordHash         String?  @map("password_hash")
-  telefonoWhatsapp     String?  @map("telefono_whatsapp")
-  rol                  String   @default("abogado") // admin | abogado | asistente
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sucursalId          String?  @map("sucursal_id") @db.Uuid
+  nombre              String
+  email               String?  @unique
+  passwordHash        String?  @map("password_hash")
+  telefonoWhatsapp    String?  @map("telefono_whatsapp")
+  rol                 String   @default("abogado") // admin | abogado | asistente
   // ponytail: columna muerta, reemplazada por `sucursalesACargo` (un encargado lleva varias).
   // Se conserva porque `prisma db push` (sin --accept-data-loss) falla al borrar una columna
   // con datos; bórrala a mano con ALTER TABLE cuando quieras.
-  sucursalEncargadaId  String?  @map("sucursal_encargada_id") @db.Uuid
-  activo               Boolean  @default(true)
-  debeCambiarPassword  Boolean  @default(false) @map("debe_cambiar_password")
-  pin                  String?  @unique @map("pin") // 4-8 dígitos, para checar sin sesión (reloj checador)
+  sucursalEncargadaId String?  @map("sucursal_encargada_id") @db.Uuid
+  activo              Boolean  @default(true)
+  debeCambiarPassword Boolean  @default(false) @map("debe_cambiar_password")
+  pin                 String?  @unique @map("pin") // 4-8 dígitos, para checar sin sesión (reloj checador)
   // true = el PIN lo generó el sistema y la persona todavía no lo ha cambiado.
   // Mientras siga así se le muestra el aviso para que ponga uno suyo: un PIN que
   // repartió el admin lo conoce alguien más, y con él se puede checar por otro.
-  pinGenerado          Boolean  @default(false) @map("pin_generado")
+  pinGenerado         Boolean  @default(false) @map("pin_generado")
   // Productividad la ven los admin y quien tenga esto en true (la coordinadora de
   // operaciones). Es un permiso suelto para no tener que hacer admin a alguien que
   // no debe ver Caja ni Configuración.
-  verProductividad     Boolean  @default(false) @map("ver_productividad")
+  verProductividad    Boolean  @default(false) @map("ver_productividad")
+  // Permiso independiente para recepción/coordinación: ve asesorías de todas las
+  // sucursales sin obtener acceso administrativo a Caja o Configuración.
+  verTodasAsesorias   Boolean  @default(false) @map("ver_todas_asesorias")
   // Envíos automáticos por WhatsApp. null = no recibe ninguno.
   //   "todas"            → citados del día de todo el despacho, 8:00 (Lic. Karen)
   //   <nombre sucursal>  → resumen de asesorías de ESA sucursal, 9:00
@@ -109,11 +112,11 @@ model Usuario {
   // `sucursalId`: los coordinadores de Tuxtla tienen fichas en otras plazas y aun así
   // el resumen que les toca es el de Tuxtla.
   // Se elige en Configuración › Usuarios; así cambiar destinatarios no es un deploy.
-  recibeEnvio          String?  @map("recibe_envio")
-  creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  recibeEnvio         String?  @map("recibe_envio")
+  creadoEn            DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  sucursal          Sucursal?        @relation("UsuarioSucursal", fields: [sucursalId], references: [id])
-  sucursalEncargada Sucursal?        @relation("EncargadoSucursal", fields: [sucursalEncargadaId], references: [id])
+  sucursal          Sucursal? @relation("UsuarioSucursal", fields: [sucursalId], references: [id])
+  sucursalEncargada Sucursal? @relation("EncargadoSucursal", fields: [sucursalEncargadaId], references: [id])
 
   // Un encargado ve la actividad de las sucursales que lleva y de las personas
   // que tiene asignadas directamente (Lic. Rosario: Comitán + SanCris, etc.).
@@ -121,24 +124,25 @@ model Usuario {
   personasACargo   Usuario[]  @relation("EncargadoPersonas")
   encargadoPor     Usuario[]  @relation("EncargadoPersonas")
 
-  expedientes  Expediente[]
-  actuaciones  Actuacion[]
-  citas        Cita[]
-  asesorias    Asesoria[]
-  documentos   Documento[]
-  movimientos  MovimientoCaja[]
-  seguimientos Seguimiento[]
-  clientes     Cliente[]
-  gastos       GastoExpediente[]
-  auditorias   Auditoria[]
-  checadas     Checada[]
-  diligencias  Diligencia[]
-  prospectos   Prospecto[]
-  llamadasProspecto LlamadaProspecto[]
-  actividadRespuestas ActividadRespuesta[]
+  expedientes            Expediente[]
+  actuaciones            Actuacion[]
+  citas                  Cita[]
+  asesorias              Asesoria[]           @relation("AsesoriaAtendida")
+  asesoriasAgendadas     Asesoria[]           @relation("AsesoriaAgendada")
+  documentos             Documento[]
+  movimientos            MovimientoCaja[]
+  seguimientos           Seguimiento[]
+  clientes               Cliente[]
+  gastos                 GastoExpediente[]
+  auditorias             Auditoria[]
+  checadas               Checada[]
+  diligencias            Diligencia[]
+  prospectos             Prospecto[]
+  llamadasProspecto      LlamadaProspecto[]
+  actividadRespuestas    ActividadRespuesta[]
   // Expedientes que no son suyos ni de su gente, pero el dueño (o un admin) le dio
   // acceso puntual — p.ej. un abogado que cubre a otro en una audiencia.
-  expedientesCompartidos Expediente[] @relation("ExpedienteCompartido")
+  expedientesCompartidos Expediente[]         @relation("ExpedienteCompartido")
 
   @@map("usuarios")
 }
@@ -146,24 +150,24 @@ model Usuario {
 // Entrada/salida del reloj checador. Se registra desde /checar/[sucursal] (sesión
 // ya iniciada, o PIN si no la hay), sin pasar por login normal.
 model Checada {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  usuarioId  String   @map("usuario_id") @db.Uuid
-  sucursalId String   @map("sucursal_id") @db.Uuid
-  tipo       String   // entrada | salida
-  origen     String   @default("sesion") // sesion | pin
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId      String    @map("usuario_id") @db.Uuid
+  sucursalId     String    @map("sucursal_id") @db.Uuid
+  tipo           String // entrada | salida
+  origen         String    @default("sesion") // sesion | pin
   // true = el GPS confirmó que estaba dentro de la geocerca; null = no se pudo
   // verificar (sin GPS, o la sucursal no tiene geocerca configurada). Nunca false:
   // si el GPS confirma que está fuera, la checada se rechaza y no se guarda.
-  enSitio    Boolean? @map("en_sitio")
+  enSitio        Boolean?  @map("en_sitio")
   // Justificación de retardos (reglamento del 17-ago-2026): audiencias, diligencias,
   // comparecencias, trámites o reuniones. Un retardo justificado NO cuenta para la
   // acumulación mensual que dispara descuentos y despido, así que quién lo justificó
   // y por qué tiene que quedar registrado.
-  justificada     Boolean   @default(false)
-  motivo          String?
-  justificadaPor  String?   @map("justificada_por") @db.Uuid
-  justificadaEn   DateTime? @map("justificada_en") @db.Timestamptz
-  creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  justificada    Boolean   @default(false)
+  motivo         String?
+  justificadaPor String?   @map("justificada_por") @db.Uuid
+  justificadaEn  DateTime? @map("justificada_en") @db.Timestamptz
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz
 
   usuario  Usuario  @relation(fields: [usuarioId], references: [id])
   sucursal Sucursal @relation(fields: [sucursalId], references: [id])
@@ -182,39 +186,40 @@ model Cliente {
   abogadoId String?  @map("abogado_id") @db.Uuid // dueño: cada abogado solo ve sus clientes
   creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  abogado      Usuario?     @relation(fields: [abogadoId], references: [id])
+  abogado      Usuario?      @relation(fields: [abogadoId], references: [id])
   expedientes  Expediente[]
   citas        Cita[]
   asesorias    Asesoria[]
   llamadas     Llamada[]
   seguimientos Seguimiento[]
   diligencias  Diligencia[]
+  pagos        Pago[]
 
   @@map("clientes")
 }
 
 model Expediente {
-  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  numeroInterno        String?  @unique @map("numero_interno")
-  numeroJudicial       String?  @map("numero_judicial")
-  clienteId            String?  @map("cliente_id") @db.Uuid
-  rolCliente           String?  @map("rol_cliente") // actor | demandado | tercero
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numeroInterno        String?   @unique @map("numero_interno")
+  numeroJudicial       String?   @map("numero_judicial")
+  clienteId            String?   @map("cliente_id") @db.Uuid
+  rolCliente           String?   @map("rol_cliente") // actor | demandado | tercero
   materia              String?
-  tipoJuicio           String?  @map("tipo_juicio")
+  tipoJuicio           String?   @map("tipo_juicio")
   juzgado              String?
-  etapaProcesal        String?  @map("etapa_procesal")
-  estado               String   @default("activo") // activo | suspendido | concluido | archivado
-  cuantia              Decimal? @db.Decimal(14, 2)
-  abogadoResponsableId String?  @map("abogado_responsable_id") @db.Uuid
-  sucursalId           String?  @map("sucursal_id") @db.Uuid
+  etapaProcesal        String?   @map("etapa_procesal")
+  estado               String    @default("activo") // activo | suspendido | concluido | archivado
+  cuantia              Decimal?  @db.Decimal(14, 2)
+  abogadoResponsableId String?   @map("abogado_responsable_id") @db.Uuid
+  sucursalId           String?   @map("sucursal_id") @db.Uuid
   resumen              String?
   fechaInicio          DateTime? @map("fecha_inicio") @db.Date
-  creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz
-  actualizadoEn        DateTime @default(now()) @map("actualizado_en") @db.Timestamptz
+  creadoEn             DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn        DateTime  @default(now()) @map("actualizado_en") @db.Timestamptz
 
-  cliente            Cliente?         @relation(fields: [clienteId], references: [id])
-  abogadoResponsable Usuario?         @relation(fields: [abogadoResponsableId], references: [id])
-  sucursal           Sucursal?        @relation(fields: [sucursalId], references: [id])
+  cliente            Cliente?          @relation(fields: [clienteId], references: [id])
+  abogadoResponsable Usuario?          @relation(fields: [abogadoResponsableId], references: [id])
+  sucursal           Sucursal?         @relation(fields: [sucursalId], references: [id])
   partes             Parte[]
   actuaciones        Actuacion[]
   audiencias         Audiencia[]
@@ -226,7 +231,7 @@ model Expediente {
   gastos             GastoExpediente[]
   planPago           PlanPago?
   // Acceso puntual además del abogado responsable y sus encargados (ver [[Usuario.expedientesCompartidos]]).
-  compartidoCon      Usuario[] @relation("ExpedienteCompartido")
+  compartidoCon      Usuario[]         @relation("ExpedienteCompartido")
 
   @@map("expedientes")
 }
@@ -247,14 +252,14 @@ model Actuacion {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   expedienteId  String   @map("expediente_id") @db.Uuid
   fecha         DateTime @default(now()) @db.Date
-  tipo          String?  // promocion | acuerdo | notificacion | audiencia | nota
+  tipo          String? // promocion | acuerdo | notificacion | audiencia | nota
   descripcion   String?
   registradoPor String?  @map("registrado_por") @db.Uuid
   origen        String   @default("web") // web | whatsapp
   creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  expediente Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
-  usuario    Usuario?   @relation(fields: [registradoPor], references: [id])
+  expediente Expediente  @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  usuario    Usuario?    @relation(fields: [registradoPor], references: [id])
   documentos Documento[]
 
   @@map("actuaciones")
@@ -295,81 +300,114 @@ model Termino {
 }
 
 model Cita {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clienteId    String?  @map("cliente_id") @db.Uuid
-  expedienteId String?  @map("expediente_id") @db.Uuid
-  abogadoId    String?  @map("abogado_id") @db.Uuid
-  sucursalId   String?  @map("sucursal_id") @db.Uuid
-  asunto       String?
-  telefono     String?
-  fechaHora    DateTime @map("fecha_hora") @db.Timestamptz
-  clienteNombre  String?  @map("cliente_nombre") // nombre extraído cuando no hay cliente vinculado
-  estado         String   @default("agendada") // agendada | confirmada | asesorada | cancelada | no_show
-  origen         String   @default("manual") // bot_externo | manual
-  googleEventId  String?  @map("google_event_id")
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clienteId          String?   @map("cliente_id") @db.Uuid
+  expedienteId       String?   @map("expediente_id") @db.Uuid
+  abogadoId          String?   @map("abogado_id") @db.Uuid
+  sucursalId         String?   @map("sucursal_id") @db.Uuid
+  asunto             String?
+  telefono           String?
+  fechaHora          DateTime  @map("fecha_hora") @db.Timestamptz
+  clienteNombre      String?   @map("cliente_nombre") // nombre extraído cuando no hay cliente vinculado
+  estado             String    @default("agendada") // agendada | confirmada | asesorada | cancelada | no_show
+  origen             String    @default("manual") // bot_externo | manual
+  googleEventId      String?   @map("google_event_id")
   // Seguimiento de llamada a quien no asistió / ya se asesoró (pantalla Asesorías).
   // null = todavía por contactar.
-  seguimientoEstado String?   @map("seguimiento_estado") // no_contesto | llamar_despues | agendo_cita | descartado
-  seguimientoNota   String?   @map("seguimiento_nota")
-  seguimientoFecha  DateTime? @map("seguimiento_fecha") @db.Date
-  seguimientoAbogado String?  @map("seguimiento_abogado") // quién hizo la llamada
-  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  seguimientoEstado  String?   @map("seguimiento_estado") // no_contesto | llamar_despues | agendo_cita | descartado
+  seguimientoNota    String?   @map("seguimiento_nota")
+  seguimientoFecha   DateTime? @map("seguimiento_fecha") @db.Date
+  seguimientoAbogado String?   @map("seguimiento_abogado") // quién hizo la llamada
+  creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz
 
   cliente    Cliente?    @relation(fields: [clienteId], references: [id])
   expediente Expediente? @relation(fields: [expedienteId], references: [id])
   abogado    Usuario?    @relation(fields: [abogadoId], references: [id])
   sucursal   Sucursal?   @relation(fields: [sucursalId], references: [id])
+  pagos      Pago[]
 
   @@map("citas")
 }
 
 // Embudo de ventas (clientes potenciales), no solo una consulta.
 model Asesoria {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clienteId    String?  @map("cliente_id") @db.Uuid
-  expedienteId String?  @map("expediente_id") @db.Uuid
-  sucursalId   String?  @map("sucursal_id") @db.Uuid
-  fecha        DateTime @default(now()) @db.Date
-  folio        String?
-  nombre       String?
-  telefono     String?
-  edad         String?
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clienteId          String?   @map("cliente_id") @db.Uuid
+  expedienteId       String?   @map("expediente_id") @db.Uuid
+  sucursalId         String?   @map("sucursal_id") @db.Uuid
+  fecha              DateTime  @default(now()) @db.Date
+  folio              String?
+  nombre             String?
+  telefono           String?
+  edad               String?
   sexo               String?
-  estadoCivil        String?  @map("estado_civil")
+  estadoCivil        String?   @map("estado_civil")
   escolaridad        String?
   domicilio          String?
   nacionalidad       String?
   ocupacion          String?
   correo             String?
-  domicilioLaboral   String?  @map("domicilio_laboral")
+  domicilioLaboral   String?   @map("domicilio_laboral")
   hijos              String?
-  nombreHijos        String?  @map("nombre_hijos")
-  tema         String?
-  resumen      String?
-  pagoAsesoria Boolean  @default(false) @map("pago_asesoria")
-  monto        Decimal? @db.Decimal(14, 2)
-  presupuestoTexto      String?  @map("presupuesto_texto")
-  seguimiento  String?
+  nombreHijos        String?   @map("nombre_hijos")
+  tema               String?
+  resumen            String?
+  pagoAsesoria       Boolean   @default(false) @map("pago_asesoria")
+  monto              Decimal?  @db.Decimal(14, 2)
+  presupuestoTexto   String?   @map("presupuesto_texto")
+  seguimiento        String?
   // Llamada de seguimiento (submenú "Ya asesoraron"); la nota es `seguimiento`. null = por contactar.
-  seguimientoEstado String?   @map("seguimiento_estado") // no_contesto | llamar_despues | agendo_cita | descartado
-  seguimientoFecha  DateTime? @map("seguimiento_fecha") @db.Date
-  seguimientoAbogado String?  @map("seguimiento_abogado") // quién hizo la llamada
-  status        String   @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
+  seguimientoEstado  String?   @map("seguimiento_estado") // no_contesto | llamar_despues | agendo_cita | descartado
+  seguimientoFecha   DateTime? @map("seguimiento_fecha") @db.Date
+  seguimientoAbogado String?   @map("seguimiento_abogado") // quién hizo la llamada
+  status             String    @default("pendiente") // pendiente | contrato_firmado | no_regreso | descartado
   // Cuándo pasó a "contrato_firmado" (para el ranking de Prospectos). Se pone una sola
   // vez, la primera vez que llega a ese status; no se mueve si después se reasigna o
   // se edita el resto de la fila.
-  fechaFirma    DateTime? @map("fecha_firma") @db.Date
-  urlDocumento  String?  @map("url_documento")
-  abogadoId     String?  @map("abogado_id") @db.Uuid
-  origen        String   @default("web") // web | whatsapp
-  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  fechaFirma         DateTime? @map("fecha_firma") @db.Date
+  urlDocumento       String?   @map("url_documento")
+  abogadoId          String?   @map("abogado_id") @db.Uuid
+  abogadoAgendoId    String?   @map("abogado_agendo_id") @db.Uuid
+  origen             String    @default("web") // web | whatsapp
+  creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz
 
-  cliente    Cliente?    @relation(fields: [clienteId], references: [id])
-  expediente Expediente? @relation(fields: [expedienteId], references: [id])
-  sucursal   Sucursal?   @relation(fields: [sucursalId], references: [id])
-  abogado    Usuario?    @relation(fields: [abogadoId], references: [id])
+  cliente       Cliente?    @relation(fields: [clienteId], references: [id])
+  expediente    Expediente? @relation(fields: [expedienteId], references: [id])
+  sucursal      Sucursal?   @relation(fields: [sucursalId], references: [id])
+  abogado       Usuario?    @relation("AsesoriaAtendida", fields: [abogadoId], references: [id])
+  abogadoAgendo Usuario?    @relation("AsesoriaAgendada", fields: [abogadoAgendoId], references: [id])
+  pagos          Pago[]
 
   @@map("asesorias")
+}
+
+// Cobros generados por Mercado Pago. Precio base y comisión se guardan separados
+// para que el despacho pueda auditar lo que corresponde al servicio y a la pasarela.
+model Pago {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clienteId         String?   @map("cliente_id") @db.Uuid
+  citaId            String?   @map("cita_id") @db.Uuid
+  asesoriaId        String?   @map("asesoria_id") @db.Uuid
+  servicio          String    // llamada_asesoria | confirmacion_cita | asesoria_presencial
+  concepto          String?
+  montoBase         Decimal   @map("monto_base") @db.Decimal(14, 2)
+  comision          Decimal   @default(0) @db.Decimal(14, 2)
+  montoTotal        Decimal   @map("monto_total") @db.Decimal(14, 2)
+  estado            String    @default("pending") // pending | approved | rejected | cancelled | refunded
+  linkPago          String?   @map("link_pago")
+  externalReference String    @unique @map("external_reference")
+  mpPaymentId       String?   @unique @map("mp_payment_id")
+  mpPreferenceId    String?   @map("mp_preference_id")
+  fechaPago         DateTime? @map("fecha_pago") @db.Timestamptz
+  creadoEn          DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn     DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  cliente  Cliente?  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  cita     Cita?     @relation(fields: [citaId], references: [id], onDelete: SetNull)
+  asesoria Asesoria? @relation(fields: [asesoriaId], references: [id], onDelete: SetNull)
+
+  @@index([estado, creadoEn])
+  @@map("pagos")
 }
 
 // CRM ligero ("Casos por Abogado"): llamadas recurrentes de seguimiento.
@@ -384,7 +422,7 @@ model Seguimiento {
   proximoLlamado DateTime? @map("proximo_llamado") @db.Date
   frecuenciaDias Int?      @map("frecuencia_dias")
   notas          String?
-  estado         String    @default("activo") // activo | suspendido | cerrado
+  estado         String    @default("activo") // activo | inactivo
   creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz
 
   cliente  Cliente?  @relation(fields: [clienteId], references: [id])
@@ -446,8 +484,8 @@ model Documento {
   creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   // Checklist de revisión del Lic. (solo admin): null = todavía pendiente de revisar.
-  revisionEstado String? @map("revision_estado") // pendiente | aprobado | corregir
-  revisionNotas  String? @map("revision_notas")
+  revisionEstado String?   @map("revision_estado") // pendiente | aprobado | corregir
+  revisionNotas  String?   @map("revision_notas")
   // Solo admin: hasta cuándo se le dio prórroga de pago a este contrato.
   prorrogaHasta  DateTime? @map("prorroga_hasta") @db.Date
 
@@ -462,7 +500,7 @@ model MovimientoCaja {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   sucursalId    String?  @map("sucursal_id") @db.Uuid
   expedienteId  String?  @map("expediente_id") @db.Uuid
-  tipo          String   // ingreso | egreso
+  tipo          String // ingreso | egreso
   concepto      String?
   monto         Decimal  @db.Decimal(14, 2)
   fecha         DateTime @default(now()) @db.Date
@@ -513,7 +551,7 @@ model GastoExpediente {
 model PlanPago {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   expedienteId   String    @unique @map("expediente_id") @db.Uuid
-  tipo           String    // todo_inicio | inicio_final | quincenal | mensual
+  tipo           String // todo_inicio | inicio_final | quincenal | mensual
   montoTotal     Decimal   @map("monto_total") @db.Decimal(14, 2)
   montoInicial   Decimal?  @map("monto_inicial") @db.Decimal(14, 2)
   montoFinal     Decimal?  @map("monto_final") @db.Decimal(14, 2)
@@ -534,8 +572,8 @@ model Auditoria {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   usuarioId    String?  @map("usuario_id") @db.Uuid
   expedienteId String?  @map("expediente_id") @db.Uuid
-  accion       String   // crear | editar | borrar
-  entidad      String   // expediente | actuacion | termino | movimiento_caja | gasto | documento
+  accion       String // crear | editar | borrar
+  entidad      String // expediente | actuacion | termino | movimiento_caja | gasto | documento
   creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   usuario Usuario? @relation(fields: [usuarioId], references: [id])
@@ -547,28 +585,28 @@ model Auditoria {
 // Prospectos del embudo de ventas: personas que llamaron y aún no contratan.
 // Vienen del cron 10x10 de llamadas vía API n8n.
 model Prospecto {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nombre       String
-  telefono     String?
-  ciudad       String?
-  asunto       String?
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre         String
+  telefono       String?
+  ciudad         String?
+  asunto         String?
   // por_contactar | no_contesto | mensaje_automatico | agendo_cita | llamar_despues | convertido | descartado
-  estado       String    @default("por_contactar")
-  nota         String?
+  estado         String    @default("por_contactar")
+  nota           String?
   // Fecha de registro: la pone el bot al crear/actualizar el prospecto. No se edita aquí.
-  fechaLlamada DateTime? @map("fecha_llamada") @db.Date
+  fechaLlamada   DateTime? @map("fecha_llamada") @db.Date
   // Fecha en que el abogado efectivamente hizo la llamada. Se llena/edita desde la
   // pantalla de Prospectos, junto con abogadoId, para el control de llamadas en Reportes.
-  fechaContacto DateTime? @map("fecha_contacto") @db.Date
+  fechaContacto  DateTime? @map("fecha_contacto") @db.Date
   // Quién hizo la llamada. Vacío hasta que alguien lo cambie en la pantalla.
-  abogadoId    String?   @map("abogado_id") @db.Uuid
+  abogadoId      String?   @map("abogado_id") @db.Uuid
   // Conversación de Chatwoot que originó el prospecto (solo bot de WhatsApp). Permite
   // al CRON de seguimiento 24h revisar si ya se agendó (etiqueta cita/llamada) antes de escribir.
-  conversationId String? @map("conversation_id")
-  creadoEn     DateTime  @default(now()) @map("creado_en") @db.Timestamptz
-  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+  conversationId String?   @map("conversation_id")
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn  DateTime  @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
 
-  abogado Usuario? @relation(fields: [abogadoId], references: [id])
+  abogado  Usuario?           @relation(fields: [abogadoId], references: [id])
   llamadas LlamadaProspecto[]
 
   @@map("prospectos")
@@ -580,11 +618,11 @@ model Prospecto {
 // suma de aquí, para que si dos abogados llaman al mismo prospecto en días distintos
 // (uno no contestó, otro sí después), la llamada le cuente a los dos.
 model LlamadaProspecto {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  prospectoId  String   @map("prospecto_id") @db.Uuid
-  abogadoId    String   @map("abogado_id") @db.Uuid
-  fecha        DateTime @map("fecha") @db.Date
-  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prospectoId String   @map("prospecto_id") @db.Uuid
+  abogadoId   String   @map("abogado_id") @db.Uuid
+  fecha       DateTime @map("fecha") @db.Date
+  creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   prospecto Prospecto @relation(fields: [prospectoId], references: [id])
   abogado   Usuario   @relation(fields: [abogadoId], references: [id])
@@ -602,7 +640,7 @@ model LlamadaProspecto {
 model ActividadPlantilla {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   diaSemana   Int      @map("dia_semana") // 1 = lunes … 7 = domingo
-  hora        String   // HH:MM
+  hora        String // HH:MM
   orden       Int
   descripcion String
   // Qué dato del gestor da por hecha esta actividad, si es que hay alguno.
@@ -640,11 +678,11 @@ model ActividadRegistro {
 // actividad puntual). Aparte de ActividadRegistro porque una actividad puede estar
 // marcada como hecha y aun así faltar por confirmar con alguien.
 model ActividadRespuesta {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  plantillaId String   @map("plantilla_id") @db.Uuid
-  fecha       DateTime @db.Date
-  usuarioId   String   @map("usuario_id") @db.Uuid
-  respuesta   String   // "si" | "no" | "sin_respuesta"
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plantillaId   String   @map("plantilla_id") @db.Uuid
+  fecha         DateTime @db.Date
+  usuarioId     String   @map("usuario_id") @db.Uuid
+  respuesta     String // "si" | "no" | "sin_respuesta"
   actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
 
   plantilla ActividadPlantilla @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
@@ -660,7 +698,7 @@ model ActividadRespuesta {
 // que avisa justamente cuando el de las 8:00 NO salió.
 model EnvioRegistro {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tipo         String   // citados_karen | resumen_sucursal | no_shows
+  tipo         String // citados_karen | resumen_sucursal | no_shows
   fecha        DateTime @db.Date
   destinatario String?
   total        Int      @default(0)
@@ -671,4 +709,3 @@ model EnvioRegistro {
   @@index([tipo, fecha])
   @@map("envios_registro")
 }
-

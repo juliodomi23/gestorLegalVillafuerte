@@ -12,6 +12,10 @@ const DIAS = 45;
 
 export default async function NoAsistieronPage() {
   const session = await getServerSession(authOptions);
+  const usuarioActual = session?.user?.id
+    ? await prisma.usuario.findUnique({ where: { id: session.user.id }, select: { verProductividad: true } })
+    : null;
+  const puedeCorregirLlamada = session?.user?.rol === "admin" || !!usuarioActual?.verProductividad;
   const [sucursalesDb, abogadosDb] = await Promise.all([
     prisma.sucursal.findMany({ orderBy: { nombre: "asc" } }),
     prisma.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
@@ -66,7 +70,7 @@ export default async function NoAsistieronPage() {
         title="No asistieron"
         subtitle={`Citas marcadas “No asistió” en los últimos ${DIAS} días. Lista general para todos: llámales y busquen reagendar la cita.`}
       />
-      <TablaSeguimiento filas={filas} origen="cita" encabezadoFecha="Cita" vacio="Nadie por ahora." filtrarPor="sucursal" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} hoy={hoyDespacho()} miNombre={session?.user?.name ?? ""} esAdmin={session?.user?.rol === "admin"} />
+      <TablaSeguimiento filas={filas} origen="cita" encabezadoFecha="Cita" vacio="Nadie por ahora." filtrarPor="sucursal" sucursales={sucursalesDb.map((s) => s.nombre)} abogados={abogadosDb.map((u) => u.nombre)} hoy={hoyDespacho()} miNombre={session?.user?.name ?? ""} puedeCorregirLlamada={puedeCorregirLlamada} />
     </>
   );
 }

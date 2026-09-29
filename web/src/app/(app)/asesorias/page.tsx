@@ -8,12 +8,22 @@ import { abogadoEnTurnoTuxtla } from "@/lib/services/resolvers";
 
 export default async function AsesoriasPage() {
   const session = await getServerSession(authOptions);
-  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+  let alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+
+  // La coordinadora de operaciones (Lic. Karen) necesita revisar las asesorías de
+  // todo el despacho sin recibir permisos administrativos de Caja/Configuración.
+  if (alcance && session?.user?.id) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: session.user.id },
+      select: { verTodasAsesorias: true },
+    });
+    if (usuario?.verTodasAsesorias) alcance = null;
+  }
 
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.asesoria.findMany({
       where: porAbogado(alcance),
-      include: { sucursal: true, abogado: true },
+      include: { sucursal: true, abogado: true, abogadoAgendo: true },
       orderBy: { fecha: "desc" },
       take: 300, // ponytail: tope simple en vez de paginación; subir o paginar de verdad si el despacho pasa de esto
     }),
@@ -38,6 +48,7 @@ export default async function AsesoriasPage() {
       asunto: a.tema ?? a.resumen ?? "",
       sucursal: a.sucursal?.nombre ?? "",
       abogado: a.abogado?.nombre ?? "",
+      abogadoAgendo: a.abogadoAgendo?.nombre ?? a.abogado?.nombre ?? "",
       pago: a.pagoAsesoria,
       monto: Number(a.monto ?? 0),
       status: (a.status as StatusAsesoria) ?? "pendiente",

@@ -36,6 +36,7 @@ export type DatosAsesoria = {
   seguimiento?: string;
   status?: "pendiente" | "contrato_firmado" | "no_regreso" | "descartado";
   abogado?: string;
+  abogadoAgendo?: string;
   sucursal?: string;
   origen?: "web" | "whatsapp";
   urlDocumento?: string;
@@ -76,7 +77,7 @@ export async function buscarAsesorias(f: FiltrosAsesoria) {
     where,
     orderBy: { creadoEn: "desc" },
     take: f.limite ?? 100,
-    include: { abogado: true, sucursal: true },
+    include: { abogado: true, abogadoAgendo: true, sucursal: true },
   });
 }
 
@@ -120,8 +121,9 @@ export async function resumenDiario(fecha: string) {
 }
 
 export async function registrarAsesoria(d: DatosAsesoria) {
-  const [abogadoId, sucursalId] = await Promise.all([
+  const [abogadoId, abogadoAgendoId, sucursalId] = await Promise.all([
     resolverAbogado(d.abogado),
+    resolverAbogado(d.abogadoAgendo || d.abogado),
     resolverSucursal(d.sucursal),
   ]);
   const folio = await asignarFolio(sucursalId);
@@ -151,6 +153,7 @@ export async function registrarAsesoria(d: DatosAsesoria) {
       status: d.status ?? "pendiente",
       urlDocumento: d.urlDocumento || null,
       abogadoId,
+      abogadoAgendoId: abogadoAgendoId ?? abogadoId,
       sucursalId,
       origen: d.origen ?? "whatsapp",
     },

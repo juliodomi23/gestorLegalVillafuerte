@@ -194,7 +194,8 @@ Leyenda: 🟢 MVP (fase 1) · 🔵 Fase 2
 | monto | numeric | |
 | seguimiento | text | acción de seguimiento |
 | status | text | pendiente / contrato_firmado / no_regreso / descartado |
-| abogado_id | uuid FK | |
+| abogado_id | uuid FK | abogado que atendió |
+| abogado_agendo_id | uuid FK | abogado que agendó; puede coincidir con quien atendió |
 | url_documento | text | link al PDF de hoja de asesoría en Drive |
 
 ---
@@ -302,7 +303,19 @@ Abogado dicta al bot
 | proximo_llamado | date | cuándo volver a llamar |
 | frecuencia_dias | int | cada cuántos días |
 | notas | text | |
-| estado | text | activo / suspendido / cerrado |
+| estado | text | activo / inactivo |
+
+#### 🟢 `pagos` (bitácora de Mercado Pago)
+| Campo | Tipo | Nota |
+|-------|------|------|
+| id | uuid PK | |
+| cliente_id, cita_id, asesoria_id | uuid FK | relaciones opcionales |
+| servicio, concepto | text | origen del cobro |
+| monto_base, comision, monto_total | numeric | desglose cobrado al cliente |
+| estado | text | pending / approved / rejected / cancelled / refunded |
+| link_pago | text | URL generada por Mercado Pago |
+| external_reference | text unique | llave idempotente entre n8n, Mercado Pago y GestorLegal |
+| mp_payment_id, mp_preference_id | text | identificadores de Mercado Pago |
 
 ### Documentos y dinero
 
