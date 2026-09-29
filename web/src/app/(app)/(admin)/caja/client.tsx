@@ -65,7 +65,16 @@ const PAGO_ESTADO: Record<string, { label: string; cls: string }> = {
 };
 
 const vacio = { tipo: "Ingreso", concepto: "", monto: "", sucursal: "", expediente: "" };
-const cobroVacio = { servicio: "llamada_asesoria", comision: "", concepto: "", email: "" };
+const PRECIOS_COBRO: Record<string, number> = {
+  confirmacion_cita: 100,
+  llamada_asesoria: 300,
+  asesoria_promocion: 500,
+  asesoria_regular: 600,
+};
+function comisionAutomatica(servicio: string) {
+  return ((PRECIOS_COBRO[servicio] * 0.0399 + 3)).toFixed(2);
+}
+const cobroVacio = { servicio: "llamada_asesoria", comision: comisionAutomatica("llamada_asesoria"), concepto: "", email: "" };
 
 function fmt(n: number) {
   return "$" + n.toLocaleString("es-MX");
@@ -242,7 +251,7 @@ export default function CajaClient({
           <select
             className="w-full px-3 py-2 rounded-lg bg-surface border border-line text-[13.5px] focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40"
             value={formCobro.servicio}
-            onChange={(e) => setFormCobro((f) => ({ ...f, servicio: e.target.value }))}
+            onChange={(e) => setFormCobro((f) => ({ ...f, servicio: e.target.value, comision: comisionAutomatica(e.target.value) }))}
           >
             <option value="confirmacion_cita">Confirmación de cita · $100</option>
             <option value="llamada_asesoria">Llamada de asesoría · $300</option>
@@ -250,13 +259,11 @@ export default function CajaClient({
             <option value="asesoria_regular">Asesoría regular · $600</option>
           </select>
         </Field>
-        <Field label="Comisión a cobrar">
+        <Field label="Comisión automática (3.99% + $3)">
           <Input
             inputMode="decimal"
             value={formCobro.comision}
-            onChange={(e) => setFormCobro((f) => ({ ...f, comision: e.target.value }))}
-            placeholder="Ej. 18.50"
-            required
+            readOnly
           />
         </Field>
         <Field label="Correo del cliente (opcional)">
@@ -266,7 +273,7 @@ export default function CajaClient({
           <Input value={formCobro.concepto} onChange={(e) => setFormCobro((f) => ({ ...f, concepto: e.target.value }))} placeholder="Nombre del cliente o detalle del cobro" />
         </Field>
         <p className="col-span-full text-[12.5px] text-muted leading-relaxed">
-          El total será el precio del servicio más la comisión indicada. El cobro aparecerá en esta tabla y se actualizará automáticamente cuando Mercado Pago confirme la operación.
+          El total será el precio del servicio más la comisión calculada. El cobro aparecerá en esta tabla y se actualizará automáticamente cuando Mercado Pago confirme la operación.
         </p>
         {errorCobro && <p className="col-span-full rounded-lg bg-danger-wash px-3 py-2 text-[13px] text-danger">{errorCobro}</p>}
         {linkGenerado && (
