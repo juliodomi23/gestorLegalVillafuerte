@@ -74,8 +74,8 @@ const PRECIOS_COBRO: Record<string, number> = {
 const COMISIONES_COBRO: Record<string, number> = {
   confirmacion_cita: 10,
   llamada_asesoria: 15,
-  asesoria_promocion: 25,
-  asesoria_regular: 25,
+  asesoria_promocion: 0,
+  asesoria_regular: 0,
 };
 function comisionAutomatica(servicio: string) {
   return (COMISIONES_COBRO[servicio] ?? 0).toFixed(2);
