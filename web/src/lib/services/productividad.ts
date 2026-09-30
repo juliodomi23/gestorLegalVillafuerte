@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import { calcularSenales, type Senal } from "./senales";
 import { hoyDespacho, TZ_DESPACHO } from "@/lib/fecha";
+import { resumirCumplimiento, type Respuesta as RespuestaRegla } from "@/lib/productividad-regla";
 
 export const DIAS = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
@@ -179,4 +180,30 @@ export async function marcarRespuesta(
     create: { plantillaId, fecha, usuarioId, respuesta },
     update: { respuesta },
   });
+}
+
+export type PeriodoEstadistica = "semana" | "mes" | "todo";
+
+export function rangoDelPeriodo(periodo: PeriodoEstadistica, fechaISO: string): { desde: string; hasta: string } | null {
+  if (periodo === "todo") return null;
+  if (periodo === "semana") {
+    const lunes = lunesDe(fechaISO);
+    return { desde: lunes, hasta: sumarDiasISO(lunes, 6) };
+  }
+  const [y, m] = fechaISO.split("-").map(Number);
+  const ultimo = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const mm = String(m).padStart(2, "0");
+  return { desde: `${y}-${mm}-01`, hasta: `${y}-${mm}-${String(ultimo).padStart(2, "0")}` };
+}
+
+// Cumplimiento de las encuestas: sí / total de respuestas, por grupo y por persona.
+export async function estadisticaCumplimiento(periodo: PeriodoEstadistica, fechaISO: string) {
+  const rango = rangoDelPeriodo(periodo, fechaISO);
+  const filas = await prisma.actividadRespuesta.findMany({
+    where: rango ? { fecha: { gte: new Date(rango.desde), lte: new Date(rango.hasta) } } : {},
+    select: { respuesta: true, usuario: { select: { nombre: true } } },
+  });
+  return resumirCumplimiento(
+    filas.map((f) => ({ nombre: f.usuario.nombre, respuesta: f.respuesta as RespuestaRegla }))
+  );
 }
