@@ -66,9 +66,6 @@ export default async function EstadisticasProductividadPage({
       />
 
       <div className="flex items-center gap-2 flex-wrap mb-5">
-        <Link href="/productividad" className="text-[13px] text-muted hover:text-navy mr-2">
-          ← Volver a Productividad
-        </Link>
         {PERIODOS.map((p) => (
           <Link
             key={p.clave}

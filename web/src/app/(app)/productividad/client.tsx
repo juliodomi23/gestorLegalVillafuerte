@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, CircleDot, Loader, MessageSquare, Users, X, HelpCircle } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
@@ -126,9 +125,6 @@ export default function ProductividadClient({
         title="Productividad"
         subtitle={`${hechas} de ${total} actividades · ${pct}% del día`}
       />
-      <Link href="/productividad/estadisticas" className="inline-block -mt-2 mb-4 text-[13px] font-bold text-navy hover:underline">
-        Ver estadísticas de cumplimiento →
-      </Link>
 
       <Card className="p-5 mb-5">
         <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
