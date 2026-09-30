@@ -5,14 +5,18 @@
 // se liga a ese expediente en vez de duplicarlo.
 // Las llamadas se reparten alternando miércoles y viernes.
 //
+// Los expedientes sin abogado responsable se saltan (no hay a quién asignar la llamada);
+// --excluir="Nombre" salta también los de ese abogado (se puede repetir).
+//
 // Probar sin escribir:  node prisma/backfill-seguimientos.mjs --dry
-// Aplicar:              node prisma/backfill-seguimientos.mjs
+// Aplicar:              node prisma/backfill-seguimientos.mjs --excluir="Julio Dominguez"
 
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const dry = process.argv.includes("--dry");
 const FRECUENCIA_DIAS = 7;
+const excluidos = process.argv.filter((a) => a.startsWith("--excluir=")).map((a) => a.slice(10));
 
 // Duplicado de proximoDiaLlamada en src/lib/fecha.ts (este script no puede importar TS).
 function proximoDia(diaSemana) {
@@ -25,10 +29,11 @@ function proximoDia(diaSemana) {
 }
 
 const expedientes = await prisma.expediente.findMany({
-  where: { estado: "activo", clienteId: { not: null }, seguimiento: null },
+  where: { estado: "activo", clienteId: { not: null }, abogadoResponsableId: { not: null }, seguimiento: null },
   orderBy: { creadoEn: "asc" },
   include: { abogadoResponsable: { select: { nombre: true } } },
 });
+const pendientes = expedientes.filter((e) => !excluidos.includes(e.abogadoResponsable?.nombre));
 
 const manuales = await prisma.seguimiento.findMany({
   where: { estado: "activo", expedienteId: null },
@@ -39,7 +44,7 @@ let creados = 0;
 let ligados = 0;
 const porAbogado = {};
 
-for (const [i, exp] of expedientes.entries()) {
+for (const [i, exp] of pendientes.entries()) {
   const nombre = exp.abogadoResponsable?.nombre ?? "Sin abogado";
   porAbogado[nombre] = (porAbogado[nombre] ?? 0) + 1;
 
@@ -71,7 +76,7 @@ for (const [i, exp] of expedientes.entries()) {
 }
 
 console.log(dry ? "[SIMULACRO] no se escribió nada" : "Listo");
-console.log(`Expedientes activos sin seguimiento: ${expedientes.length}`);
+console.log(`Expedientes activos sin seguimiento: ${pendientes.length} (saltados: ${expedientes.length - pendientes.length})`);
 console.log(`  seguimientos nuevos: ${creados}`);
 console.log(`  ligados a uno manual existente: ${ligados}`);
 console.log("Por abogado:", porAbogado);
