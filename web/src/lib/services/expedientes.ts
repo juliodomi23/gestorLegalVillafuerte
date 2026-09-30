@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { parseFecha } from "@/lib/fecha";
 import { resolverSucursal, resolverAbogado, upsertCliente } from "./resolvers";
+import { crearSeguimientoDeExpediente } from "./seguimientos";
 
 export type DatosExpediente = {
   numeroJudicial?: string;
@@ -100,6 +101,8 @@ export async function crearExpediente(d: DatosExpediente) {
       throw e;
     }
   }
+
+  await crearSeguimientoDeExpediente(expediente.id).catch((e) => console.error("seguimiento de expediente", e));
 
   if (d.termino) {
     const t = d.termino;

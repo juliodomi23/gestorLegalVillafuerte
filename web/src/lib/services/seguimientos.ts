@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { sumarDias } from "@/lib/fecha";
+import { sumarDias, proximoDiaLlamada } from "@/lib/fecha";
 import { resolverSucursal, resolverAbogado, upsertCliente } from "./resolvers";
 
 export type DatosSeguimiento = {
@@ -32,6 +32,44 @@ export async function registrarSeguimiento(d: DatosSeguimiento) {
       proximoLlamado: sumarDias(hoy, d.frecuenciaDias),
       estado: "activo",
     },
+  });
+}
+
+export const FRECUENCIA_EXPEDIENTE_DIAS = 7;
+
+// Todo expediente nuevo nace con su seguimiento semanal, para que el abogado lo llame
+// el próximo miércoles o viernes sin tener que acordarse de darlo de alta. Idempotente
+// por expediente (expedienteId es único). `dias` permite al script de relleno repartir
+// la carga entre miércoles y viernes.
+export async function crearSeguimientoDeExpediente(expedienteId: string, dias?: number[]) {
+  const exp = await prisma.expediente.findUnique({
+    where: { id: expedienteId },
+    select: { clienteId: true, abogadoResponsableId: true, sucursalId: true, materia: true },
+  });
+  if (!exp?.clienteId) return null;
+
+  const datos = {
+    clienteId: exp.clienteId,
+    abogadoId: exp.abogadoResponsableId,
+    sucursalId: exp.sucursalId,
+    tipoCaso: exp.materia,
+    frecuenciaDias: FRECUENCIA_EXPEDIENTE_DIAS,
+    fechaInicio: new Date(),
+    proximoLlamado: proximoDiaLlamada(dias),
+    estado: "activo",
+  };
+  return prisma.seguimiento.upsert({
+    where: { expedienteId },
+    create: { expedienteId, ...datos },
+    update: {},
+  });
+}
+
+// Si el expediente se concluye o archiva, ya no hay a quién llamar; si se reactiva, vuelve.
+export async function sincronizarSeguimientoConEstado(expedienteId: string, estadoExpediente: string) {
+  await prisma.seguimiento.updateMany({
+    where: { expedienteId },
+    data: { estado: estadoExpediente === "activo" ? "activo" : "cerrado" },
   });
 }
 

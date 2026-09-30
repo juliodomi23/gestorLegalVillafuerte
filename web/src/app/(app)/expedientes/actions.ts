@@ -5,6 +5,7 @@ import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services
 import { requireSession, type Sesion } from "@/lib/guard";
 import { parsear, urlHttpSchema, montoSchema } from "@/lib/validaciones";
 import { registrarAuditoria } from "@/lib/auditoria";
+import { crearSeguimientoDeExpediente, sincronizarSeguimientoConEstado } from "@/lib/services/seguimientos";
 import { tieneAccesoExpediente } from "@/lib/alcance";
 import { unlink } from "fs/promises";
 import { join } from "path";
@@ -105,7 +106,9 @@ export async function crearExpedienteAction(form: FormExpediente) {
   if (!exp) throw new Error("No se pudo generar el número de expediente, intenta de nuevo.");
 
   await registrarAuditoria(sesion.id, exp.id, "crear", "expediente");
+  await crearSeguimientoDeExpediente(exp.id).catch((e) => console.error("seguimiento de expediente", e));
   revalidatePath("/expedientes");
+  revalidatePath("/seguimientos");
   revalidatePath("/contratos");
   return { id: exp.id, numeroInterno: exp.numeroInterno };
 }
@@ -219,7 +222,9 @@ export async function cambiarEstadoAction(id: string, estado: string, nota: stri
       resumen: nota.trim() || null,
     },
   });
+  await sincronizarSeguimientoConEstado(id, estado);
   revalidatePath(`/expedientes/${id}`);
+  revalidatePath("/seguimientos");
 }
 
 // ── Términos ──────────────────────────────────────────────────────────────────

@@ -50,6 +50,22 @@ function diaSemanaDe(fechaISO: string): number {
   return dom0 === 0 ? 7 : dom0;
 }
 
+// Las llamadas de seguimiento se hacen miércoles (3) y viernes (5).
+export const DIAS_LLAMADA = [3, 5];
+
+// Primer día de llamada estrictamente después de hoy (hora del despacho). Con
+// `dias = [3]` o `[5]` se puede forzar uno solo para repartir la carga.
+export function proximoDiaLlamada(dias: number[] = DIAS_LLAMADA): Date {
+  const hoy = hoyDespacho();
+  const [y, m, d] = hoy.split("-").map(Number);
+  for (let i = 1; i <= 7; i++) {
+    const candidato = new Date(Date.UTC(y, m - 1, d + i));
+    const dia = candidato.getUTCDay() === 0 ? 7 : candidato.getUTCDay();
+    if (dias.includes(dia)) return candidato;
+  }
+  throw new Error("dias de llamada inválidos");
+}
+
 // Solo de lunes (1) a jueves (4). El Lic. pidió que no se puedan registrar diligencias
 // viernes/sábado/domingo.
 export function diligenciasHabilitadoHoy(): boolean {

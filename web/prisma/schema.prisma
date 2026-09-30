@@ -230,6 +230,7 @@ model Expediente {
   movimientos        MovimientoCaja[]
   gastos             GastoExpediente[]
   planPago           PlanPago?
+  seguimiento        Seguimiento?
   // Acceso puntual además del abogado responsable y sus encargados (ver [[Usuario.expedientesCompartidos]]).
   compartidoCon      Usuario[]         @relation("ExpedienteCompartido")
 
@@ -416,6 +417,8 @@ model Seguimiento {
   clienteId      String?   @map("cliente_id") @db.Uuid
   abogadoId      String?   @map("abogado_id") @db.Uuid
   sucursalId     String?   @map("sucursal_id") @db.Uuid
+  // Seguimiento nacido de un expediente (uno por expediente); null = alta manual o del bot.
+  expedienteId   String?   @unique @map("expediente_id") @db.Uuid
   tipoCaso       String?   @map("tipo_caso")
   fechaInicio    DateTime? @map("fecha_inicio") @db.Date
   ultimoContacto DateTime? @map("ultimo_contacto") @db.Date
@@ -428,6 +431,7 @@ model Seguimiento {
   cliente  Cliente?  @relation(fields: [clienteId], references: [id])
   abogado  Usuario?  @relation(fields: [abogadoId], references: [id])
   sucursal Sucursal? @relation(fields: [sucursalId], references: [id])
+  expediente Expediente? @relation(fields: [expedienteId], references: [id], onDelete: SetNull)
 
   @@map("seguimientos")
 }
