@@ -83,6 +83,7 @@ CREATE TABLE usuarios (
   sucursal_encargada_id uuid REFERENCES sucursales(id) ON DELETE SET NULL,
   activo               boolean NOT NULL DEFAULT true,
   ver_todas_asesorias  boolean NOT NULL DEFAULT false,
+  ver_todas_diligencias boolean NOT NULL DEFAULT false,
   creado_en            timestamptz NOT NULL DEFAULT now()
 );
 
@@ -345,6 +346,7 @@ CREATE TABLE diligencias (
   cliente_id     uuid REFERENCES clientes(id) ON DELETE SET NULL,
   cliente_nombre text,                  -- fallback cuando no hay cliente vinculado
   fecha          date NOT NULL DEFAULT CURRENT_DATE,
+  estado_pago    text NOT NULL DEFAULT 'pendiente',
   creado_en      timestamptz NOT NULL DEFAULT now()
 );
 
@@ -358,6 +360,19 @@ CREATE TABLE diligencia_renglones (
   importe       numeric(14,2) NOT NULL,
   creado_en     timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE diligencia_comprobantes (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  diligencia_id  uuid NOT NULL REFERENCES diligencias(id) ON DELETE CASCADE,
+  nombre         text NOT NULL,
+  mime_type      text NOT NULL,
+  ruta           text NOT NULL,
+  subido_por     uuid REFERENCES usuarios(id) ON DELETE SET NULL,
+  creado_en      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_diligencia_comprobantes_diligencia
+  ON diligencia_comprobantes(diligencia_id);
 
 
 -- =====================================================================

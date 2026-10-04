@@ -44,7 +44,7 @@ export function sumarDias(base: Date, dias: number): Date {
 // Duplicado de productividad.ts: ese archivo no se puede importar aquí (crearía un
 // ciclo con lib/prisma) y esto no puede vivir en un "use server" (diligencias/actions.ts)
 // porque ahí todo export debe ser async.
-function diaSemanaDe(fechaISO: string): number {
+export function diaSemanaDe(fechaISO: string): number {
   const [y, m, d] = fechaISO.split("-").map(Number);
   const dom0 = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
   return dom0 === 0 ? 7 : dom0;
@@ -70,4 +70,30 @@ export function proximoDiaLlamada(dias: number[] = DIAS_LLAMADA): Date {
 // viernes/sábado/domingo.
 export function diligenciasHabilitadoHoy(): boolean {
   return diaSemanaDe(hoyDespacho()) <= 4;
+}
+
+function lunesDeSemana(fechaISO: string): string {
+  const [y, m, d] = fechaISO.split("-").map(Number);
+  const fecha = new Date(Date.UTC(y, m - 1, d));
+  fecha.setUTCDate(fecha.getUTCDate() - (diaSemanaDe(fechaISO) - 1));
+  return fecha.toISOString().slice(0, 10);
+}
+
+function fechaISODe(valor: Date | string): string {
+  if (typeof valor === "string") return valor.slice(0, 10);
+  return [
+    valor.getUTCFullYear(),
+    String(valor.getUTCMonth() + 1).padStart(2, "0"),
+    String(valor.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+// El abogado puede corregir una hoja desde que se registra y hasta el jueves
+// inclusive de esa misma semana. El lunes siguiente no se vuelve a abrir.
+export function diligenciaEditablePorAbogado(
+  fechaDiligencia: Date | string,
+  hoy = hoyDespacho()
+): boolean {
+  if (diaSemanaDe(hoy) > 4) return false;
+  return lunesDeSemana(fechaISODe(fechaDiligencia)) === lunesDeSemana(hoy);
 }

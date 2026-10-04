@@ -2,18 +2,27 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { alcanceDe, porAbogado } from "@/lib/alcance";
-import { diligenciasHabilitadoHoy } from "@/lib/fecha";
+import { diligenciaEditablePorAbogado, diligenciasHabilitadoHoy } from "@/lib/fecha";
+import { puedeVerTodasDiligencias } from "@/lib/services/diligencias";
 import DiligenciasClient, { type DiligenciaView } from "./client";
 import type { EstadoPagoDiligencia } from "./actions";
 
 export default async function DiligenciasPage() {
   const session = await getServerSession(authOptions);
-  const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+  const veTodas = await puedeVerTodasDiligencias(session?.user?.id, session?.user?.rol);
+  const alcance = veTodas ? null : await alcanceDe(session?.user?.id, session?.user?.rol);
+  const puedeGestionar = session?.user?.rol === "admin" || session?.user?.rol === "asistente";
 
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.diligencia.findMany({
       where: porAbogado(alcance),
-      include: { sucursal: true, abogado: true, cliente: true, renglones: { orderBy: { fecha: "asc" } } },
+      include: {
+        sucursal: true,
+        abogado: true,
+        cliente: true,
+        renglones: { orderBy: { fecha: "asc" } },
+        comprobantes: { orderBy: { creadoEn: "desc" } },
+      },
       orderBy: { fecha: "desc" },
       take: 300, // ponytail: tope simple en vez de paginación; subir o paginar de verdad si el despacho pasa de esto
     }),
@@ -36,12 +45,27 @@ export default async function DiligenciasPage() {
       sucursal: d.sucursal?.nombre ?? "",
       abogado: d.abogado?.nombre ?? "",
       estadoPago: (d.estadoPago as EstadoPagoDiligencia) ?? "pendiente",
+      editable: puedeGestionar || (
+        d.abogadoId === session?.user?.id && diligenciaEditablePorAbogado(d.fecha)
+      ),
       renglones: d.renglones.map((r) => ({
         id: r.id,
         fecha: r.fecha ? r.fecha.toISOString().split("T")[0] : "",
         descripcion: r.descripcion ?? "",
         asunto: r.asunto ?? "",
         importe: Number(r.importe),
+      })),
+      comprobantes: d.comprobantes.map((c) => ({
+        id: c.id,
+        nombre: c.nombre,
+        mimeType: c.mimeType,
+        ruta: c.ruta,
+        fecha: c.creadoEn.toLocaleDateString("es-MX", {
+          timeZone: "America/Mexico_City",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
       })),
     };
   });
@@ -54,6 +78,7 @@ export default async function DiligenciasPage() {
       sesionNombre={session?.user?.name ?? ""}
       sesionRol={session?.user?.rol ?? ""}
       puedeCrearHoy={diligenciasHabilitadoHoy()}
+      puedeGestionar={puedeGestionar}
     />
   );
 }

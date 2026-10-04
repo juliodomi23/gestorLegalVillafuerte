@@ -105,6 +105,9 @@ model Usuario {
   // Permiso independiente para recepción/coordinación: ve asesorías de todas las
   // sucursales sin obtener acceso administrativo a Caja o Configuración.
   verTodasAsesorias   Boolean  @default(false) @map("ver_todas_asesorias")
+  // Consulta global del módulo de Diligencias sin abrir Caja ni Configuración.
+  // Se usa para secretaría/coordinación (Karen).
+  verTodasDiligencias Boolean  @default(false) @map("ver_todas_diligencias")
   // Envíos automáticos por WhatsApp. null = no recibe ninguno.
   //   "todas"            → citados del día de todo el despacho, 8:00 (Lic. Karen)
   //   <nombre sucursal>  → resumen de asesorías de ESA sucursal, 9:00
@@ -127,8 +130,8 @@ model Usuario {
   expedientes            Expediente[]
   actuaciones            Actuacion[]
   citas                  Cita[]
-  asesorias              Asesoria[]           @relation("AsesoriaAtendida")
-  asesoriasAgendadas     Asesoria[]           @relation("AsesoriaAgendada")
+  asesorias              Asesoria[]              @relation("AsesoriaAtendida")
+  asesoriasAgendadas     Asesoria[]              @relation("AsesoriaAgendada")
   documentos             Documento[]
   movimientos            MovimientoCaja[]
   seguimientos           Seguimiento[]
@@ -137,12 +140,13 @@ model Usuario {
   auditorias             Auditoria[]
   checadas               Checada[]
   diligencias            Diligencia[]
+  comprobantesDiligencia DiligenciaComprobante[]
   prospectos             Prospecto[]
   llamadasProspecto      LlamadaProspecto[]
   actividadRespuestas    ActividadRespuesta[]
   // Expedientes que no son suyos ni de su gente, pero el dueño (o un admin) le dio
   // acceso puntual — p.ej. un abogado que cubre a otro en una audiencia.
-  expedientesCompartidos Expediente[]         @relation("ExpedienteCompartido")
+  expedientesCompartidos Expediente[]            @relation("ExpedienteCompartido")
 
   @@map("usuarios")
 }
@@ -377,7 +381,7 @@ model Asesoria {
   sucursal      Sucursal?   @relation(fields: [sucursalId], references: [id])
   abogado       Usuario?    @relation("AsesoriaAtendida", fields: [abogadoId], references: [id])
   abogadoAgendo Usuario?    @relation("AsesoriaAgendada", fields: [abogadoAgendoId], references: [id])
-  pagos          Pago[]
+  pagos         Pago[]
 
   @@map("asesorias")
 }
@@ -389,7 +393,7 @@ model Pago {
   clienteId         String?   @map("cliente_id") @db.Uuid
   citaId            String?   @map("cita_id") @db.Uuid
   asesoriaId        String?   @map("asesoria_id") @db.Uuid
-  servicio          String    // llamada_asesoria | confirmacion_cita | asesoria_presencial
+  servicio          String // llamada_asesoria | confirmacion_cita | asesoria_presencial
   concepto          String?
   montoBase         Decimal   @map("monto_base") @db.Decimal(14, 2)
   comision          Decimal   @default(0) @db.Decimal(14, 2)
@@ -453,10 +457,11 @@ model Diligencia {
   estadoPago    String   @default("pendiente") @map("estado_pago")
   creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  sucursal  Sucursal?           @relation(fields: [sucursalId], references: [id])
-  abogado   Usuario?            @relation(fields: [abogadoId], references: [id])
-  cliente   Cliente?            @relation(fields: [clienteId], references: [id])
-  renglones DiligenciaRenglon[]
+  sucursal     Sucursal?               @relation(fields: [sucursalId], references: [id])
+  abogado      Usuario?                @relation(fields: [abogadoId], references: [id])
+  cliente      Cliente?                @relation(fields: [clienteId], references: [id])
+  renglones    DiligenciaRenglon[]
+  comprobantes DiligenciaComprobante[]
 
   @@map("diligencias")
 }
@@ -475,6 +480,22 @@ model DiligenciaRenglon {
   diligencia Diligencia @relation(fields: [diligenciaId], references: [id], onDelete: Cascade)
 
   @@map("diligencia_renglones")
+}
+
+model DiligenciaComprobante {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  diligenciaId String   @map("diligencia_id") @db.Uuid
+  nombre       String
+  mimeType     String   @map("mime_type")
+  ruta         String
+  subidoPor    String?  @map("subido_por") @db.Uuid
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  diligencia Diligencia @relation(fields: [diligenciaId], references: [id], onDelete: Cascade)
+  usuario    Usuario?   @relation(fields: [subidoPor], references: [id], onDelete: SetNull)
+
+  @@index([diligenciaId])
+  @@map("diligencia_comprobantes")
 }
 
 model Documento {

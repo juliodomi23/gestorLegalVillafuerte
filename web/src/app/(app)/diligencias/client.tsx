@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronDown, ChevronRight, Trash2, Pencil } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Trash2, Pencil, Upload, FileText, Image as ImageIcon, Lock } from "lucide-react";
 import { PageTitle, Card, SearchBox, FilterSelect } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
@@ -11,6 +11,7 @@ import {
   editarDiligenciaAction,
   borrarDiligenciaAction,
   agregarRenglonAction,
+  editarRenglonAction,
   borrarRenglonAction,
   cambiarEstadoPagoAction,
   type FormRenglon,
@@ -25,7 +26,9 @@ export type DiligenciaView = {
   sucursal: string;
   abogado: string;
   estadoPago: EstadoPagoDiligencia;
+  editable: boolean;
   renglones: { id: string; fecha: string; descripcion: string; asunto: string; importe: number }[];
+  comprobantes: { id: string; nombre: string; mimeType: string; ruta: string; fecha: string }[];
 };
 
 const estadoPagoInfo: Record<EstadoPagoDiligencia, { label: string; cls: string }> = {
@@ -91,17 +94,62 @@ function RenglonesForm({ renglones, onChange }: { renglones: FormRenglon[]; onCh
 function FilaRenglones({ diligencia }: { diligencia: DiligenciaView }) {
   const [openForm, setOpenForm] = useState(false);
   const [form, setForm] = useState(vacioRenglon);
+  const [editandoRenglon, setEditandoRenglon] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [subiendo, setSubiendo] = useState(false);
+  const [errorArchivo, setErrorArchivo] = useState("");
   const confirmar = useConfirm();
   const router = useRouter();
 
   async function guardar() {
     if (!form.importe) return;
     setSaving(true);
-    await agregarRenglonAction(diligencia.id, form);
+    if (editandoRenglon) await editarRenglonAction(editandoRenglon, form);
+    else await agregarRenglonAction(diligencia.id, form);
     setSaving(false);
     setOpenForm(false);
+    setEditandoRenglon(null);
     setForm(vacioRenglon);
+    router.refresh();
+  }
+
+  function editar(renglon: DiligenciaView["renglones"][number]) {
+    setForm({
+      fecha: renglon.fecha,
+      descripcion: renglon.descripcion,
+      asunto: renglon.asunto,
+      importe: String(renglon.importe),
+    });
+    setEditandoRenglon(renglon.id);
+    setOpenForm(true);
+  }
+
+  async function subirComprobante(file: File | undefined) {
+    if (!file) return;
+    setSubiendo(true);
+    setErrorArchivo("");
+    try {
+      const datos = new FormData();
+      datos.append("file", file);
+      const respuesta = await fetch(`/api/diligencias/${diligencia.id}/comprobantes`, { method: "POST", body: datos });
+      const resultado = await respuesta.json();
+      if (!respuesta.ok) throw new Error(resultado.error || "No se pudo subir el comprobante");
+      router.refresh();
+    } catch (error) {
+      setErrorArchivo(error instanceof Error ? error.message : "No se pudo subir el comprobante");
+    } finally {
+      setSubiendo(false);
+    }
+  }
+
+  async function borrarComprobante(id: string) {
+    if (!(await confirmar({ titulo: "¿Eliminar este comprobante?", peligro: true, confirmLabel: "Eliminar" }))) return;
+    const respuesta = await fetch(`/api/diligencias/${diligencia.id}/comprobantes/${id}`, { method: "DELETE" });
+    if (!respuesta.ok) {
+      const resultado = await respuesta.json();
+      setErrorArchivo(resultado.error || "No se pudo eliminar el comprobante");
+      return;
+    }
     router.refresh();
   }
 
@@ -113,7 +161,18 @@ function FilaRenglones({ diligencia }: { diligencia: DiligenciaView }) {
 
   return (
     <tr>
-      <td colSpan={9} className="bg-paper/40 px-5 py-4">
+      <td colSpan={10} className="bg-paper/40 px-5 py-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <p className="eyebrow text-muted">Hoja de gastos</p>
+            <p className="text-[12px] text-muted mt-0.5">Folio {diligencia.folio ?? "sin asignar"}</p>
+          </div>
+          {!diligencia.editable && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-line/60 px-2.5 py-1 text-[11.5px] font-bold text-muted">
+              <Lock size={12} /> Periodo cerrado
+            </span>
+          )}
+        </div>
         {diligencia.renglones.length > 0 && (
           <table className="w-full text-[12.5px] mb-3">
             <thead>
@@ -133,9 +192,10 @@ function FilaRenglones({ diligencia }: { diligencia: DiligenciaView }) {
                   <td className="py-2 pr-3 text-muted">{r.asunto || "—"}</td>
                   <td className="py-2 pr-3 num text-right font-bold">${r.importe.toLocaleString("es-MX")}</td>
                   <td className="py-2">
-                    <button onClick={() => borrar(r.id)} className="text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 size={13} strokeWidth={1.75} />
-                    </button>
+                    {diligencia.editable && <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => editar(r)} className="text-muted hover:text-navy"><Pencil size={13} /></button>
+                      <button onClick={() => borrar(r.id)} className="text-muted hover:text-danger"><Trash2 size={13} /></button>
+                    </div>}
                   </td>
                 </tr>
               ))}
@@ -143,7 +203,7 @@ function FilaRenglones({ diligencia }: { diligencia: DiligenciaView }) {
           </table>
         )}
 
-        {openForm ? (
+        {diligencia.editable && (openForm ? (
           <div className="grid grid-cols-4 gap-2 items-end">
             <label className="text-[11.5px]">
               <span className="eyebrow text-muted block mb-1">Fecha</span>
@@ -162,16 +222,54 @@ function FilaRenglones({ diligencia }: { diligencia: DiligenciaView }) {
               <div className="flex gap-1.5">
                 <Input type="number" min="0" step="0.01" value={form.importe} onChange={(e) => setForm((f) => ({ ...f, importe: e.target.value }))} placeholder="0.00" />
                 <button onClick={guardar} disabled={saving} className="shrink-0 px-3 py-2 rounded-lg bg-navy text-white text-[12px] font-bold hover:bg-navy-deep transition-colors disabled:opacity-50">
-                  {saving ? "..." : "OK"}
+                  {saving ? "..." : editandoRenglon ? "Guardar" : "Agregar"}
                 </button>
               </div>
             </label>
           </div>
         ) : (
-          <button onClick={() => setOpenForm(true)} className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-navy hover:text-navy-deep transition-colors">
+          <button onClick={() => { setEditandoRenglon(null); setForm(vacioRenglon); setOpenForm(true); }} className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-navy hover:text-navy-deep transition-colors">
             <Plus size={14} strokeWidth={2} /> Agregar renglón
           </button>
-        )}
+        ))}
+
+        <div className="border-t border-line/70 mt-4 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div>
+              <p className="eyebrow text-muted">Comprobantes</p>
+              <p className="text-[12px] text-muted mt-0.5">Tickets, facturas o recibos · JPG, PNG, WEBP o PDF · máximo 10 MB</p>
+            </div>
+            {diligencia.editable && (
+              <label className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3 py-1.5 text-[12px] font-bold text-white cursor-pointer hover:bg-navy-deep transition-colors">
+                <Upload size={14} /> {subiendo ? "Subiendo…" : "Subir comprobante"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  disabled={subiendo}
+                  onChange={(e) => { void subirComprobante(e.target.files?.[0]); e.currentTarget.value = ""; }}
+                />
+              </label>
+            )}
+          </div>
+          {errorArchivo && <p className="text-[12px] text-danger mb-2">{errorArchivo}</p>}
+          {diligencia.comprobantes.length === 0 ? (
+            <p className="text-[12.5px] text-muted">Sin comprobantes adjuntos.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {diligencia.comprobantes.map((comprobante) => (
+                <div key={comprobante.id} className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-[12.5px]">
+                  {comprobante.mimeType === "application/pdf" ? <FileText size={15} className="text-danger" /> : <ImageIcon size={15} className="text-navy" />}
+                  <a href={comprobante.ruta} target="_blank" rel="noreferrer" className="font-bold text-navy hover:underline max-w-[240px] truncate">
+                    {comprobante.nombre}
+                  </a>
+                  <span className="text-muted">{comprobante.fecha}</span>
+                  {diligencia.editable && <button onClick={() => borrarComprobante(comprobante.id)} className="text-muted hover:text-danger"><Trash2 size={13} /></button>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -184,6 +282,7 @@ export default function DiligenciasClient({
   sesionNombre,
   sesionRol,
   puedeCrearHoy,
+  puedeGestionar,
 }: {
   diligencias: DiligenciaView[];
   sucursales: string[];
@@ -191,6 +290,7 @@ export default function DiligenciasClient({
   sesionNombre: string;
   sesionRol: string;
   puedeCrearHoy: boolean;
+  puedeGestionar: boolean;
 }) {
   const puedeAsignar = sesionRol === "asistente" || sesionRol === "admin";
   const [busqueda, setBusqueda] = useState("");
@@ -296,6 +396,7 @@ export default function DiligenciasClient({
                   <th className="eyebrow text-muted px-3 py-2.5">Sucursal</th>
                   <th className="eyebrow text-muted px-3 py-2.5">Abogado</th>
                   <th className="eyebrow text-muted px-3 py-2.5 text-right">Total</th>
+                  <th className="eyebrow text-muted px-3 py-2.5 text-center">Comprobantes</th>
                   <th className="eyebrow text-muted px-3 py-2.5">Reembolso</th>
                   <th className="px-3 py-2.5 w-10" />
                 </tr>
@@ -317,17 +418,23 @@ export default function DiligenciasClient({
                         <td className="px-3 py-3 text-muted">{d.sucursal || "—"}</td>
                         <td className="px-3 py-3 text-muted">{d.abogado || "—"}</td>
                         <td className="px-3 py-3 num text-right font-bold">${totalDe(d).toLocaleString("es-MX")}</td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11.5px] font-bold ${d.comprobantes.length ? "bg-success-wash text-success" : "bg-line/50 text-muted"}`}>
+                            {d.comprobantes.length}
+                          </span>
+                        </td>
                         <td className="px-3 py-3">
                           {/* <select> nativo: un dropdown propio dentro de la tabla se recortaba con
                               el overflow-x-auto de la tabla (se veía apachurado). El del navegador
                               siempre se posiciona bien, sin depender del contenedor. */}
                           <select
                             value={d.estadoPago}
+                            disabled={!puedeGestionar}
                             onChange={async (e) => {
                               await cambiarEstadoPagoAction(d.id, e.target.value as EstadoPagoDiligencia);
                               router.refresh();
                             }}
-                            className={`px-2 py-1 rounded text-[11.5px] font-bold cursor-pointer border-0 hover:opacity-80 transition-opacity ${estadoPagoInfo[d.estadoPago].cls}`}
+                            className={`px-2 py-1 rounded text-[11.5px] font-bold border-0 transition-opacity ${puedeGestionar ? "cursor-pointer hover:opacity-80" : "cursor-default"} ${estadoPagoInfo[d.estadoPago].cls}`}
                           >
                             {(Object.entries(estadoPagoInfo) as [EstadoPagoDiligencia, { label: string; cls: string }][]).map(([key, info]) => (
                               <option key={key} value={key}>{info.label}</option>
@@ -335,14 +442,14 @@ export default function DiligenciasClient({
                           </select>
                         </td>
                         <td className="px-3 py-3">
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-colors">
+                          {d.editable ? <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-colors">
                             <button onClick={() => abrirEditar(d)} className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors">
                               <Pencil size={14} />
                             </button>
                             <button onClick={() => borrar(d.id)} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors">
                               <Trash2 size={14} />
                             </button>
-                          </div>
+                          </div> : <Lock size={13} className="text-muted" aria-label="Periodo cerrado" />}
                         </td>
                       </tr>
                       {abierto && <FilaRenglones diligencia={d} />}

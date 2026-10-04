@@ -23,6 +23,7 @@ export default async function ConfiguracionPage() {
     pin: u.pin,
     verProductividad: u.verProductividad,
     verTodasAsesorias: u.verTodasAsesorias,
+    verTodasDiligencias: u.verTodasDiligencias,
     recibeEnvio: u.recibeEnvio,
     sucursal: u.sucursal?.nombre ?? null,
     sucursalId: u.sucursalId,

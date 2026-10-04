@@ -16,6 +16,7 @@ export type UsuarioView = {
   pin: string | null;
   verProductividad: boolean;
   verTodasAsesorias: boolean;
+  verTodasDiligencias: boolean;
   recibeEnvio: string | null;
   sucursal: string | null;
   sucursalId: string | null;
@@ -31,6 +32,7 @@ const vacio = {
   nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", telefonoWhatsapp: "", pin: "",
   verProductividad: false,
   verTodasAsesorias: false,
+  verTodasDiligencias: false,
   recibeEnvio: "",
   sucursalesACargo: [] as string[],
   personasACargo: [] as string[],
@@ -102,6 +104,7 @@ export default function ConfiguracionClient({
       pin: u.pin ?? "",
       verProductividad: u.verProductividad,
       verTodasAsesorias: u.verTodasAsesorias,
+      verTodasDiligencias: u.verTodasDiligencias,
       recibeEnvio: u.recibeEnvio ?? "",
       sucursalesACargo: u.sucursalesACargo.map((s) => s.id),
       personasACargo: u.personasACargo.map((p) => p.id),
@@ -308,6 +311,20 @@ export default function ConfiguracionClient({
               Ver todas las asesorías
               <span className="block text-[12.5px] text-muted">
                 Permite consultar todas las sucursales sin dar acceso administrativo.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2.5 text-[13.5px] cursor-pointer mt-3">
+            <input
+              type="checkbox"
+              checked={form.verTodasDiligencias}
+              onChange={(e) => setForm((f) => ({ ...f, verTodasDiligencias: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 accent-navy shrink-0"
+            />
+            <span>
+              Ver todas las diligencias
+              <span className="block text-[12.5px] text-muted">
+                Permite a secretaría o coordinación consultar todo el despacho sin acceso administrativo.
               </span>
             </span>
           </label>

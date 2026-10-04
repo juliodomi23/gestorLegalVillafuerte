@@ -16,6 +16,7 @@ export type FormUsuario = {
   pin: string;
   verProductividad: boolean;
   verTodasAsesorias: boolean;
+  verTodasDiligencias: boolean;
   recibeEnvio: string;
   sucursalesACargo: string[];
   personasACargo: string[];
@@ -48,6 +49,7 @@ export async function crearUsuarioAction(data: FormUsuario) {
         pin: d.pin || null,
         verProductividad: d.verProductividad,
         verTodasAsesorias: d.verTodasAsesorias,
+        verTodasDiligencias: d.verTodasDiligencias,
         recibeEnvio: d.recibeEnvio || null,
         sucursalesACargo: { connect: d.sucursalesACargo.map((id) => ({ id })) },
         personasACargo: { connect: d.personasACargo.map((id) => ({ id })) },
@@ -71,6 +73,7 @@ export async function editarUsuarioAction(id: string, data: FormUsuario) {
     pin: d.pin || null,
     verProductividad: d.verProductividad,
     verTodasAsesorias: d.verTodasAsesorias,
+    verTodasDiligencias: d.verTodasDiligencias,
     recibeEnvio: d.recibeEnvio || null,
     // `set` reemplaza la lista completa: lo que el admin no marcó, se quita.
     sucursalesACargo: { set: d.sucursalesACargo.map((sid) => ({ id: sid })) },

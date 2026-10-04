@@ -78,8 +78,17 @@ async function sembrarAdmin() {
   console.log(`[seed] Usuario admin ${email} creado.`);
 }
 
+async function habilitarDiligenciasKaren() {
+  const resultado = await prisma.usuario.updateMany({
+    where: { nombre: { contains: "Karen", mode: "insensitive" } },
+    data: { verTodasDiligencias: true },
+  });
+  console.log(`[seed] Acceso global a Diligencias para Karen: ${resultado.count} usuario(s).`);
+}
+
 async function main() {
   await sembrarAdmin();
+  await habilitarDiligenciasKaren();
   await sembrarActividades();
 }
 

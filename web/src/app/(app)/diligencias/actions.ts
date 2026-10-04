@@ -5,6 +5,12 @@ import { resolverAbogado, resolverSucursal, asignarFolioDiligencia } from "@/lib
 import { requireSession, type Sesion } from "@/lib/guard";
 import { parsear, montoSchema } from "@/lib/validaciones";
 import { diligenciasHabilitadoHoy } from "@/lib/fecha";
+import { unlink } from "fs/promises";
+import { basename, join } from "path";
+import {
+  exigirEdicionDiligencia,
+  puedeGestionarDiligencias,
+} from "@/lib/services/diligencias";
 
 export type FormRenglon = {
   fecha: string;
@@ -26,7 +32,7 @@ export type EstadoPagoDiligencia = "pendiente" | "reembolsado" | "en_nomina";
 // un server action es un endpoint HTTP y cualquiera con sesión puede invocarlo con el
 // payload que quiera.
 function puedeAsignar(sesion: Sesion) {
-  return sesion.rol === "admin" || sesion.rol === "asistente";
+  return puedeGestionarDiligencias(sesion);
 }
 
 export async function crearDiligenciaAction(form: FormDiligencia) {
@@ -67,10 +73,9 @@ export type FormEdicionDiligencia = {
   abogado: string;
 };
 
-// Editar una diligencia ya registrada (por si faltó algo). Sin restricción de día:
-// la regla de lunes-jueves es solo para el alta.
 export async function editarDiligenciaAction(id: string, form: FormEdicionDiligencia) {
   const sesion = await requireSession();
+  await exigirEdicionDiligencia(id, sesion);
   const abogado = puedeAsignar(sesion) ? form.abogado || sesion.nombre : sesion.nombre;
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(abogado),
@@ -88,19 +93,32 @@ export async function editarDiligenciaAction(id: string, form: FormEdicionDilige
 }
 
 export async function cambiarEstadoPagoAction(id: string, estadoPago: EstadoPagoDiligencia) {
-  await requireSession();
+  const sesion = await requireSession();
+  if (!puedeGestionarDiligencias(sesion)) throw new Error("Sin permiso para cambiar el reembolso");
+  if (!["pendiente", "reembolsado", "en_nomina"].includes(estadoPago)) {
+    throw new Error("Estado de reembolso inválido");
+  }
   await prisma.diligencia.update({ where: { id }, data: { estadoPago } });
   revalidatePath("/diligencias");
 }
 
 export async function borrarDiligenciaAction(id: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirEdicionDiligencia(id, sesion);
+  const comprobantes = await prisma.diligenciaComprobante.findMany({
+    where: { diligenciaId: id },
+    select: { ruta: true },
+  });
   await prisma.diligencia.delete({ where: { id } });
+  await Promise.all(
+    comprobantes.map((c) => unlink(join(process.cwd(), "uploads", basename(c.ruta))).catch(() => {}))
+  );
   revalidatePath("/diligencias");
 }
 
 export async function agregarRenglonAction(diligenciaId: string, data: FormRenglon) {
-  await requireSession();
+  const sesion = await requireSession();
+  await exigirEdicionDiligencia(diligenciaId, sesion);
   const importe = parsear(montoSchema, data.importe);
   await prisma.diligenciaRenglon.create({
     data: {
@@ -114,8 +132,34 @@ export async function agregarRenglonAction(diligenciaId: string, data: FormRengl
   revalidatePath("/diligencias");
 }
 
+export async function editarRenglonAction(renglonId: string, data: FormRenglon) {
+  const sesion = await requireSession();
+  const renglon = await prisma.diligenciaRenglon.findUnique({
+    where: { id: renglonId },
+    select: { diligenciaId: true },
+  });
+  if (!renglon) throw new Error("El concepto ya no existe");
+  await exigirEdicionDiligencia(renglon.diligenciaId, sesion);
+  await prisma.diligenciaRenglon.update({
+    where: { id: renglonId },
+    data: {
+      descripcion: data.descripcion.trim() || null,
+      asunto: data.asunto.trim() || null,
+      importe: parsear(montoSchema, data.importe),
+      fecha: data.fecha ? new Date(data.fecha) : new Date(),
+    },
+  });
+  revalidatePath("/diligencias");
+}
+
 export async function borrarRenglonAction(renglonId: string) {
-  await requireSession();
+  const sesion = await requireSession();
+  const renglon = await prisma.diligenciaRenglon.findUnique({
+    where: { id: renglonId },
+    select: { diligenciaId: true },
+  });
+  if (!renglon) return;
+  await exigirEdicionDiligencia(renglon.diligenciaId, sesion);
   await prisma.diligenciaRenglon.delete({ where: { id: renglonId } });
   revalidatePath("/diligencias");
 }
