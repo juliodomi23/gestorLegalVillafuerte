@@ -37,7 +37,7 @@ function puedeAsignar(sesion: Sesion) {
 
 export async function crearDiligenciaAction(form: FormDiligencia) {
   const sesion = await requireSession();
-  if (!diligenciasHabilitadoHoy()) {
+  if (sesion.rol !== "admin" && !diligenciasHabilitadoHoy()) {
     throw new Error("Las diligencias solo se registran de lunes a jueves. Vuelve la próxima semana.");
   }
   const abogado = puedeAsignar(sesion) ? form.abogado || sesion.nombre : sesion.nombre;

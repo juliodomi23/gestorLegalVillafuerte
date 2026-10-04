@@ -77,7 +77,7 @@ export default async function DiligenciasPage() {
       abogados={abogadosDb.map((u) => u.nombre)}
       sesionNombre={session?.user?.name ?? ""}
       sesionRol={session?.user?.rol ?? ""}
-      puedeCrearHoy={diligenciasHabilitadoHoy()}
+      puedeCrearHoy={session?.user?.rol === "admin" || diligenciasHabilitadoHoy()}
       puedeGestionar={puedeGestionar}
     />
   );
