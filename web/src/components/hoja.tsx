@@ -22,8 +22,8 @@ export function Hoja({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: () => void;
-  submitLabel: string;
+  onSubmit?: () => void;
+  submitLabel?: string;
   titulo: string;
   /** Folio ya asignado; si no hay, se muestra que se asigna al guardar. */
   folio?: string | null;
@@ -55,7 +55,7 @@ export function Hoja({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          onSubmit();
+          onSubmit?.();
         }}
         // 816px = ancho de una carta a 96 dpi
         className="hoja relative mx-auto bg-white shadow-2xl rounded-sm w-full max-w-[816px] px-10 py-9 sm:px-14 sm:py-12"
@@ -103,7 +103,7 @@ export function Hoja({
               onClick={onClose}
               className="px-4 py-2 rounded-lg border border-line text-[13px] hover:border-navy/40 transition-colors"
             >
-              Cancelar
+              {onSubmit ? "Cancelar" : "Cerrar"}
             </button>
             <button
               type="button"
@@ -112,12 +112,14 @@ export function Hoja({
             >
               <Printer size={15} strokeWidth={1.75} /> Imprimir
             </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors"
-            >
-              {submitLabel}
-            </button>
+            {onSubmit && (
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors"
+              >
+                {submitLabel}
+              </button>
+            )}
           </div>
         </footer>
       </form>

@@ -6,6 +6,7 @@ import { Plus, ChevronDown, ChevronRight, Trash2, Pencil, Upload, FileText, Imag
 import { PageTitle, Card, SearchBox, FilterSelect } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
+import HojaGastos from "./hoja-gastos";
 import {
   crearDiligenciaAction,
   editarDiligenciaAction,
@@ -299,6 +300,7 @@ export default function DiligenciasClient({
   const [open, setOpen] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [hoja, setHoja] = useState<DiligenciaView | null>(null);
   const [form, setForm] = useState(vacioNueva);
   const [saving, setSaving] = useState(false);
   const confirmar = useConfirm();
@@ -398,7 +400,7 @@ export default function DiligenciasClient({
                   <th className="eyebrow text-muted px-3 py-2.5 text-right">Total</th>
                   <th className="eyebrow text-muted px-3 py-2.5 text-center">Comprobantes</th>
                   <th className="eyebrow text-muted px-3 py-2.5">Reembolso</th>
-                  <th className="px-3 py-2.5 w-10" />
+                  <th className="eyebrow text-muted px-3 py-2.5 w-[150px]">Hoja</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line/60">
@@ -442,14 +444,24 @@ export default function DiligenciasClient({
                           </select>
                         </td>
                         <td className="px-3 py-3">
-                          {d.editable ? <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-colors">
-                            <button onClick={() => abrirEditar(d)} className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors">
-                              <Pencil size={14} />
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setHoja(d)}
+                              title="Ver hoja de gastos"
+                              aria-label="Ver hoja de gastos"
+                              className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11.5px] font-bold text-navy bg-navy/[.06] hover:bg-navy/[.12] transition-colors"
+                            >
+                              <FileText size={14} /> Ver hoja
                             </button>
-                            <button onClick={() => borrar(d.id)} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors">
-                              <Trash2 size={14} />
-                            </button>
-                          </div> : <Lock size={13} className="text-muted" aria-label="Periodo cerrado" />}
+                            {d.editable ? <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-colors">
+                              <button onClick={() => abrirEditar(d)} className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors">
+                                <Pencil size={14} />
+                              </button>
+                              <button onClick={() => borrar(d.id)} className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger-wash transition-colors">
+                                <Trash2 size={14} />
+                              </button>
+                            </div> : <Lock size={13} className="text-muted" aria-label="Periodo cerrado" />}
+                          </div>
                         </td>
                       </tr>
                       {abierto && <FilaRenglones diligencia={d} />}
@@ -482,6 +494,8 @@ export default function DiligenciasClient({
           <RenglonesForm renglones={form.renglones} onChange={(renglones) => setForm((f) => ({ ...f, renglones }))} />
         )}
       </Modal>
+
+      <HojaGastos diligencia={hoja} onClose={() => setHoja(null)} />
     </>
   );
 }
