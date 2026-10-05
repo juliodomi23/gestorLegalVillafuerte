@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createReadStream } from "fs";
-import { stat } from "fs/promises";
-import { Readable } from "stream";
+import { open, stat } from "fs/promises";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { rutaArchivo } from "@/lib/tecnicas";
@@ -18,6 +16,30 @@ const TIPOS: Record<string, string> = {
 // Los videos se sirven por aquí y no desde public/ porque el middleware deja pasar
 // sin sesión cualquier ruta con extensión. Soporta Range: sin él el navegador no
 // puede adelantar el video (y Safari ni lo reproduce).
+
+// Lee el archivo por pedazos solo cuando el navegador pide más (pull), y lo cierra
+// si cancela la descarga — cosa que hace cada vez que adelantan el video.
+// No usar Readable.toWeb(createReadStream()): truena con "Controller is already
+// closed" justo en esa cancelación.
+async function leerRango(ruta: string, inicio: number, fin: number): Promise<ReadableStream<Uint8Array>> {
+  const archivo = await open(ruta);
+  let pos = inicio;
+  return new ReadableStream({
+    async pull(controller) {
+      const largo = Math.min(256 * 1024, fin + 1 - pos);
+      const { bytesRead, buffer } = largo > 0 ? await archivo.read(Buffer.alloc(largo), 0, largo, pos) : { bytesRead: 0, buffer: null };
+      if (!bytesRead || !buffer) {
+        await archivo.close();
+        controller.close();
+        return;
+      }
+      pos += bytesRead;
+      controller.enqueue(new Uint8Array(buffer.buffer, buffer.byteOffset, bytesRead));
+    },
+    cancel: () => archivo.close(),
+  });
+}
+
 export async function GET(req: NextRequest, { params }: { params: { archivo: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -44,8 +66,7 @@ export async function GET(req: NextRequest, { params }: { params: { archivo: str
     }
   }
 
-  const stream = Readable.toWeb(createReadStream(ruta, { start: inicio, end: fin })) as ReadableStream;
-  return new NextResponse(stream, {
+  return new NextResponse(await leerRango(ruta, inicio, fin), {
     status: rango ? 206 : 200,
     headers: {
       "Content-Type": tipo,
