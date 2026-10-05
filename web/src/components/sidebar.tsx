@@ -24,6 +24,7 @@ import {
   FileSignature,
   Receipt,
   Sparkles,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
@@ -64,6 +65,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
           { href: "/asesorias/ya-asesoraron", label: "Ya asesoraron" },
         ],
       },
+      { href: "/tecnicas", label: "Técnicas para asesoras", icon: GraduationCap },
       { href: "/seguimientos", label: "Seguimientos", icon: PhoneCall },
       { href: "/contratos", label: "Contratos", icon: FileSignature },
     ],

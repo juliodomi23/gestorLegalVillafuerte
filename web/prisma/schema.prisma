@@ -144,6 +144,7 @@ model Usuario {
   prospectos             Prospecto[]
   llamadasProspecto      LlamadaProspecto[]
   actividadRespuestas    ActividadRespuesta[]
+  leccionesVistas        LeccionVista[]
   // Expedientes que no son suyos ni de su gente, pero el dueño (o un admin) le dio
   // acceso puntual — p.ej. un abogado que cubre a otro en una audiencia.
   expedientesCompartidos Expediente[]            @relation("ExpedienteCompartido")
@@ -733,4 +734,18 @@ model EnvioRegistro {
 
   @@index([tipo, fecha])
   @@map("envios_registro")
+}
+
+// Técnicas para asesoras: qué usuario terminó qué video de capacitación.
+// Las lecciones no tienen tabla: son los videos de uploads/tecnicas/ y `leccion`
+// es el nombre del archivo sin extensión (ver src/lib/tecnicas.ts).
+model LeccionVista {
+  usuarioId String   @map("usuario_id") @db.Uuid
+  leccion   String
+  vistoEn   DateTime @default(now()) @map("visto_en") @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, leccion])
+  @@map("lecciones_vistas")
 }
