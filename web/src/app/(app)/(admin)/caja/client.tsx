@@ -52,6 +52,7 @@ const PLAN_LABELS: Record<string, string> = {
 };
 const SERVICIO_LABELS: Record<string, string> = {
   llamada_asesoria: "Llamada de asesoría",
+  llamada_no_show: "Llamada de asesoría · reagenda (no asistió)",
   confirmacion_cita: "Confirmación de cita",
   asesoria_promocion: "Asesoría presencial · promoción",
   asesoria_regular: "Asesoría presencial · precio regular",
