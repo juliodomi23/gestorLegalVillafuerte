@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronDown, ChevronRight, Trash2, Pencil, Upload, FileText, Image as ImageIcon, Lock } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Trash2, Pencil, Upload, FileText, Image as ImageIcon, Lock, Paperclip } from "lucide-react";
 import { PageTitle, Card, SearchBox, FilterSelect } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
@@ -421,9 +421,22 @@ export default function DiligenciasClient({
                         <td className="px-3 py-3 text-muted">{d.abogado || "—"}</td>
                         <td className="px-3 py-3 num text-right font-bold">${totalDe(d).toLocaleString("es-MX")}</td>
                         <td className="px-3 py-3 text-center">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11.5px] font-bold ${d.comprobantes.length ? "bg-success-wash text-success" : "bg-line/50 text-muted"}`}>
-                            {d.comprobantes.length}
-                          </span>
+                          {/* Pastilla clicable: el botón de subir vive en el detalle de la fila, y
+                              con solo la flechita nadie lo encontraba. */}
+                          <button
+                            onClick={() => setExpandido(abierto ? null : d.id)}
+                            title={d.editable ? "Ver o subir tickets, facturas o recibos" : "Ver comprobantes"}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-bold transition-colors ${
+                              d.comprobantes.length
+                                ? "bg-success-wash text-success hover:opacity-80"
+                                : d.editable
+                                ? "bg-navy/[.08] text-navy hover:bg-navy/[.15]"
+                                : "bg-line/50 text-muted"
+                            }`}
+                          >
+                            <Paperclip size={12} />
+                            {d.comprobantes.length || (d.editable ? "Subir" : 0)}
+                          </button>
                         </td>
                         <td className="px-3 py-3">
                           {/* <select> nativo: un dropdown propio dentro de la tabla se recortaba con
