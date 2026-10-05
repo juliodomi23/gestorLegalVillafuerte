@@ -303,6 +303,8 @@ export default function DiligenciasClient({
   const [hoja, setHoja] = useState<DiligenciaView | null>(null);
   const [form, setForm] = useState(vacioNueva);
   const [saving, setSaving] = useState(false);
+  const [archivos, setArchivos] = useState<File[]>([]);
+  const [avisoSubida, setAvisoSubida] = useState("");
   const confirmar = useConfirm();
   const router = useRouter();
 
@@ -319,6 +321,7 @@ export default function DiligenciasClient({
   function abrirNuevo() {
     setEditando(null);
     setForm({ ...vacioNueva, renglones: [{ ...vacioRenglon }], abogado: puedeAsignar ? "" : sesionNombre });
+    setArchivos([]);
     setOpen(true);
   }
 
@@ -338,6 +341,16 @@ export default function DiligenciasClient({
         const id = await crearDiligenciaAction(form);
         setOpen(false);
         setExpandido(id);
+        // La diligencia ya quedó guardada; si un comprobante falla se avisa y se puede
+        // volver a subir desde el detalle, sin perder lo demás.
+        const fallidos: string[] = [];
+        for (const archivo of archivos) {
+          const datos = new FormData();
+          datos.append("file", archivo);
+          const r = await fetch(`/api/diligencias/${id}/comprobantes`, { method: "POST", body: datos });
+          if (!r.ok) fallidos.push(`${archivo.name}: ${(await r.json().catch(() => ({}))).error ?? "error al subir"}`);
+        }
+        setAvisoSubida(fallidos.length ? `La diligencia se guardó, pero no se pudieron subir: ${fallidos.join(" · ")}` : "");
       }
       router.refresh();
     } finally {
@@ -355,6 +368,11 @@ export default function DiligenciasClient({
   return (
     <>
       <PageTitle eyebrow="Despacho" title="Diligencias" subtitle="Trámites y salidas de campo, con folio por sucursal" />
+      {avisoSubida && (
+        <p className="mb-4 rounded-lg bg-danger-wash text-danger text-[13px] px-4 py-2.5">
+          {avisoSubida} <button onClick={() => setAvisoSubida("")} className="ml-2 underline">Cerrar</button>
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <Card className="p-5">
@@ -505,6 +523,20 @@ export default function DiligenciasClient({
         )}
         {!editando && (
           <RenglonesForm renglones={form.renglones} onChange={(renglones) => setForm((f) => ({ ...f, renglones }))} />
+        )}
+        {!editando && (
+          <Field label="Comprobantes (tickets, facturas o recibos)" full>
+            <input
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={(e) => setArchivos(Array.from(e.target.files ?? []))}
+              className="block w-full text-[13px] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-navy file:px-3 file:py-1.5 file:text-[12px] file:font-bold file:text-white hover:file:bg-navy-deep"
+            />
+            <span className="block text-[12px] text-muted mt-1">
+              {archivos.length ? `${archivos.length} archivo(s) se subirán al registrar` : "Opcional · JPG, PNG, WEBP o PDF · máximo 10 MB c/u · también puedes subirlos después"}
+            </span>
+          </Field>
         )}
       </Modal>
 
