@@ -15,9 +15,10 @@ function coincideNombre(nombreCompleto: string, clave: string): boolean {
 // entra alguien con el mismo nombre de pila. Quien no esté en ningún equipo cuenta
 // individual (Amairany, Karen, Christian, etc. caen aquí solos).
 const EQUIPOS: { label: string; nombres: string[] }[] = [
-  { label: "Alain y Fernando", nombres: ["Alain Aquiahuatl Gomez", "Fernando Salas"] },
+  // 2026-10-06: Alain pasa con Giselle; Rosario y Fernando (titular de Villaflores)
+  // quedan individuales, como los foráneos.
+  { label: "Alain y Giselle", nombres: ["Alain Aquiahuatl Gomez", "Karla Giselle Villafuerte De Paz"] },
   { label: "Estrella y Carolina", nombres: ["Estrella Fabiola Sanchez Vives", "Carolina Velazquez"] },
-  { label: "Rosario y Giselle", nombres: ["Maria del Rosario Alvarez Vera", "Karla Giselle Villafuerte De Paz"] },
 ];
 
 export type MetricaRanking = "llamadasHoy" | "agendadasHoy" | "citasHoy" | "contratosHoy";

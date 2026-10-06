@@ -7,7 +7,6 @@ export const TURNO_TUXTLA = [
   "Alain Aquiahuatl Gomez",
   "Estrella Fabiola Sanchez Vives",
   "Maria del Rosario Alvarez Vera",
-  "Fernando Salas",
   "Carolina Velazquez",
   "Karla Giselle Villafuerte De Paz",
 ];

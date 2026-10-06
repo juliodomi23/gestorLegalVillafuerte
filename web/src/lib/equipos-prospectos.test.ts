@@ -25,7 +25,8 @@ function abogado(nombre: string, sucursalNombre: string, llamadasHoy: number) {
 
 const resumen = [
   abogado("Alain Aquiahuatl Gomez", "Tuxtla", 3),
-  abogado("Fernando Salas", "Tuxtla", 2), // equipo Alain+Fernando = 5
+  abogado("Karla Giselle Villafuerte De Paz", "Tuxtla", 2), // equipo Alain+Giselle = 5
+  abogado("Fernando Salas", "Villaflores", 1), // ya no tiene equipo: cuenta solo
   abogado("Karen Lopez", "Comitan", 5), // individual, empata con el equipo
   abogado("Amairany Diaz", "San Cristobal", 1),
   abogado("Christian Ruiz", "Tapachula", 0), // sin actividad, no entra al ranking
@@ -35,8 +36,9 @@ const porEquipo = rankingPorEquipo(resumen, "llamadasHoy");
 assert.deepEqual(
   porEquipo.map((i) => [i.lugar, i.label]),
   [
-    [1, "Alain y Fernando"],
+    [1, "Alain y Giselle"],
     [1, "Karen Lopez"],
+    [3, "Fernando Salas"],
     [3, "Amairany Diaz"],
   ],
 );
@@ -45,8 +47,9 @@ const porSucursal = rankingPorSucursal(resumen, "llamadasHoy");
 assert.deepEqual(
   porSucursal.map((i) => [i.lugar, i.label]),
   [
-    [1, "Tuxtla"], // Alain(3) + Fernando(2) = 5
+    [1, "Tuxtla"], // Alain(3) + Giselle(2) = 5
     [1, "Comitan"], // Karen sola = 5, empata con Tuxtla
+    [3, "Villaflores"],
     [3, "San Cristobal"],
   ],
 );
