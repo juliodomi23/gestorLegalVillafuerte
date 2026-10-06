@@ -361,15 +361,25 @@ export async function listarProspectosNoContesto() {
   const cupo = LIMITE_DIARIO_NO_CONTESTO - yaEnviadosHoy;
   if (cupo <= 0) return [];
 
-  return prisma.prospecto.findMany({
+  const candidatos = await prisma.prospecto.findMany({
     where: {
       estado: "no_contesto",
       telefono: { not: null },
       fechaContacto: hoy,
     },
     orderBy: { creadoEn: "asc" },
-    take: cupo,
   });
+
+  // Quien ya tiene cita (hoy o después) no debe recibir "le marcamos tal como nos lo
+  // solicitó": la secretaria le llamó para confirmar, no porque pidiera llamada.
+  const citas = await prisma.cita.findMany({
+    where: { fechaHora: { gte: inicioHoy }, estado: { not: "cancelada" } },
+    select: { telefono: true, cliente: { select: { telefono: true } } },
+  });
+  const ultimos10 = (t: string | null) => String(t ?? "").replace(/\D/g, "").slice(-10);
+  const conCita = new Set(citas.flatMap((c) => [ultimos10(c.telefono), ultimos10(c.cliente?.telefono ?? null)]).filter(Boolean));
+
+  return candidatos.filter((p) => !conCita.has(ultimos10(p.telefono))).slice(0, cupo);
 }
 
 export async function listarProspectos(filtros?: {

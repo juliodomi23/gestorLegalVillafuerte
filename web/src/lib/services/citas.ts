@@ -12,6 +12,10 @@ export type DatosCita = {
   numeroExpediente?: string;
   origen?: "bot_externo" | "manual";
   googleEventId?: string;
+  // Solo "cancelada" tiene efecto: lo manda el sync de Calendar cuando el evento se borró
+  // o quedó marcado con ❌ (cancelar_reagendar_cita). Sin esto, la cita seguía "agendada"
+  // y a las 20:00 se le mandaba el mensaje de no-show a alguien que sí avisó.
+  estado?: string;
 };
 
 // Busca un cliente existente por teléfono o nombre — nunca crea uno nuevo.
@@ -53,6 +57,7 @@ export async function agendarCita(d: DatosCita) {
   if (!fecha) throw new Error("fechaHora inválida");
 
   const esCalendar = !!d.googleEventId;
+  const cancelada = d.estado === "cancelada";
 
   const [abogadoId, sucursalId] = await Promise.all([
     resolverAbogado(d.abogado),
@@ -78,6 +83,9 @@ export async function agendarCita(d: DatosCita) {
           asunto: d.asunto,
           telefono: d.telefono ?? null,
           clienteNombre: clienteId ? null : (d.cliente ?? null),
+          // Si la movieron de horario en Calendar, la cita sigue el evento.
+          fechaHora: fecha,
+          ...(cancelada && { estado: "cancelada" }),
         },
       });
     }
@@ -103,6 +111,7 @@ export async function agendarCita(d: DatosCita) {
       origen: d.origen ?? "bot_externo",
       googleEventId: d.googleEventId ?? null,
       clienteNombre: clienteId ? null : (d.cliente ?? null),
+      ...(cancelada && { estado: "cancelada" }),
     },
   });
 }
