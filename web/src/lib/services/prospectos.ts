@@ -202,7 +202,8 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
   const hoyUTC = new Date(`${hoy}T00:00:00.000Z`);
   const hoyInicioMx = new Date(`${hoy}T00:00:00${OFFSET_DESPACHO}`);
 
-  const [abogados, llamadasMes, agendadasMes, citasDelPeriodo, asesoriasDelPeriodo, contratosMes] = await Promise.all([
+  const rangoFecha = { gte: new Date(`${inicioMes}T00:00:00.000Z`), lt: new Date(`${finMes}T00:00:00.000Z`) };
+  const [abogados, llamadasMes, agendadasMes, citasDelPeriodo, asesoriasDelPeriodo, contratosMes, seguimientosCita, seguimientosAsesoria] = await Promise.all([
     prisma.usuario.findMany({
       where: { activo: true },
       orderBy: { nombre: "asc" },
@@ -256,6 +257,19 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
       },
       select: { abogadoId: true, fechaFirma: true },
     }),
+    // Llamadas de seguimiento desde Asesorías › No asistieron / Ya asesoraron. También
+    // son llamadas del abogado y antes no contaban.
+    // ponytail: se cuentan por el último registro de cada fila (no hay historial); si a
+    // la misma persona se le vuelve a llamar otro día, la llamada anterior deja de
+    // contar. Tabla de historial como LlamadaProspecto si eso llega a importar.
+    prisma.cita.findMany({
+      where: { seguimientoEstado: { not: null }, seguimientoAbogado: { not: null }, seguimientoFecha: rangoFecha },
+      select: { seguimientoAbogado: true, seguimientoFecha: true },
+    }),
+    prisma.asesoria.findMany({
+      where: { seguimientoEstado: { not: null }, seguimientoAbogado: { not: null }, seguimientoFecha: rangoFecha },
+      select: { seguimientoAbogado: true, seguimientoFecha: true },
+    }),
   ]);
 
   const asesoriasPorDia: Record<string, AsesoriaDelDia[]> = {};
@@ -307,6 +321,17 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
     r.llamadasMes++;
     if (l.fecha >= inicioSemanaUTC) r.llamadasSemana++;
     if (l.fecha.getTime() === hoyUTC.getTime()) r.llamadasHoy++;
+  }
+
+  // seguimientoAbogado guarda el nombre (no el id) de quien llamó.
+  const idPorNombre = new Map(abogados.map((a) => [a.nombre, a.id]));
+  for (const sg of [...seguimientosCita, ...seguimientosAsesoria]) {
+    const id = sg.seguimientoAbogado ? idPorNombre.get(sg.seguimientoAbogado) : undefined;
+    const r = id ? porAbogadoId.get(id) : undefined;
+    if (!r || !sg.seguimientoFecha) continue;
+    r.llamadasMes++;
+    if (sg.seguimientoFecha >= inicioSemanaUTC) r.llamadasSemana++;
+    if (sg.seguimientoFecha.getTime() === hoyUTC.getTime()) r.llamadasHoy++;
   }
 
   for (const p of agendadasMes) {

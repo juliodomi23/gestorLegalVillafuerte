@@ -11,11 +11,11 @@ export type Respuesta = "si" | "no" | "sin_respuesta";
 const GRUPOS: { label: string; nombres: string[] }[] = [
   {
     label: "Coordinadores",
-    nombres: ["Alain Aquiahuatl Gomez", "Estrella Fabiola Sanchez Vives", "Maria del Rosario Alvarez Vera"],
+    nombres: ["Alain Aquiahuatl Gomez", "Estrella Fabiola Sanchez Vives", "Maria del Rosario Alvarez Vera", "Fernando Salas"],
   },
   {
     label: "Colaboradores",
-    nombres: ["Carolina Velazquez", "Karla Giselle Villafuerte De Paz", "Fernando Salas"],
+    nombres: ["Carolina Velazquez", "Karla Giselle Villafuerte De Paz"],
   },
   { label: "Secretaría general", nombres: ["Karen"] },
   { label: "Directo", nombres: ["Christian"] },
