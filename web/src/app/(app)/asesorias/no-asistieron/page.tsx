@@ -53,6 +53,7 @@ export default async function NoAsistieronPage() {
       id: c.id,
       fecha: c.fechaHora.toLocaleDateString("es-MX", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }),
       cliente: nombre || "—",
+      asunto: c.asunto ?? "",
       telefono: telefonoVisible(c.cliente?.telefono ?? c.telefono, nombre),
       sucursal: c.sucursal?.nombre ?? "—",
       abogado: c.abogado?.nombre ?? "—",
