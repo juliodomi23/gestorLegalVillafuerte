@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { abogadoBloqueado } from "@/lib/cita-abogado";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AgendaClient, { type CitaView, type SeguimientoAgendaView } from "./client";
@@ -116,6 +117,7 @@ export default async function AgendaPage({
     sucursal: c.sucursal?.nombre ?? "—",
     abogado: c.abogado?.nombre ?? "—",
     abogadoId: c.abogadoId,
+    abogadoBloqueado: abogadoBloqueado(c.abogadoId, c.abogadoAsignadoEn),
     estado: c.estado,
   }));
 

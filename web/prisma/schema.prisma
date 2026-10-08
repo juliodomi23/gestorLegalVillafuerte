@@ -324,6 +324,7 @@ model Cita {
   seguimientoNota    String?   @map("seguimiento_nota")
   seguimientoFecha   DateTime? @map("seguimiento_fecha") @db.Date
   seguimientoAbogado String?   @map("seguimiento_abogado") // quién hizo la llamada
+  abogadoAsignadoEn  DateTime? @map("abogado_asignado_en") @db.Timestamptz // desde cuándo tiene ese abogado (bloqueo de 24 h)
   creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz
 
   cliente    Cliente?    @relation(fields: [clienteId], references: [id])

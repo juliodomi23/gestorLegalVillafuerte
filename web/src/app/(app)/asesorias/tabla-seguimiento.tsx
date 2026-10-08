@@ -13,6 +13,7 @@ export type FilaSeguimiento = {
   id: string;
   fecha: string; // dd/mm/yyyy de la cita o de la asesoría
   cliente: string;
+  asunto?: string;
   telefono: string;
   sucursal: string;
   abogado: string;
@@ -84,6 +85,7 @@ function Fila({
           <p className="text-[11.5px] num text-muted"><Phone size={11} className="inline mr-1" />{f.telefono}</p>
         )}
       </td>
+      {origen === "asesoria" && <td className="px-3 py-3 text-[13px] max-w-[220px]">{f.asunto || "—"}</td>}
       <td className="px-3 py-3 text-muted">{f.sucursal}</td>
       <td className="px-3 py-3 text-muted">{f.abogado}</td>
       {origen === "asesoria" && <td className="px-3 py-3 text-muted">{f.abogadoAgendo || "—"}</td>}
@@ -258,6 +260,7 @@ export default function TablaSeguimiento({
             <tr className="border-b border-line text-left">
               <th className="eyebrow text-muted px-5 py-3">{encabezadoFecha}</th>
               <th className="eyebrow text-muted px-3 py-3">Persona</th>
+              {origen === "asesoria" && <th className="eyebrow text-muted px-3 py-3">Asunto</th>}
               <th className="eyebrow text-muted px-3 py-3">Sucursal</th>
               <th className="eyebrow text-muted px-3 py-3">Abogado que atendió</th>
               {origen === "asesoria" && <th className="eyebrow text-muted px-3 py-3">Abogado que agendó</th>}
@@ -271,7 +274,7 @@ export default function TablaSeguimiento({
           <tbody className="divide-y divide-line/70">
             {visibles.map((f) => <Fila key={f.id} f={f} origen={origen} onFirmar={setFirmando} onAgendar={abrirModalCita} hoy={hoy} miNombre={miNombre} puedeCorregirLlamada={puedeCorregirLlamada} abogados={abogados} />)}
             {visibles.length === 0 && (
-              <tr><td colSpan={origen === "asesoria" ? 10 : 9} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
+              <tr><td colSpan={origen === "asesoria" ? 11 : 9} className="px-5 py-10 text-center text-muted">{vacio}</td></tr>
             )}
           </tbody>
         </table>

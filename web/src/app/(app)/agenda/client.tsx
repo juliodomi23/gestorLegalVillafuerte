@@ -25,6 +25,7 @@ export type CitaView = {
   sucursal: string;
   abogado: string;
   abogadoId: string | null;
+  abogadoBloqueado: boolean;
   estado: string;
 };
 
@@ -131,7 +132,9 @@ function TablaSimple({
               <select
                 value={c.abogadoId ?? ""}
                 onChange={(e) => onAsignarAbogado(c.id, e.target.value)}
-                className={`px-2 py-1 rounded-md border border-line text-[12.5px] bg-transparent cursor-pointer ${
+                disabled={c.abogadoBloqueado}
+                title={c.abogadoBloqueado ? "Asignado hace menos de 24 h: no se puede cambiar todavía" : undefined}
+                className={`px-2 py-1 rounded-md border border-line text-[12.5px] bg-transparent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
                   c.abogadoId ? "text-ink" : "text-muted"
                 }`}
               >
@@ -263,6 +266,7 @@ export default function AgendaClient({
   const [open, setOpen] = useState(false);
   // null = el modal está creando; con id = está editando esa cita.
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [abogadoFijo, setAbogadoFijo] = useState(false);
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
   const confirmar = useConfirm();
@@ -283,11 +287,13 @@ export default function AgendaClient({
   function abrirNueva() {
     setEditandoId(null);
     setForm(vacio);
+    setAbogadoFijo(false);
     setOpen(true);
   }
 
   function abrirEditar(cita: CitaView) {
     setEditandoId(cita.id);
+    setAbogadoFijo(cita.abogadoBloqueado);
     setForm({
       cliente: cita.cliente,
       asunto: cita.asunto === "—" ? "" : cita.asunto,
@@ -512,7 +518,7 @@ export default function AgendaClient({
           <Select options={sucursales} value={form.sucursal} onChange={(e) => set("sucursal", e.target.value)} />
         </Field>
         <Field label="Abogado" full>
-          <Select options={nombresAbogados} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} />
+          <Select options={nombresAbogados} disabled={abogadoFijo} value={form.abogado} onChange={(e) => set("abogado", e.target.value)} />
         </Field>
       </Modal>
     </>

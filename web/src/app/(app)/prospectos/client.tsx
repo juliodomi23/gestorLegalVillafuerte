@@ -44,6 +44,9 @@ const ESTADO_ESTILOS: Record<string, string> = {
   descartado: "bg-danger-wash text-danger",
 };
 
+// Estados en los que todavía no se ha llamado: ahí nadie puede "apartar" el prospecto con su nombre.
+const SIN_LLAMAR = ["por_contactar", "mensaje_automatico"];
+
 const CITA_VACIA = { fecha: "", hora: "", sucursal: "", abogado: "", asunto: "" };
 
 function FilaProspecto({
@@ -79,12 +82,12 @@ function FilaProspecto({
   const [citaForm, setCitaForm] = useState(CITA_VACIA);
   const [citaGuardando, setCitaGuardando] = useState(false);
 
-  function abrirModalCita() {
+  function abrirModalCita(abogadoActualId: string | null) {
     setCitaForm({
       fecha: "",
       hora: "",
       sucursal: sucursalDeCiudad(p.ciudad, sucursales),
-      abogado: abogados.find((a) => a.id === abogadoId)?.nombre ?? "",
+      abogado: abogados.find((a) => a.id === abogadoActualId)?.nombre ?? "",
       asunto: p.asunto === "—" ? "" : p.asunto,
     });
     setCitaAbierta(true);
@@ -121,10 +124,20 @@ function FilaProspecto({
 
   function cambiarEstado(nuevoEstado: string) {
     setEstado(nuevoEstado);
+    // Al marcar el resultado de la llamada (incluido "Agendó cita") el prospecto queda a
+    // nombre de quien la hizo; antes de eso el nombre no se puede poner a mano.
+    const yaLlamado = !SIN_LLAMAR.includes(nuevoEstado);
+    const autoAsignar = yaLlamado && !abogadoId && !esAdmin && !!miId;
+    const nuevoAbogado = autoAsignar ? miId : abogadoId;
+    const nuevaFecha = autoAsignar && !fechaContacto ? new Date().toLocaleDateString("en-CA") : fechaContacto;
+    if (autoAsignar) {
+      setAbogadoId(miId!);
+      setFechaContacto(nuevaFecha);
+    }
     startTransition(() => {
-      actualizarProspectoAction(p.id, nuevoEstado, nota, { fechaContacto, abogadoId: abogadoId || null });
+      actualizarProspectoAction(p.id, nuevoEstado, nota, { fechaContacto: nuevaFecha, abogadoId: nuevoAbogado || null });
     });
-    if (nuevoEstado === "agendo_cita" && estado !== "agendo_cita") abrirModalCita();
+    if (nuevoEstado === "agendo_cita" && estado !== "agendo_cita") abrirModalCita(nuevoAbogado);
   }
 
   function guardarNota() {
@@ -177,6 +190,7 @@ function FilaProspecto({
   // "agendó cita" a "convertido" tras la llamada). Mañana, al dejar de ser "hoy", se
   // libera sola para cualquiera.
   const esMia = !!abogadoId && abogadoId === miId;
+  const sinLlamar = !esAdmin && SIN_LLAMAR.includes(estado);
   const bloqueada = !esAsesoria && !!abogadoId && !!fechaContacto && fechaContacto === hoy && !esMia && !esAdmin;
 
   function irAExpediente() {
@@ -238,8 +252,8 @@ function FilaProspecto({
           <select
             value={abogadoId}
             onChange={(e) => cambiarAbogado(e.target.value)}
-            disabled={bloqueada}
-            title={bloqueada ? "Ya se le llamó hoy — se libera mañana" : undefined}
+            disabled={bloqueada || sinLlamar}
+            title={bloqueada ? "Ya se le llamó hoy — se libera mañana" : sinLlamar ? "Primero llama y marca el estado: el nombre se pone solo" : undefined}
             className="w-36 px-2 py-1 rounded text-[12.5px] bg-transparent border border-transparent hover:border-line focus:border-line focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="">—</option>

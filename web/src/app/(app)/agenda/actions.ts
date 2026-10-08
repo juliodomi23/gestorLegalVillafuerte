@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { upsertCliente, resolverAbogado, resolverSucursal } from "@/lib/services/resolvers";
 import { requireSession } from "@/lib/guard";
+import { abogadoBloqueado, MENSAJE_BLOQUEO } from "@/lib/cita-abogado";
 import {
   crearEventoCalendar,
   actualizarEventoCalendar,
@@ -65,6 +66,7 @@ export async function crearCitaAction(form: {
     data: {
       clienteId,
       abogadoId,
+      abogadoAsignadoEn: abogadoId ? new Date() : null,
       sucursalId,
       asunto: form.asunto || null,
       telefono: form.telefono || null,
@@ -80,7 +82,7 @@ export async function editarCitaAction(id: string, form: FormCita) {
   await requireSession();
   const cita = await prisma.cita.findUnique({
     where: { id },
-    select: { googleEventId: true },
+    select: { googleEventId: true, abogadoId: true, abogadoAsignadoEn: true },
   });
   if (!cita) throw new Error("La cita ya no existe");
 
@@ -88,6 +90,8 @@ export async function editarCitaAction(id: string, form: FormCita) {
     resolverAbogado(form.abogado),
     resolverSucursal(form.sucursal),
   ]);
+  const cambioAbogado = abogadoId !== cita.abogadoId;
+  if (cambioAbogado && abogadoBloqueado(cita.abogadoId, cita.abogadoAsignadoEn)) throw new Error(MENSAJE_BLOQUEO);
   const fechaHora = combinarFechaHora(form.fecha, form.hora);
 
   // Si el evento no se puede actualizar, se conserva el id anterior en vez de
@@ -105,6 +109,7 @@ export async function editarCitaAction(id: string, form: FormCita) {
     where: { id },
     data: {
       abogadoId,
+      ...(cambioAbogado && { abogadoAsignadoEn: abogadoId ? new Date() : null }),
       sucursalId,
       asunto: form.asunto || null,
       telefono: form.telefono || null,
@@ -131,7 +136,11 @@ export async function cambiarEstadoCitaAction(id: string, estado: string) {
 // Prospectos ("Acudieron a la oficina"), que solo ve citas con abogadoId puesto.
 export async function asignarAbogadoCitaAction(id: string, abogadoId: string | null) {
   await requireSession();
-  await prisma.cita.update({ where: { id }, data: { abogadoId } });
+  const cita = await prisma.cita.findUnique({ where: { id }, select: { abogadoId: true, abogadoAsignadoEn: true } });
+  if (!cita) throw new Error("La cita ya no existe");
+  if (abogadoId === cita.abogadoId) return;
+  if (abogadoBloqueado(cita.abogadoId, cita.abogadoAsignadoEn)) throw new Error(MENSAJE_BLOQUEO);
+  await prisma.cita.update({ where: { id }, data: { abogadoId, abogadoAsignadoEn: abogadoId ? new Date() : null } });
   revalidatePath("/agenda");
 }
 

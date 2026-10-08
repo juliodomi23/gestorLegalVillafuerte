@@ -29,6 +29,7 @@ export default async function YaAsesoraronPage() {
     id: a.id,
     fecha: a.fecha.toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }),
     cliente: a.nombre ?? "Sin nombre",
+    asunto: a.tema ?? "",
     telefono: a.telefono ?? "",
     sucursal: a.sucursal?.nombre ?? "—",
     abogado: a.abogado?.nombre ?? "—",
