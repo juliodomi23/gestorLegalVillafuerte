@@ -73,7 +73,13 @@ const grupos: { titulo: string; items: Item[] }[] = [
   {
     titulo: "Administración",
     items: [
-      { href: "/caja", label: "Caja", icon: Wallet, soloAdmin: true },
+      {
+        href: "/caja",
+        label: "Caja",
+        icon: Wallet,
+        soloAdmin: true,
+        sub: [{ href: "/caja/cobros", label: "Cobros Mercado Pago" }],
+      },
       { href: "/reportes", label: "Reportes de llamadas", icon: Phone, soloAdmin: true },
       { href: "/reloj-checador", label: "Reloj checador", icon: Clock, soloProductividad: true },
       {

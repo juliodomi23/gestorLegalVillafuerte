@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import CajaClient, { type MovimientoView, type PagoMercadoPagoView, type ProximoPagoView } from "./client";
+import CajaClient, { type MovimientoView, type ProximoPagoView } from "./client";
 
 function fmtDate(d: Date): string {
   const date = d instanceof Date ? d : new Date(d);
@@ -15,7 +15,7 @@ function diasHasta(d: Date): number {
 }
 
 export default async function CajaPage() {
-  const [rows, sucursalesDb, planesDb, pagosDb] = await Promise.all([
+  const [rows, sucursalesDb, planesDb] = await Promise.all([
     prisma.movimientoCaja.findMany({
       include: {
         sucursal: true,
@@ -33,15 +33,6 @@ export default async function CajaPage() {
         },
       },
       orderBy: { fechaProxPago: "asc" },
-    }),
-    prisma.pago.findMany({
-      include: {
-        cliente: { select: { nombre: true } },
-        cita: { select: { clienteNombre: true, cliente: { select: { nombre: true } } } },
-        asesoria: { select: { nombre: true } },
-      },
-      orderBy: { creadoEn: "desc" },
-      take: 200,
     }),
   ]);
 
@@ -70,18 +61,5 @@ export default async function CajaPage() {
     }));
 
   const sucursales = sucursalesDb.map((s) => s.nombre);
-  const pagos: PagoMercadoPagoView[] = pagosDb.map((p) => ({
-    id: p.id,
-    fecha: fmtDate(p.creadoEn),
-    cliente: p.cliente?.nombre ?? p.cita?.cliente?.nombre ?? p.cita?.clienteNombre ?? p.asesoria?.nombre ?? "—",
-    servicio: p.servicio,
-    montoBase: Number(p.montoBase),
-    comision: Number(p.comision),
-    montoTotal: Number(p.montoTotal),
-    estado: p.estado,
-    linkPago: p.linkPago,
-    externalReference: p.externalReference,
-  }));
-
-  return <CajaClient movimientos={movimientos} sucursales={sucursales} proximosPagos={proximosPagos} pagos={pagos} />;
+  return <CajaClient movimientos={movimientos} sucursales={sucursales} proximosPagos={proximosPagos} />;
 }
