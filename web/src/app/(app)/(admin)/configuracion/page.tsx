@@ -25,6 +25,7 @@ export default async function ConfiguracionPage() {
     verProductividad: u.verProductividad,
     verTodasAsesorias: u.verTodasAsesorias,
     verTodasDiligencias: u.verTodasDiligencias,
+    verChatRecepcion: u.verChatRecepcion,
     recibeEnvio: u.recibeEnvio,
     sucursal: u.sucursal?.nombre ?? null,
     sucursalId: u.sucursalId,

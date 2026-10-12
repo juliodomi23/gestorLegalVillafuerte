@@ -19,6 +19,7 @@ export type UsuarioView = {
   verProductividad: boolean;
   verTodasAsesorias: boolean;
   verTodasDiligencias: boolean;
+  verChatRecepcion: boolean;
   recibeEnvio: string | null;
   sucursal: string | null;
   sucursalId: string | null;
@@ -35,6 +36,7 @@ const vacio = {
   verProductividad: false,
   verTodasAsesorias: false,
   verTodasDiligencias: false,
+  verChatRecepcion: false,
   recibeEnvio: "",
   sucursalesACargo: [] as string[],
   personasACargo: [] as string[],
@@ -109,6 +111,7 @@ export default function ConfiguracionClient({
       verProductividad: u.verProductividad,
       verTodasAsesorias: u.verTodasAsesorias,
       verTodasDiligencias: u.verTodasDiligencias,
+      verChatRecepcion: u.verChatRecepcion,
       recibeEnvio: u.recibeEnvio ?? "",
       sucursalesACargo: u.sucursalesACargo.map((s) => s.id),
       personasACargo: u.personasACargo.map((p) => p.id),
@@ -332,6 +335,20 @@ export default function ConfiguracionClient({
               Ver todas las diligencias
               <span className="block text-[12.5px] text-muted">
                 Permite a secretaría o coordinación consultar todo el despacho sin acceso administrativo.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2.5 text-[13.5px] cursor-pointer mt-3">
+            <input
+              type="checkbox"
+              checked={form.verChatRecepcion}
+              onChange={(e) => setForm((f) => ({ ...f, verChatRecepcion: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 accent-navy shrink-0"
+            />
+            <span>
+              Chat: recepción
+              <span className="block text-[12.5px] text-muted">
+                Ve las conversaciones por atender y las reasigna a un abogado. Sin esto, solo ve las que le asignan.
               </span>
             </span>
           </label>

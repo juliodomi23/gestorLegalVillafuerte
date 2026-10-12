@@ -43,6 +43,8 @@ export const usuarioSchema = z.object({
   verProductividad: z.boolean().default(false),
   verTodasAsesorias: z.boolean().default(false),
   verTodasDiligencias: z.boolean().default(false),
+  // Recepción del chat de WhatsApp (cola por atender y reasignación).
+  verChatRecepcion: z.boolean().default(false),
   // Un encargado puede llevar varias sucursales y varias personas a la vez.
   sucursalesACargo: z.array(z.string().uuid()).default([]),
   personasACargo: z.array(z.string().uuid()).default([]),
