@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requerirChatAdmin } from "@/lib/chat/api";
+import { requerirChat, requerirChatAdmin } from "@/lib/chat/api";
 
 export const dynamic = "force-dynamic";
 
+// El catálogo lo lee cualquier persona del chat (para filtrar y etiquetar); crearlo o cambiarle el color es de admin.
 export async function GET() {
-  const acceso = await requerirChatAdmin();
+  const acceso = await requerirChat();
   if ("error" in acceso) return acceso.error;
   const etiquetas = await prisma.etiquetaChat.findMany({ orderBy: { nombre: "asc" }, select: { nombre: true, color: true } });
   return NextResponse.json({ etiquetas });

@@ -184,6 +184,12 @@ try {
   assert.equal((await ui("recepcion", "/api/chat/usuarios")).status, 403);
   await prisma.usuario.update({ where: { id: recepcion.id }, data: { verChatRecepcion: true } });
 
+  // el catálogo de etiquetas lo lee todo el equipo; editarlo es de admin
+  for (const quien of ["recepcion", "abogada"]) {
+    assert.equal((await ui(quien, "/api/chat/etiquetas")).status, 200, `${quien} no pudo leer las etiquetas`);
+  }
+  assert.equal((await ui("abogada", "/api/chat/etiquetas", "POST", { nombre: "x", color: "#000000" })).status, 403);
+
   // lo administrativo sigue siendo solo de admin
   for (const ruta of ["/api/chat/tokens", "/api/chat/webhooks"]) {
     assert.equal((await ui("recepcion", ruta)).status, 403, `${ruta} abierto a recepción`);
