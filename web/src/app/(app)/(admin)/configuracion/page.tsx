@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import ConfiguracionClient, { type UsuarioView } from "./client";
+import { chatWhatsappActivo } from "@/lib/chat/modulo";
 
 export default async function ConfiguracionPage() {
   const [usuariosRaw, sucursales] = await Promise.all([
@@ -36,6 +37,7 @@ export default async function ConfiguracionPage() {
     <ConfiguracionClient
       usuarios={usuarios}
       sucursales={sucursales.map((s) => ({ id: s.id, nombre: s.nombre }))}
+      chatWhatsappActivo={chatWhatsappActivo()}
     />
   );
 }

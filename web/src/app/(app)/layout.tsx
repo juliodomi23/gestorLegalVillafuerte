@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { puedeVerProductividad } from "@/lib/guard";
 import { prisma } from "@/lib/prisma";
+import { chatWhatsappActivo } from "@/lib/chat/modulo";
 
 export default async function AppLayout({
   children,
@@ -29,6 +30,7 @@ export default async function AppLayout({
       nombre={name ?? "Usuario"}
       rol={rol}
       verProductividad={verProductividad}
+      chatWhatsappActivo={chatWhatsappActivo()}
       estadoPin={!usuario?.pin ? "sin_pin" : usuario.pinGenerado ? "generado" : "propio"}
     >
       {children}

@@ -6,6 +6,7 @@ import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
 import { crearUsuarioAction, editarUsuarioAction, borrarUsuarioAction } from "./actions";
+import { ConexionManual } from "@/components/config/ConexionManual";
 
 export type UsuarioView = {
   id: string;
@@ -65,9 +66,11 @@ function Casillas({
 export default function ConfiguracionClient({
   usuarios,
   sucursales,
+  chatWhatsappActivo,
 }: {
   usuarios: UsuarioView[];
   sucursales: { id: string; nombre: string }[];
+  chatWhatsappActivo: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -139,7 +142,9 @@ export default function ConfiguracionClient({
     <>
       <PageTitle eyebrow="Administración" title="Configuración" subtitle="Usuarios, accesos y personalización del despacho" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {chatWhatsappActivo && <ConexionManual />}
+
+      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-5 ${chatWhatsappActivo ? "mt-5" : ""}`}>
         <Card className="overflow-hidden">
           <div className="px-5 py-3.5 border-b border-line"><h3 className="font-serif text-[17px]">Datos del despacho</h3></div>
           <div className="divide-y divide-line/70">

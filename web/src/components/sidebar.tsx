@@ -25,6 +25,7 @@ import {
   Receipt,
   Sparkles,
   GraduationCap,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
@@ -38,6 +39,7 @@ type Item = {
   sub?: { href: string; label: string }[];
   // Se muestra solo a quien tiene el permiso de Productividad (admins incluidos).
   soloProductividad?: boolean;
+  soloChat?: boolean;
 };
 
 const grupos: { titulo: string; items: Item[] }[] = [
@@ -55,6 +57,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
     titulo: "Clientes",
     items: [
       { href: "/clientes", label: "Clientes", icon: Users },
+      { href: "/chat", label: "Chat", icon: MessageCircle, soloAdmin: true, soloChat: true },
       { href: "/prospectos", label: "Prospectos", icon: UserSearch },
       {
         href: "/asesorias",
@@ -100,12 +103,14 @@ export function Sidebar({
   nombre,
   rol,
   verProductividad = false,
+  chatWhatsappActivo = false,
   drawerOpen = false,
   onClose,
 }: {
   nombre: string;
   rol: Rol;
   verProductividad?: boolean;
+  chatWhatsappActivo?: boolean;
   drawerOpen?: boolean;
   onClose?: () => void;
 }) {
@@ -145,7 +150,8 @@ export function Sidebar({
           const items = g.items.filter(
             (it) =>
               (!it.soloAdmin || rol === "admin") &&
-              (!it.soloProductividad || verProductividad)
+              (!it.soloProductividad || verProductividad) &&
+              (!it.soloChat || chatWhatsappActivo)
           );
           if (items.length === 0) return null;
           return (
