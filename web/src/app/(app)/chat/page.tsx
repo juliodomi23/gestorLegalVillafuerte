@@ -23,7 +23,9 @@ export default async function ChatPage() {
         : "Conversaciones de los números del despacho";
   return (
     <>
-      <PageTitle eyebrow="WhatsApp" title="Chat" subtitle={subtitulo} />
+      <div className="hidden lg:block">
+        <PageTitle eyebrow="WhatsApp" title="Chat" subtitle={subtitulo} />
+      </div>
       <ChatCliente usuarioId={acceso.usuarioId} alcance={acceso.alcance} />
     </>
   );
