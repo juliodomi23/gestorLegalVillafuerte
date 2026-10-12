@@ -657,13 +657,37 @@ model CanalWhatsapp {
   actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
 
   conversaciones Conversacion[]
+  contactos      ContactoWhatsapp[]
 
   @@map("canales_whatsapp")
 }
 
+model ContactoWhatsapp {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numeroCompat        BigInt   @unique @default(autoincrement()) @map("numero_compat")
+  canalId             String   @map("canal_id") @db.Uuid
+  nombre              String
+  telefono            String
+  telefonoNormalizado String   @map("telefono_normalizado")
+  sourceId            String   @map("source_id")
+  atributos           Json     @default("{}")
+  creadoEn            DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn       DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  canal          CanalWhatsapp @relation(fields: [canalId], references: [id], onDelete: Restrict)
+  conversaciones Conversacion[]
+
+  @@unique([canalId, telefonoNormalizado])
+  @@unique([canalId, sourceId])
+  @@index([telefonoNormalizado])
+  @@map("contactos_whatsapp")
+}
+
 model Conversacion {
   id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numeroCompat        BigInt    @unique @default(autoincrement()) @map("numero_compat")
   canalId             String    @map("canal_id") @db.Uuid
+  contactoWhatsappId  String?   @map("contacto_whatsapp_id") @db.Uuid
   nombreContacto      String    @map("nombre_contacto")
   telefono            String
   telefonoNormalizado String    @map("telefono_normalizado")
@@ -671,26 +695,56 @@ model Conversacion {
   prospectoId         String?   @map("prospecto_id") @db.Uuid
   responsableId       String?   @map("responsable_id") @db.Uuid
   estado              String    @default("abierta")
+  atributos           Json      @default("{}")
   noLeidos            Int       @default(0) @map("no_leidos")
   ultimoMensajeAt     DateTime? @map("ultimo_mensaje_at") @db.Timestamptz
   creadoEn            DateTime  @default(now()) @map("creado_en") @db.Timestamptz
   actualizadoEn       DateTime  @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
 
   canal       CanalWhatsapp @relation(fields: [canalId], references: [id], onDelete: Restrict)
+  contactoWhatsapp ContactoWhatsapp? @relation(fields: [contactoWhatsappId], references: [id], onDelete: SetNull)
   cliente     Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
   prospecto   Prospecto?    @relation(fields: [prospectoId], references: [id], onDelete: SetNull)
   responsable Usuario?      @relation("ConversacionResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
   mensajes    Mensaje[]
+  etiquetas   ConversacionEtiqueta[]
+  auditoriasBot AuditoriaBot[]
 
   @@unique([canalId, telefonoNormalizado])
   @@index([ultimoMensajeAt])
   @@index([clienteId])
   @@index([prospectoId])
+  @@index([contactoWhatsappId])
   @@map("conversaciones")
+}
+
+model EtiquetaChat {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre         String   @unique
+  color          String   @default("#64748b")
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn  DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  conversaciones ConversacionEtiqueta[]
+
+  @@map("etiquetas_chat")
+}
+
+model ConversacionEtiqueta {
+  conversacionId String   @map("conversacion_id") @db.Uuid
+  etiquetaId     String   @map("etiqueta_id") @db.Uuid
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  conversacion Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  etiqueta     EtiquetaChat @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
+
+  @@id([conversacionId, etiquetaId])
+  @@map("conversaciones_etiquetas")
 }
 
 model Mensaje {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numeroCompat   BigInt   @unique @default(autoincrement()) @map("numero_compat")
   conversacionId String   @map("conversacion_id") @db.Uuid
   direccion      String
   tipo           String   @default("texto")
@@ -699,11 +753,17 @@ model Mensaje {
   errorDetalle   String?  @map("error_detalle")
   waMessageId    String?  @unique @map("wa_message_id")
   enviadoPor     String?  @map("enviado_por") @db.Uuid
+  privado        Boolean  @default(false)
+  mediaRuta      String?  @map("media_ruta")
+  mediaMime      String?  @map("media_mime")
+  mediaNombre    String?  @map("media_nombre")
+  mediaTamano    BigInt?  @map("media_tamano")
   timestamp      DateTime @default(now()) @db.Timestamptz
   creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   conversacion Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
   usuario      Usuario?     @relation("MensajeEnviadoPor", fields: [enviadoPor], references: [id], onDelete: SetNull)
+  entregasWebhook EntregaWebhook[]
 
   @@index([conversacionId, timestamp])
   @@map("mensajes")
@@ -717,6 +777,77 @@ model PlantillaMensaje {
   creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   @@map("plantillas_mensaje")
+}
+
+model TokenIntegracion {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre         String
+  tokenHash      String    @unique @map("token_hash")
+  tokenPrefijo   String    @map("token_prefijo")
+  activo         Boolean   @default(true)
+  ultimoUsoEn    DateTime? @map("ultimo_uso_en") @db.Timestamptz
+  revocadoEn     DateTime? @map("revocado_en") @db.Timestamptz
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn  DateTime  @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  auditorias AuditoriaBot[]
+
+  @@map("tokens_integracion")
+}
+
+model WebhookIntegracion {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre          String
+  url             String
+  secretoCifrado  String?  @map("secreto_cifrado")
+  eventos         String[] @default(["message_created", "message_updated", "conversation_created", "conversation_status_changed", "conversation_updated", "contact_updated"])
+  activo          Boolean  @default(true)
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn   DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  entregas EntregaWebhook[]
+
+  @@map("webhooks_integracion")
+}
+
+model AuditoriaBot {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenId          String?   @map("token_id") @db.Uuid
+  tokenFingerprint String?   @map("token_fingerprint")
+  metodo           String
+  ruta             String
+  statusHttp       Int       @map("status_http")
+  accion           String
+  conversacionId   String?   @map("conversacion_id") @db.Uuid
+  ipOrigen         String?   @map("ip_origen")
+  detalle          Json      @default("{}")
+  creadoEn         DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+
+  token        TokenIntegracion? @relation(fields: [tokenId], references: [id], onDelete: SetNull)
+  conversacion Conversacion?     @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
+
+  @@index([creadoEn])
+  @@map("auditoria_bot")
+}
+
+model EntregaWebhook {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  webhookId        String?  @map("webhook_id") @db.Uuid
+  mensajeId        String?  @map("mensaje_id") @db.Uuid
+  evento           String
+  payload          Json
+  estado           String   @default("pendiente")
+  intentos         Int      @default(0)
+  proximoIntentoEn DateTime @default(now()) @map("proximo_intento_en") @db.Timestamptz
+  ultimoError      String?  @map("ultimo_error")
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn    DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  webhook WebhookIntegracion? @relation(fields: [webhookId], references: [id], onDelete: SetNull)
+  mensaje Mensaje?             @relation(fields: [mensajeId], references: [id], onDelete: SetNull)
+
+  @@index([estado, proximoIntentoEn])
+  @@map("entregas_webhook")
 }
 
 // Historial de llamadas de un prospecto: un registro por cada día que un abogado
