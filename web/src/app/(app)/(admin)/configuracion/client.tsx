@@ -7,6 +7,7 @@ import { Modal, Field, Input, Select } from "@/components/modal";
 import { useConfirm } from "@/components/confirm";
 import { crearUsuarioAction, editarUsuarioAction, borrarUsuarioAction } from "./actions";
 import { ConexionManual } from "@/components/config/ConexionManual";
+import { IntegracionesChat } from "@/components/config/IntegracionesChat";
 
 export type UsuarioView = {
   id: string;
@@ -143,6 +144,7 @@ export default function ConfiguracionClient({
       <PageTitle eyebrow="Administración" title="Configuración" subtitle="Usuarios, accesos y personalización del despacho" />
 
       {chatWhatsappActivo && <ConexionManual />}
+      {chatWhatsappActivo && <IntegracionesChat />}
 
       <div className={`grid grid-cols-1 lg:grid-cols-2 gap-5 ${chatWhatsappActivo ? "mt-5" : ""}`}>
         <Card className="overflow-hidden">

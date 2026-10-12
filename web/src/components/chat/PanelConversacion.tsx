@@ -1,34 +1,98 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { BriefcaseBusiness, CircleUserRound, Phone } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { BriefcaseBusiness, CircleUserRound, Phone, Plus, X } from "lucide-react";
 
+type Etiqueta = { nombre: string; color: string };
 type Detalle = {
   id: string;
+  numero: number;
   estado: string;
   nombreContacto: string;
   telefono: string;
+  atributos: Record<string, unknown>;
   canal: { nombre: string; telefono: string | null; activo: boolean };
   cliente: { id: string; nombre: string; telefono: string | null } | null;
   prospecto: { id: string; nombre: string; telefono: string | null } | null;
   responsable: { id: string; nombre: string } | null;
+  etiquetas: Etiqueta[];
 };
 
-export function PanelConversacion({ conversacionId, version }: { conversacionId: string; version: number }) {
+const ESTADOS = ["abierta", "pendiente", "resuelta", "pospuesta"];
+
+export function PanelConversacion({
+  conversacionId,
+  version,
+  onCambio,
+}: {
+  conversacionId: string;
+  version: number;
+  onCambio: () => void;
+}) {
   const [detalle, setDetalle] = useState<Detalle | null>(null);
+  const [usuarios, setUsuarios] = useState<{ id: string; nombre: string }[]>([]);
+  const [catalogo, setCatalogo] = useState<Etiqueta[]>([]);
+  const [nuevaEtiqueta, setNuevaEtiqueta] = useState("");
+  const [claveAtributo, setClaveAtributo] = useState("");
+  const [valorAtributo, setValorAtributo] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let vigente = true;
     fetch(`/api/conversaciones/${conversacionId}`, { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
+      .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (vigente) setDetalle(data?.conversacion || null);
       });
-    return () => { vigente = false; };
+    return () => {
+      vigente = false;
+    };
   }, [conversacionId, version]);
 
+  useEffect(() => {
+    fetch("/api/chat/usuarios").then((r) => (r.ok ? r.json() : null)).then((d) => d && setUsuarios(d.usuarios || []));
+    fetch("/api/chat/etiquetas").then((r) => (r.ok ? r.json() : null)).then((d) => d && setCatalogo(d.etiquetas || []));
+  }, []);
+
+  const guardar = useCallback(
+    async (cambios: Record<string, unknown>) => {
+      setError("");
+      const response = await fetch(`/api/conversaciones/${conversacionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cambios),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || "No se pudo guardar");
+        return;
+      }
+      onCambio();
+    },
+    [conversacionId, onCambio],
+  );
+
   if (!detalle) return <p className="p-5 text-[13px] text-muted">Cargando detalles…</p>;
+
+  const nombres = detalle.etiquetas.map((etiqueta) => etiqueta.nombre);
+  const atributos = Object.entries(detalle.atributos || {});
+
+  async function agregarEtiqueta() {
+    const nombre = nuevaEtiqueta.trim();
+    if (!nombre || nombres.includes(nombre)) return;
+    setNuevaEtiqueta("");
+    await guardar({ etiquetas: [...nombres, nombre] });
+  }
+
+  async function agregarAtributo() {
+    const clave = claveAtributo.trim();
+    if (!clave) return;
+    setClaveAtributo("");
+    setValorAtributo("");
+    await guardar({ atributos: { [clave]: valorAtributo } });
+  }
+
   return (
     <div className="p-5 space-y-5">
       <div className="text-center">
@@ -36,11 +100,67 @@ export function PanelConversacion({ conversacionId, version }: { conversacionId:
         <h3 className="font-serif text-[18px] mt-2">{detalle.nombreContacto}</h3>
         <p className="text-[12.5px] text-muted flex items-center justify-center gap-1 mt-1"><Phone size={13} /> {detalle.telefono}</p>
       </div>
+      {error && <p className="text-[12px] text-danger">{error}</p>}
 
       <div className="border-t border-line pt-4 space-y-3 text-[13px]">
-        <Fila etiqueta="Estado" valor={detalle.estado} />
+        <label className="flex items-center justify-between gap-3">
+          <span className="text-muted">Estado</span>
+          <select value={detalle.estado === "cerrada" ? "resuelta" : detalle.estado} onChange={(e) => void guardar({ estado: e.target.value })} className="rounded-lg border border-line bg-paper px-2 py-1 text-[12.5px]">
+            {ESTADOS.map((estado) => <option key={estado} value={estado}>{estado}</option>)}
+          </select>
+        </label>
+        <label className="flex items-center justify-between gap-3">
+          <span className="text-muted">Responsable</span>
+          <select value={detalle.responsable?.id || ""} onChange={(e) => void guardar({ responsableId: e.target.value || null })} className="min-w-0 max-w-[150px] rounded-lg border border-line bg-paper px-2 py-1 text-[12.5px]">
+            <option value="">Sin asignar</option>
+            {usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nombre}</option>)}
+          </select>
+        </label>
         <Fila etiqueta="Canal" valor={`${detalle.canal.nombre}${detalle.canal.activo ? "" : " · inactivo"}`} />
-        <Fila etiqueta="Responsable" valor={detalle.responsable?.nombre || "Sin asignar"} />
+      </div>
+
+      <div className="border-t border-line pt-4">
+        <p className="eyebrow text-muted mb-2">Etiquetas</p>
+        <div className="flex flex-wrap gap-1.5">
+          {detalle.etiquetas.map((etiqueta) => (
+            <span key={etiqueta.nombre} className="inline-flex items-center gap-1 rounded-full border border-line bg-paper px-2 py-0.5 text-[11.5px]">
+              <i className="h-2 w-2 rounded-full" style={{ backgroundColor: etiqueta.color }} />
+              {etiqueta.nombre}
+              <button aria-label={`Quitar ${etiqueta.nombre}`} onClick={() => void guardar({ etiquetas: nombres.filter((n) => n !== etiqueta.nombre) })} className="text-muted hover:text-danger"><X size={12} /></button>
+            </span>
+          ))}
+          {detalle.etiquetas.length === 0 && <span className="text-[12px] text-muted">Sin etiquetas.</span>}
+        </div>
+        <div className="mt-2 flex gap-1.5">
+          <input
+            list="etiquetas-chat"
+            value={nuevaEtiqueta}
+            onChange={(e) => setNuevaEtiqueta(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void agregarEtiqueta()}
+            placeholder="Agregar etiqueta…"
+            className="min-w-0 flex-1 rounded-lg border border-line px-2 py-1 text-[12.5px]"
+          />
+          <datalist id="etiquetas-chat">{catalogo.filter((e) => !nombres.includes(e.nombre)).map((e) => <option key={e.nombre} value={e.nombre} />)}</datalist>
+          <button onClick={() => void agregarEtiqueta()} aria-label="Agregar etiqueta" className="rounded-lg border border-line p-1.5 hover:border-navy/40"><Plus size={14} /></button>
+        </div>
+      </div>
+
+      <div className="border-t border-line pt-4">
+        <p className="eyebrow text-muted mb-2">Atributos</p>
+        <div className="space-y-1.5 text-[12.5px]">
+          {atributos.map(([clave, valor]) => (
+            <div key={clave} className="flex items-start justify-between gap-2">
+              <span className="min-w-0 break-words"><b>{clave}</b>: {typeof valor === "string" ? valor : JSON.stringify(valor)}</span>
+              <button aria-label={`Quitar ${clave}`} onClick={() => void guardar({ quitarAtributo: clave })} className="shrink-0 text-muted hover:text-danger"><X size={12} /></button>
+            </div>
+          ))}
+          {atributos.length === 0 && <p className="text-muted">Sin atributos.</p>}
+        </div>
+        <div className="mt-2 flex gap-1.5">
+          <input value={claveAtributo} onChange={(e) => setClaveAtributo(e.target.value)} placeholder="Clave" className="min-w-0 w-[40%] rounded-lg border border-line px-2 py-1 text-[12.5px]" />
+          <input value={valorAtributo} onChange={(e) => setValorAtributo(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void agregarAtributo()} placeholder="Valor" className="min-w-0 flex-1 rounded-lg border border-line px-2 py-1 text-[12.5px]" />
+          <button onClick={() => void agregarAtributo()} aria-label="Agregar atributo" className="rounded-lg border border-line p-1.5 hover:border-navy/40"><Plus size={14} /></button>
+        </div>
       </div>
 
       <div className="border-t border-line pt-4">

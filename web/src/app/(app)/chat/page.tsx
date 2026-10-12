@@ -8,15 +8,16 @@ export const dynamic = "force-dynamic";
 
 export default async function ChatPage() {
   if (!chatWhatsappActivo()) notFound();
+  let usuarioId = "";
   try {
-    await requireAdmin();
+    usuarioId = (await requireAdmin()).id;
   } catch {
     redirect("/inicio");
   }
   return (
     <>
       <PageTitle eyebrow="WhatsApp" title="Chat" subtitle="Conversaciones del número oficial del despacho" />
-      <ChatCliente />
+      <ChatCliente usuarioId={usuarioId} />
     </>
   );
 }
