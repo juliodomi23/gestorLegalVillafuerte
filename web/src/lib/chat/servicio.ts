@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { asegurarContacto, asegurarContactoDeConversacion } from "./contactos";
 import { claveTelefono, normalizarTelefonoWhatsapp } from "./telefono";
 import type { ActualizacionEstado, MensajeEntranteNormalizado } from "@/lib/channel/types";
 
@@ -18,27 +19,59 @@ async function encontrarVinculo(clave: string) {
     : { clienteId: null, prospectoId: prospectosCoincidentes[0].id };
 }
 
-export async function ingestarMensajeEntrante(mensaje: MensajeEntranteNormalizado, canalId: string) {
+export type ResultadoIngesta =
+  | { duplicado: true; mensajeId?: string }
+  | {
+      duplicado: false;
+      mensajeId: string;
+      conversacionId: string;
+      conversacionCreada: boolean;
+      estadoCambio: boolean;
+      mediaId?: string;
+      mediaNombre?: string;
+    };
+
+export async function ingestarMensajeEntrante(mensaje: MensajeEntranteNormalizado, canalId: string): Promise<ResultadoIngesta> {
   const existente = await prisma.mensaje.findUnique({ where: { waMessageId: mensaje.waMessageId } });
   if (existente) return { duplicado: true, mensajeId: existente.id };
 
   const telefono = normalizarTelefonoWhatsapp(mensaje.telefono, mensaje.waMessageId);
-  let conversacion = await prisma.conversacion.findUnique({
-    where: { canalId_telefonoNormalizado: { canalId, telefonoNormalizado: telefono.clave } },
-  });
+  const buscar = () =>
+    prisma.conversacion.findUnique({
+      where: { canalId_telefonoNormalizado: { canalId, telefonoNormalizado: telefono.clave } },
+    });
+  let conversacion = await buscar();
+  let conversacionCreada = false;
   if (!conversacion) {
     const vinculo = await encontrarVinculo(telefono.clave);
-    conversacion = await prisma.conversacion.create({
-      data: {
-        canalId,
-        nombreContacto: mensaje.nombre?.trim() || telefono.telefono,
-        telefono: telefono.telefono,
-        telefonoNormalizado: telefono.clave,
-        ...vinculo,
-      },
+    const { contacto } = await asegurarContacto(canalId, {
+      nombre: mensaje.nombre,
+      telefono: mensaje.telefono,
+      respaldo: mensaje.waMessageId,
     });
+    try {
+      conversacion = await prisma.conversacion.create({
+        data: {
+          canalId,
+          contactoWhatsappId: contacto.id,
+          nombreContacto: mensaje.nombre?.trim() || telefono.telefono,
+          telefono: telefono.telefono,
+          telefonoNormalizado: telefono.clave,
+          ...vinculo,
+        },
+      });
+      conversacionCreada = true;
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) throw error;
+      conversacion = await buscar();
+      if (!conversacion) throw error;
+    }
+  } else if (!conversacion.contactoWhatsappId) {
+    const contacto = await asegurarContactoDeConversacion(conversacion);
+    conversacion = { ...conversacion, contactoWhatsappId: contacto.id };
   }
 
+  const estadoCambio = conversacion.estado !== "abierta";
   try {
     const creado = await prisma.$transaction(async (tx) => {
       const nuevo = await tx.mensaje.create({
@@ -50,6 +83,7 @@ export async function ingestarMensajeEntrante(mensaje: MensajeEntranteNormalizad
           status: "entregado",
           waMessageId: mensaje.waMessageId,
           timestamp: mensaje.timestamp,
+          mediaNombre: mensaje.mediaNombre ?? null,
         },
       });
       await tx.conversacion.update({
@@ -64,7 +98,15 @@ export async function ingestarMensajeEntrante(mensaje: MensajeEntranteNormalizad
       });
       return nuevo;
     });
-    return { duplicado: false, mensajeId: creado.id, conversacionId: conversacion.id };
+    return {
+      duplicado: false,
+      mensajeId: creado.id,
+      conversacionId: conversacion.id,
+      conversacionCreada,
+      estadoCambio: estadoCambio && !conversacionCreada,
+      mediaId: mensaje.mediaId,
+      mediaNombre: mensaje.mediaNombre,
+    };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const repetido = await prisma.mensaje.findUnique({ where: { waMessageId: mensaje.waMessageId } });
@@ -90,7 +132,14 @@ export async function listarConversaciones() {
       canal: { select: { id: true, nombre: true, activo: true } },
       cliente: { select: { id: true, nombre: true } },
       prospecto: { select: { id: true, nombre: true } },
-      mensajes: { orderBy: { timestamp: "desc" }, take: 1, select: { contenido: true, tipo: true } },
+      responsable: { select: { id: true, nombre: true } },
+      etiquetas: { include: { etiqueta: { select: { nombre: true, color: true } } } },
+      mensajes: {
+        where: { privado: false },
+        orderBy: { timestamp: "desc" },
+        take: 1,
+        select: { contenido: true, tipo: true },
+      },
     },
   });
 }
@@ -103,6 +152,7 @@ export async function obtenerConversacion(id: string) {
       cliente: { select: { id: true, nombre: true, telefono: true } },
       prospecto: { select: { id: true, nombre: true, telefono: true } },
       responsable: { select: { id: true, nombre: true } },
+      etiquetas: { include: { etiqueta: { select: { nombre: true, color: true } } } },
     },
   });
 }

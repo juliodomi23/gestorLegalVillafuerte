@@ -7,6 +7,8 @@ export type MensajeEntranteNormalizado = {
   tipo: TipoMensaje;
   contenido: string;
   timestamp: Date;
+  mediaId?: string;
+  mediaNombre?: string;
 };
 
 export type ActualizacionEstado = {
@@ -24,6 +26,10 @@ export type PlantillaMeta = {
 
 export type ResultadoEnvio = { ok: boolean; waMessageId?: string; error?: string };
 
+export type ResultadoMedia =
+  | { ok: true; buffer: Buffer; mime: string }
+  | { ok: false; error: string };
+
 export type ProveedorCanal = {
   enviarTexto: (telefono: string, texto: string) => Promise<ResultadoEnvio>;
   enviarPlantilla: (
@@ -32,4 +38,5 @@ export type ProveedorCanal = {
     variables: string[],
   ) => Promise<ResultadoEnvio>;
   listarPlantillas: () => Promise<PlantillaMeta[]>;
+  descargarMedia: (mediaId: string) => Promise<ResultadoMedia>;
 };

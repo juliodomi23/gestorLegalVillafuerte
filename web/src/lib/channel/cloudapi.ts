@@ -3,10 +3,12 @@ import { META_GRAPH_URL } from "@/lib/meta/config";
 import { motivoDeErrorMeta } from "@/lib/meta/errores";
 import { tokenDesdeConfig } from "@/lib/meta/credentials";
 export { normalizarEstadosMeta, normalizarMensajesMeta } from "./normalizar";
+import { MEDIA_MAX_BYTES } from "@/lib/chat/media";
 import type {
   PlantillaMeta,
   ProveedorCanal,
   ResultadoEnvio,
+  ResultadoMedia,
 } from "./types";
 
 type ConfigCanal = {
@@ -18,10 +20,14 @@ function usarMock(config?: ConfigCanal): boolean {
   return config?.mock === true || process.env.WHATSAPP_CLOUD_API_MOCK?.toLowerCase() === "true";
 }
 
-async function graph(path: string, token: string, init?: RequestInit) {
+function bloquearRedMeta() {
   if (process.env.WHATSAPP_BLOQUEAR_RED_META?.toLowerCase() === "true") {
     throw new Error("La red hacia Meta está bloqueada para esta prueba");
   }
+}
+
+async function graph(path: string, token: string, init?: RequestInit) {
+  bloquearRedMeta();
   const response = await fetch(`${META_GRAPH_URL}/${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init?.headers || {}) },
@@ -74,6 +80,28 @@ export function crearProveedorCloudApi(
       }
       const data = await graph(`${wabaId}/message_templates?limit=100`, token);
       return (Array.isArray(data?.data) ? data.data : []) as PlantillaMeta[];
+    },
+    descargarMedia: async (mediaId): Promise<ResultadoMedia> => {
+      if (mock) {
+        const imagen = mediaId.startsWith("mock-image");
+        return { ok: true, buffer: Buffer.from(imagen ? "mock-imagen" : "OggS-mock-audio"), mime: imagen ? "image/png" : "audio/ogg; codecs=opus" };
+      }
+      try {
+        const datos = await graph(mediaId, token);
+        if (!datos?.url) return { ok: false, error: "Meta no devolvió la URL del archivo" };
+        if (Number(datos.file_size) > MEDIA_MAX_BYTES) return { ok: false, error: "El archivo supera el tamaño permitido" };
+        bloquearRedMeta();
+        const respuesta = await fetch(String(datos.url), {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (!respuesta.ok) return { ok: false, error: "Meta rechazó la descarga del archivo" };
+        const buffer = Buffer.from(await respuesta.arrayBuffer());
+        if (buffer.length > MEDIA_MAX_BYTES) return { ok: false, error: "El archivo supera el tamaño permitido" };
+        return { ok: true, buffer, mime: String(datos.mime_type || respuesta.headers.get("content-type") || "") };
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : "No se pudo descargar el archivo" };
+      }
     },
   };
 }

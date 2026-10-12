@@ -7,6 +7,8 @@ export type MensajeMetaNormalizado = {
   tipo: TipoMensajeNormalizado;
   contenido: string;
   timestamp: Date;
+  mediaId?: string;
+  mediaNombre?: string;
 };
 
 export type EstadoMetaNormalizado = {
@@ -45,12 +47,15 @@ export function normalizarMensajesMeta(payload: unknown): MensajeMetaNormalizado
         const waMessageId = String(message?.id || "");
         if (!waMessageId) continue;
         const telefono = String(message?.from || "");
+        const adjunto = ["image", "audio", "video", "document"].includes(String(message?.type)) ? message[message.type] : null;
         resultado.push({
           waMessageId,
           telefono,
           nombre: nombres.get(telefono),
           ...contenidoMensaje(message),
           timestamp: message?.timestamp ? new Date(Number(message.timestamp) * 1000) : new Date(),
+          ...(adjunto?.id ? { mediaId: String(adjunto.id) } : {}),
+          ...(adjunto?.filename ? { mediaNombre: String(adjunto.filename).slice(0, 120) } : {}),
         });
       }
     }
