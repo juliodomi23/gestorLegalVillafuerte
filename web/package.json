@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "db:pull": "prisma db pull",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "test:chat": "node --experimental-strip-types --test tests/chat-unit.test.mjs",
+    "test:chat:integration": "node tests/run-chat-integration.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0",

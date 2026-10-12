@@ -1,0 +1,21 @@
+name: gestorlegal-chat-demo
+
+services:
+  db-chat-demo:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: gestorlegal_chat_demo
+      POSTGRES_USER: gestorlegal_demo
+      POSTGRES_PASSWORD: demo_local_no_real
+    ports:
+      - "127.0.0.1:55440:5432"
+    volumes:
+      - gestorlegal_chat_demo_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gestorlegal_demo -d gestorlegal_chat_demo"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  gestorlegal_chat_demo_data:
