@@ -4,6 +4,7 @@ import { chatWhatsappActivo } from "@/lib/chat/modulo";
 import { verificarFirmaMeta } from "@/lib/meta/signature";
 import { normalizarEstadosMeta, normalizarMensajesMeta } from "@/lib/channel/cloudapi";
 import { actualizarEstadosMensajes, ingestarMensajeEntrante } from "@/lib/chat/servicio";
+import { procesarEntrante } from "@/lib/chat/entrante";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,7 +52,8 @@ export async function POST(req: NextRequest) {
   await actualizarEstadosMensajes(estados);
   let procesados = 0;
   for (const mensaje of normalizarMensajesMeta(payload)) {
-    await ingestarMensajeEntrante(mensaje, canal.id);
+    const resultado = await ingestarMensajeEntrante(mensaje, canal.id);
+    void procesarEntrante(resultado, canal);
     procesados += 1;
   }
   return NextResponse.json({ ok: true, procesados, estados: estados.length });
