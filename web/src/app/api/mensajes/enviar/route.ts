@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requerirChatAdmin } from "@/lib/chat/api";
+import { prisma } from "@/lib/prisma";
+import { requerirChat } from "@/lib/chat/api";
+import { filtroConversaciones } from "@/lib/chat/acceso";
 import { enviarMensajeChat } from "@/lib/chat/envio";
 import { mensajeVista } from "@/lib/chat/vista";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const acceso = await requerirChatAdmin();
-  if ("error" in acceso) return acceso.error;
+  const permiso = await requerirChat();
+  if ("error" in permiso) return permiso.error;
   const body = await req.json().catch(() => ({}));
+  const conversacionId = String(body.conversacionId || "");
+
+  // Solo se puede escribir en una conversación que la persona puede ver.
+  const visible = await prisma.conversacion.findFirst({
+    where: { AND: [{ id: conversacionId }, filtroConversaciones(permiso.acceso)] },
+    select: { id: true },
+  });
+  if (!visible) return NextResponse.json({ ok: false, error: "conversación inexistente" }, { status: 404 });
+
   const plantilla =
     typeof body.plantilla?.name === "string" && typeof body.plantilla?.language === "string"
       ? {
@@ -19,11 +30,11 @@ export async function POST(req: NextRequest) {
         }
       : null;
   const resultado = await enviarMensajeChat({
-    conversacionId: String(body.conversacionId || ""),
+    conversacionId,
     texto: String(body.texto || ""),
     privado: body.privado === true,
     plantilla,
-    enviadoPor: acceso.sesion.id,
+    enviadoPor: permiso.sesion.id,
   });
   if (!resultado.ok) {
     const ventanaCerrada = "ventanaCerrada" in resultado && resultado.ventanaCerrada;

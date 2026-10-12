@@ -125,8 +125,9 @@ export async function actualizarEstadosMensajes(estados: ActualizacionEstado[]) 
   }
 }
 
-export async function listarConversaciones() {
+export async function listarConversaciones(donde: Prisma.ConversacionWhereInput = {}) {
   return prisma.conversacion.findMany({
+    where: donde,
     orderBy: [{ ultimoMensajeAt: "desc" }, { creadoEn: "desc" }],
     include: {
       canal: { select: { id: true, nombre: true, activo: true } },
@@ -144,9 +145,10 @@ export async function listarConversaciones() {
   });
 }
 
-export async function obtenerConversacion(id: string) {
-  return prisma.conversacion.findUnique({
-    where: { id },
+// `donde` es el filtro de visibilidad del usuario (ver acceso.ts): fuera de él, no existe.
+export async function obtenerConversacion(id: string, donde: Prisma.ConversacionWhereInput = {}) {
+  return prisma.conversacion.findFirst({
+    where: { AND: [{ id }, donde] },
     include: {
       canal: { select: { id: true, nombre: true, telefono: true, activo: true } },
       cliente: { select: { id: true, nombre: true, telefono: true } },

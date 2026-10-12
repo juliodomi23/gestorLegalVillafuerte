@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requerirChatAdmin } from "@/lib/chat/api";
+import { requerirChat } from "@/lib/chat/api";
 import { crearProveedorCloudApi } from "@/lib/channel/cloudapi";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const acceso = await requerirChatAdmin();
-  if ("error" in acceso) return acceso.error;
+  const permiso = await requerirChat();
+  if ("error" in permiso) return permiso.error;
   const canalId = req.nextUrl.searchParams.get("canalId") || "";
   const canal = await prisma.canalWhatsapp.findFirst({ where: { id: canalId, activo: true } });
   if (!canal) return NextResponse.json({ error: "canal inexistente" }, { status: 404 });

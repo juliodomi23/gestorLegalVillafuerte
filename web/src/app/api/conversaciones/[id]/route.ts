@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requerirChatAdmin } from "@/lib/chat/api";
+import { requerirChat } from "@/lib/chat/api";
+import { filtroConversaciones } from "@/lib/chat/acceso";
+import { puedeReasignar } from "@/lib/chat/alcance";
 import { obtenerConversacion } from "@/lib/chat/servicio";
 import { etiquetasVista } from "@/lib/chat/vista";
-import { atributosValidos, estadoGestor, sanitizarEtiquetas } from "@/lib/bot/puro";
+import { atributosValidos, sanitizarEtiquetas } from "@/lib/bot/puro";
 import {
   asignar,
   cambiarEstado,
@@ -16,9 +18,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const acceso = await requerirChatAdmin();
-  if ("error" in acceso) return acceso.error;
-  const c = await obtenerConversacion(params.id);
+  const permiso = await requerirChat();
+  if ("error" in permiso) return permiso.error;
+  const c = await obtenerConversacion(params.id, filtroConversaciones(permiso.acceso));
   if (!c) return NextResponse.json({ error: "conversación inexistente" }, { status: 404 });
   return NextResponse.json({
     conversacion: {
@@ -34,16 +36,23 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       responsable: c.responsable,
       etiquetas: etiquetasVista(c.etiquetas),
     },
+    puedeReasignar: puedeReasignar(permiso.acceso.alcance),
   });
 }
 
 // Una sola ruta para lo que el panel cambia: estado, responsable, etiquetas y atributos.
+// Reasignar solo puede administración o recepción; el resto trabaja sus propias conversaciones.
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const acceso = await requerirChatAdmin();
-  if ("error" in acceso) return acceso.error;
-  const existente = await obtenerConversacion(params.id);
+  const permiso = await requerirChat();
+  if ("error" in permiso) return permiso.error;
+  const { acceso } = permiso;
+  const existente = await obtenerConversacion(params.id, filtroConversaciones(acceso));
   if (!existente) return NextResponse.json({ error: "conversación inexistente" }, { status: 404 });
   const body = await req.json().catch(() => ({}));
+
+  if ("responsableId" in body && !puedeReasignar(acceso.alcance)) {
+    return NextResponse.json({ error: "Solo recepción o administración pueden reasignar" }, { status: 403 });
+  }
 
   if (body.estado !== undefined) {
     const valido = ["abierta", "pendiente", "resuelta", "pospuesta", "cerrada"].includes(String(body.estado));
