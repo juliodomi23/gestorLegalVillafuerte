@@ -57,7 +57,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
     titulo: "Clientes",
     items: [
       { href: "/clientes", label: "Clientes", icon: Users },
-      { href: "/chat", label: "Chat", icon: MessageCircle, soloAdmin: true, soloChat: true },
+      { href: "/chat", label: "Chat", icon: MessageCircle, soloChat: true },
       { href: "/prospectos", label: "Prospectos", icon: UserSearch },
       {
         href: "/asesorias",

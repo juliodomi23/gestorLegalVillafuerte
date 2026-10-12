@@ -25,10 +25,12 @@ export function PanelConversacion({
   conversacionId,
   version,
   onCambio,
+  puedeReasignar,
 }: {
   conversacionId: string;
   version: number;
   onCambio: () => void;
+  puedeReasignar: boolean;
 }) {
   const [detalle, setDetalle] = useState<Detalle | null>(null);
   const [usuarios, setUsuarios] = useState<{ id: string; nombre: string }[]>([]);
@@ -51,9 +53,9 @@ export function PanelConversacion({
   }, [conversacionId, version]);
 
   useEffect(() => {
-    fetch("/api/chat/usuarios").then((r) => (r.ok ? r.json() : null)).then((d) => d && setUsuarios(d.usuarios || []));
+    if (puedeReasignar) fetch("/api/chat/usuarios").then((r) => (r.ok ? r.json() : null)).then((d) => d && setUsuarios(d.usuarios || []));
     fetch("/api/chat/etiquetas").then((r) => (r.ok ? r.json() : null)).then((d) => d && setCatalogo(d.etiquetas || []));
-  }, []);
+  }, [puedeReasignar]);
 
   const guardar = useCallback(
     async (cambios: Record<string, unknown>) => {
@@ -109,13 +111,14 @@ export function PanelConversacion({
             {ESTADOS.map((estado) => <option key={estado} value={estado}>{estado}</option>)}
           </select>
         </label>
-        <label className="flex items-center justify-between gap-3">
-          <span className="text-muted">Responsable</span>
+        {!puedeReasignar && <Fila etiqueta="Responsable" valor={detalle.responsable?.nombre || "Sin asignar"} />}
+        {puedeReasignar && <label className="flex items-center justify-between gap-3">
+          <span className="text-muted">Redirigir a</span>
           <select value={detalle.responsable?.id || ""} onChange={(e) => void guardar({ responsableId: e.target.value || null })} className="min-w-0 max-w-[150px] rounded-lg border border-line bg-paper px-2 py-1 text-[12.5px]">
             <option value="">Sin asignar</option>
             {usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nombre}</option>)}
           </select>
-        </label>
+        </label>}
         <Fila etiqueta="Canal" valor={`${detalle.canal.nombre}${detalle.canal.activo ? "" : " · inactivo"}`} />
       </div>
 

@@ -5,6 +5,7 @@ import { CheckCheck, Lock, MessageCircle, Paperclip, Search, Send } from "lucide
 import { Card } from "@/components/ui";
 import { estadoVentana } from "@/lib/meta/ventana";
 import { pollingPermitido } from "@/lib/chat/polling";
+import type { Alcance } from "@/lib/chat/alcance";
 import { PanelConversacion } from "./PanelConversacion";
 import { EnviarPlantilla } from "./EnviarPlantilla";
 
@@ -23,6 +24,7 @@ export type ConversacionItem = {
   canalActivo: boolean;
   responsable: { id: string; nombre: string } | null;
   etiquetas: EtiquetaItem[];
+  requiereAtencion: boolean;
   vinculo: { tipo: "cliente" | "prospecto"; id: string; nombre: string } | null;
 };
 
@@ -40,7 +42,7 @@ type Mensaje = {
   timestamp: string;
 };
 
-type Pestana = "todas" | "mias" | "sin_asignar";
+type Pestana = "por_atender" | "mias" | "sin_asignar" | "todas";
 
 const ESTADOS = [
   { valor: "todos", texto: "Todos los estados" },
@@ -70,12 +72,13 @@ function Adjunto({ mensaje }: { mensaje: Mensaje }) {
   );
 }
 
-export function ChatCliente({ usuarioId }: { usuarioId: string }) {
+export function ChatCliente({ usuarioId, alcance }: { usuarioId: string; alcance: Alcance }) {
   const [conversaciones, setConversaciones] = useState<ConversacionItem[]>([]);
   const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [busqueda, setBusqueda] = useState("");
-  const [pestana, setPestana] = useState<Pestana>("todas");
+  const [pestana, setPestana] = useState<Pestana>(alcance === "todas" ? "todas" : "por_atender");
+  const [filtroCanal, setFiltroCanal] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
   const [texto, setTexto] = useState("");
@@ -138,8 +141,15 @@ export function ChatCliente({ usuarioId }: { usuarioId: string }) {
     return [...todas.keys()].sort();
   }, [conversaciones]);
 
+  const canales = useMemo(() => {
+    const porId = new Map<string, string>();
+    for (const item of conversaciones) porId.set(item.canalId, item.canalNombre);
+    return [...porId.entries()].map(([id, nombre]) => ({ id, nombre }));
+  }, [conversaciones]);
+
   const conteos = useMemo(
     () => ({
+      por_atender: conversaciones.filter((item) => item.requiereAtencion).length,
       todas: conversaciones.length,
       mias: conversaciones.filter((item) => item.responsable?.id === usuarioId).length,
       sin_asignar: conversaciones.filter((item) => !item.responsable).length,
@@ -150,14 +160,16 @@ export function ChatCliente({ usuarioId }: { usuarioId: string }) {
   const filtradas = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
     return conversaciones.filter((item) => {
+      if (pestana === "por_atender" && !item.requiereAtencion) return false;
       if (pestana === "mias" && item.responsable?.id !== usuarioId) return false;
+      if (filtroCanal && item.canalId !== filtroCanal) return false;
       if (pestana === "sin_asignar" && item.responsable) return false;
       if (filtroEstado !== "todos" && item.estado !== filtroEstado) return false;
       if (filtroEtiqueta && !item.etiquetas.some((etiqueta) => etiqueta.nombre === filtroEtiqueta)) return false;
       if (!termino) return true;
       return `${item.contacto.nombre} ${item.contacto.telefono}`.toLowerCase().includes(termino);
     });
-  }, [busqueda, conversaciones, filtroEstado, filtroEtiqueta, pestana, usuarioId]);
+  }, [busqueda, conversaciones, filtroCanal, filtroEstado, filtroEtiqueta, pestana, usuarioId]);
 
   const ultimoEntrante = [...mensajes].reverse().find((mensaje) => mensaje.direccion === "entrante")?.timestamp;
   const ventanaAbierta = estadoVentana(ultimoEntrante).abierta;
@@ -183,16 +195,26 @@ export function ChatCliente({ usuarioId }: { usuarioId: string }) {
     await refrescarVisible();
   }
 
-  const pestanas: { id: Pestana; texto: string }[] = [
-    { id: "todas", texto: "Todas" },
-    { id: "mias", texto: "Mías" },
-    { id: "sin_asignar", texto: "Sin asignar" },
-  ];
+  const pestanas: { id: Pestana; texto: string }[] =
+    alcance === "todas"
+      ? [
+          { id: "por_atender", texto: "Por atender" },
+          { id: "mias", texto: "Mías" },
+          { id: "sin_asignar", texto: "Sin asignar" },
+          { id: "todas", texto: "Todas" },
+        ]
+      : alcance === "recepcion"
+        ? [
+            { id: "por_atender", texto: "Por atender" },
+            { id: "mias", texto: "Mías" },
+          ]
+        : [];
 
   return (
     <Card className="overflow-hidden min-h-[650px]">
       <div className="grid min-h-[650px] xl:grid-cols-[320px_minmax(0,1fr)_300px]">
         <section className="border-b border-line xl:border-b-0 xl:border-r">
+          {pestanas.length > 0 && (
           <div className="flex border-b border-line text-[12.5px]">
             {pestanas.map((item) => (
               <button
@@ -204,6 +226,7 @@ export function ChatCliente({ usuarioId }: { usuarioId: string }) {
               </button>
             ))}
           </div>
+          )}
           <div className="space-y-2 p-3 border-b border-line">
             <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -215,6 +238,12 @@ export function ChatCliente({ usuarioId }: { usuarioId: string }) {
               />
             </div>
             <div className="flex gap-2">
+              {canales.length > 1 && (
+                <select value={filtroCanal} onChange={(event) => setFiltroCanal(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-line bg-paper px-2 py-1.5 text-[12px]">
+                  <option value="">Todos los números</option>
+                  {canales.map((canal) => <option key={canal.id} value={canal.id}>{canal.nombre}</option>)}
+                </select>
+              )}
               <select value={filtroEstado} onChange={(event) => setFiltroEstado(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-line bg-paper px-2 py-1.5 text-[12px]">
                 {ESTADOS.map((estado) => <option key={estado.valor} value={estado.valor}>{estado.texto}</option>)}
               </select>
@@ -236,8 +265,10 @@ export function ChatCliente({ usuarioId }: { usuarioId: string }) {
                   <span className="min-w-0 flex-1">
                     <span className="flex justify-between gap-2"><b className="truncate text-[13.5px]">{item.contacto.nombre}</b><small className="text-muted">{hora(item.ultimoMensajeAt)}</small></span>
                     <span className="block truncate text-[12.5px] text-muted mt-0.5">{item.preview || "Sin mensajes"}</span>
-                    {(item.etiquetas.length > 0 || item.estado !== "abierta" || item.responsable) && (
+                    {(item.etiquetas.length > 0 || item.estado !== "abierta" || item.responsable || item.requiereAtencion || canales.length > 1) && (
                       <span className="mt-1.5 flex flex-wrap items-center gap-1">
+                        {canales.length > 1 && <span className="rounded bg-navy/[.08] px-1.5 py-0.5 text-[10.5px] text-navy">{item.canalNombre}</span>}
+                        {item.requiereAtencion && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10.5px] text-amber-700 border border-amber-200">Por atender</span>}
                         {item.estado !== "abierta" && <span className="rounded bg-paper px-1.5 py-0.5 text-[10.5px] text-muted border border-line">{item.estado}</span>}
                         {item.etiquetas.slice(0, 3).map((etiqueta) => (
                           <span key={etiqueta.nombre} className="inline-flex items-center gap-1 rounded bg-paper px-1.5 py-0.5 text-[10.5px] border border-line">
@@ -315,7 +346,7 @@ export function ChatCliente({ usuarioId }: { usuarioId: string }) {
 
         <aside className="min-h-[300px]">
           {seleccionada ? (
-            <PanelConversacion conversacionId={seleccionada.id} version={versionPanel} onCambio={() => void refrescarVisible()} />
+            <PanelConversacion conversacionId={seleccionada.id} version={versionPanel} onCambio={() => void refrescarVisible()} puedeReasignar={alcance !== "propias"} />
           ) : null}
         </aside>
       </div>
