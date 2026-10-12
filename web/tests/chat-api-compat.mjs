@@ -363,8 +363,9 @@ try {
   assert.deepEqual(trasPatch.json.labels, ["cita_confirmada", "desde_ui"]);
   assert.equal(trasPatch.json.custom_attributes.nota_ui, "ok");
   assert.equal(trasPatch.json.status, "pending");
-  const sinPermiso = await admin(`/api/conversaciones/${interna.id}`, "PATCH", { estado: "resuelta" }, cookieAbogada);
-  assert.equal(sinPermiso.status, 403);
+  // Un abogado no reasigna: 403 si la ve (porque se la asignaron) o 404 si no es suya.
+  const sinPermiso = await admin(`/api/conversaciones/${interna.id}`, "PATCH", { responsableId: null }, cookieAbogada);
+  assert.ok([403, 404].includes(sinPermiso.status), `un abogado reasignó: ${sinPermiso.status}`);
 
   // ================================================================== 12. revocar token
   const revocado = await admin(`/api/chat/tokens/${idToken}`, "DELETE");

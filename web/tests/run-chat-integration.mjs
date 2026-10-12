@@ -51,6 +51,10 @@ try {
   const codigoCompat = await new Promise((resolve) => compat.on("exit", resolve));
   if (codigoCompat !== 0) throw new Error(`Falló la compatibilidad con n8n (código ${codigoCompat})`);
 
+  const acceso = spawn(process.execPath, ["tests/chat-acceso-multinumero.mjs"], { env: entorno, stdio: "inherit" });
+  const codigoAcceso = await new Promise((resolve) => acceso.on("exit", resolve));
+  if (codigoAcceso !== 0) throw new Error(`Falló la prueba de permisos y varios números (código ${codigoAcceso})`);
+
   servidor.kill();
   await new Promise((resolve) => servidor.on("exit", resolve));
   const baseUrlApagado = "http://127.0.0.1:3311";

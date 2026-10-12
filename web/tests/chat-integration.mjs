@@ -40,7 +40,13 @@ const cookie = await iniciarSesion();
 const headersSesion = { Cookie: cookie };
 const cookieAbogada = await iniciarSesion("abogada@chat-demo.test", password);
 const accesoAbogada = await fetch(`${baseUrl}/api/conversaciones`, { headers: { Cookie: cookieAbogada } });
-assert.equal(accesoAbogada.status, 403, "Un usuario no administrador pudo listar todas las conversaciones");
+assert.equal(accesoAbogada.status, 200);
+const listaAbogada = await accesoAbogada.json();
+assert.equal(listaAbogada.acceso.alcance, "propias");
+assert.ok(
+  listaAbogada.conversaciones.every((c) => c.responsable !== null),
+  "Un abogado vio conversaciones que nadie le asignó",
+);
 const conversacionAbierta = "d4000000-0000-4000-8000-000000000001";
 const conversacionCerrada = "d4000000-0000-4000-8000-000000000004";
 const idMensajeEntrante = `wamid.integration.sticker.${Date.now()}`;

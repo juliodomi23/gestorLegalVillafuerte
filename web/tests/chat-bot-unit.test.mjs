@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { autorizarRuta, rutaPublicaSinSesion } from "../src/lib/autorizacion-middleware.ts";
 import { e164Whatsapp, sourceIdWhatsapp } from "../src/lib/chat/telefono.ts";
+import { alcanceDe, puedeReasignar, requiereAtencion } from "../src/lib/chat/alcance.ts";
 import { extensionPermitida, sePuedeMostrarEnLinea } from "../src/lib/chat/media.ts";
 import {
   atributosValidos,
@@ -122,4 +123,26 @@ test("middleware: /api/v1 y el webhook se protegen solos; el resto exige sesión
   for (const ruta of ["/api/conversaciones", "/api/chat/tokens", "/api/chat/webhooks", "/api/mensajes/enviar", "/api/wa/manual", "/chat"]) {
     assert.equal(autorizarRuta(ruta, false), false, `${ruta} quedó abierta sin sesión`);
   }
+});
+
+test("alcance: admin ve todo, recepción la cola y las suyas, el resto solo las suyas", () => {
+  assert.equal(alcanceDe({ rol: "admin", verChatRecepcion: false }), "todas");
+  assert.equal(alcanceDe({ rol: "asistente", verChatRecepcion: true }), "recepcion");
+  assert.equal(alcanceDe({ rol: "abogado", verChatRecepcion: false }), "propias");
+  assert.equal(alcanceDe({ rol: "asistente", verChatRecepcion: false }), "propias");
+  assert.equal(puedeReasignar("todas"), true);
+  assert.equal(puedeReasignar("recepcion"), true);
+  assert.equal(puedeReasignar("propias"), false);
+});
+
+test("requiere atención: sin responsable, abierta o pendiente y escalada o pendiente", () => {
+  const base = { estado: "abierta", responsableId: null, etiquetas: [] };
+  assert.equal(requiereAtencion(base), false, "la maneja el bot");
+  assert.equal(requiereAtencion({ ...base, etiquetas: ["escalado_humano"] }), true);
+  assert.equal(requiereAtencion({ ...base, etiquetas: ["bot_off"] }), true);
+  assert.equal(requiereAtencion({ ...base, etiquetas: ["requiere_atencion"] }), true);
+  assert.equal(requiereAtencion({ ...base, estado: "pendiente" }), true);
+  assert.equal(requiereAtencion({ ...base, estado: "resuelta", etiquetas: ["bot_off"] }), false);
+  assert.equal(requiereAtencion({ ...base, estado: "pospuesta", etiquetas: ["bot_off"] }), false);
+  assert.equal(requiereAtencion({ ...base, responsableId: "u1", etiquetas: ["bot_off"] }), false, "ya tiene responsable");
 });
