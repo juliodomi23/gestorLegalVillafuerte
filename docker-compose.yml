@@ -63,6 +63,10 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      CHAT_WHATSAPP_ACTIVO: ${CHAT_WHATSAPP_ACTIVO:-false}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+      META_TOKEN_ENCRYPTION_KEY: ${META_TOKEN_ENCRYPTION_KEY:-}
       N8N_API_KEY: ${N8N_API_KEY}
       # Webhook de n8n que crea el evento en Google Calendar al agendar una cita.
       # Si faltan, crearEventoCalendar() devuelve null sin ruido y la cita se

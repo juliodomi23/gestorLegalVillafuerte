@@ -145,6 +145,8 @@ model Usuario {
   llamadasProspecto      LlamadaProspecto[]
   actividadRespuestas    ActividadRespuesta[]
   leccionesVistas        LeccionVista[]
+  conversacionesWhatsapp Conversacion[]          @relation("ConversacionResponsable")
+  mensajesWhatsapp       Mensaje[]               @relation("MensajeEnviadoPor")
   // Expedientes que no son suyos ni de su gente, pero el dueño (o un admin) le dio
   // acceso puntual — p.ej. un abogado que cubre a otro en una audiencia.
   expedientesCompartidos Expediente[]            @relation("ExpedienteCompartido")
@@ -191,14 +193,15 @@ model Cliente {
   abogadoId String?  @map("abogado_id") @db.Uuid // dueño: cada abogado solo ve sus clientes
   creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  abogado      Usuario?      @relation(fields: [abogadoId], references: [id])
-  expedientes  Expediente[]
-  citas        Cita[]
-  asesorias    Asesoria[]
-  llamadas     Llamada[]
-  seguimientos Seguimiento[]
-  diligencias  Diligencia[]
-  pagos        Pago[]
+  abogado                Usuario?       @relation(fields: [abogadoId], references: [id])
+  expedientes            Expediente[]
+  citas                  Cita[]
+  asesorias              Asesoria[]
+  llamadas               Llamada[]
+  seguimientos           Seguimiento[]
+  diligencias            Diligencia[]
+  pagos                  Pago[]
+  conversacionesWhatsapp Conversacion[]
 
   @@map("clientes")
 }
@@ -434,9 +437,9 @@ model Seguimiento {
   estado         String    @default("activo") // activo | inactivo
   creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz
 
-  cliente  Cliente?  @relation(fields: [clienteId], references: [id])
-  abogado  Usuario?  @relation(fields: [abogadoId], references: [id])
-  sucursal Sucursal? @relation(fields: [sucursalId], references: [id])
+  cliente    Cliente?    @relation(fields: [clienteId], references: [id])
+  abogado    Usuario?    @relation(fields: [abogadoId], references: [id])
+  sucursal   Sucursal?   @relation(fields: [sucursalId], references: [id])
   expediente Expediente? @relation(fields: [expedienteId], references: [id], onDelete: SetNull)
 
   @@map("seguimientos")
@@ -633,10 +636,87 @@ model Prospecto {
   creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz
   actualizadoEn  DateTime  @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
 
-  abogado  Usuario?           @relation(fields: [abogadoId], references: [id])
-  llamadas LlamadaProspecto[]
+  abogado                Usuario?           @relation(fields: [abogadoId], references: [id])
+  llamadas               LlamadaProspecto[]
+  conversacionesWhatsapp Conversacion[]
 
   @@map("prospectos")
+}
+
+model CanalWhatsapp {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre        String
+  proveedor     String   @default("cloud_api")
+  telefono      String?
+  phoneNumberId String   @unique @map("phone_number_id")
+  wabaId        String   @map("waba_id")
+  estado        String   @default("desconectado")
+  config        Json     @default("{}")
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  conversaciones Conversacion[]
+
+  @@map("canales_whatsapp")
+}
+
+model Conversacion {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  canalId             String    @map("canal_id") @db.Uuid
+  nombreContacto      String    @map("nombre_contacto")
+  telefono            String
+  telefonoNormalizado String    @map("telefono_normalizado")
+  clienteId           String?   @map("cliente_id") @db.Uuid
+  prospectoId         String?   @map("prospecto_id") @db.Uuid
+  responsableId       String?   @map("responsable_id") @db.Uuid
+  estado              String    @default("abierta")
+  noLeidos            Int       @default(0) @map("no_leidos")
+  ultimoMensajeAt     DateTime? @map("ultimo_mensaje_at") @db.Timestamptz
+  creadoEn            DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn       DateTime  @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  canal       CanalWhatsapp @relation(fields: [canalId], references: [id], onDelete: Restrict)
+  cliente     Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  prospecto   Prospecto?    @relation(fields: [prospectoId], references: [id], onDelete: SetNull)
+  responsable Usuario?      @relation("ConversacionResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  mensajes    Mensaje[]
+
+  @@unique([canalId, telefonoNormalizado])
+  @@index([ultimoMensajeAt])
+  @@index([clienteId])
+  @@index([prospectoId])
+  @@map("conversaciones")
+}
+
+model Mensaje {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversacionId String   @map("conversacion_id") @db.Uuid
+  direccion      String
+  tipo           String   @default("texto")
+  contenido      String?
+  status         String   @default("enviado")
+  errorDetalle   String?  @map("error_detalle")
+  waMessageId    String?  @unique @map("wa_message_id")
+  enviadoPor     String?  @map("enviado_por") @db.Uuid
+  timestamp      DateTime @default(now()) @db.Timestamptz
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  conversacion Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  usuario      Usuario?     @relation("MensajeEnviadoPor", fields: [enviadoPor], references: [id], onDelete: SetNull)
+
+  @@index([conversacionId, timestamp])
+  @@map("mensajes")
+}
+
+model PlantillaMensaje {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre    String
+  contenido String
+  categoria String?
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  @@map("plantillas_mensaje")
 }
 
 // Historial de llamadas de un prospecto: un registro por cada día que un abogado
