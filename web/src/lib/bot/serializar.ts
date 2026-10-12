@@ -2,13 +2,13 @@
 import { Prisma } from "@prisma/client";
 import { estadoChatwoot } from "./puro";
 
-export const INBOX = { id: 1, name: "WhatsApp" } as const;
 export const CUENTA = { id: 1, name: "GestorLegal" } as const;
 
 export const incluirConversacion = Prisma.validator<Prisma.ConversacionInclude>()({
   contactoWhatsapp: true,
   etiquetas: { include: { etiqueta: true } },
   responsable: { select: { id: true, nombre: true, email: true } },
+  canal: { select: { numeroCompat: true, nombre: true, telefono: true } },
 });
 
 export type ConversacionCompleta = Prisma.ConversacionGetPayload<{ include: typeof incluirConversacion }>;
@@ -16,6 +16,11 @@ export type MensajeBase = Prisma.MensajeGetPayload<object>;
 
 const segundos = (fecha: Date | null | undefined) => (fecha ? Math.floor(fecha.getTime() / 1000) : null);
 const numero = (valor: bigint | number | null | undefined) => (valor == null ? null : Number(valor));
+
+// Cada número de WhatsApp conectado es un inbox con ID numérico propio (canal.numeroCompat).
+export function inboxJson(canal: { numeroCompat: bigint; nombre: string; telefono?: string | null }) {
+  return { id: Number(canal.numeroCompat), name: canal.nombre };
+}
 
 function urlBase(): string {
   return (process.env.NEXTAUTH_URL || "").replace(/\/+$/, "");
@@ -93,13 +98,13 @@ export function archivosDe(mensaje: MensajeBase) {
   ];
 }
 
-export function mensajeJson(mensaje: MensajeBase, conv: { numeroCompat: bigint }) {
+export function mensajeJson(mensaje: MensajeBase, conv: { numeroCompat: bigint; canal: { numeroCompat: bigint } }) {
   const entrante = mensaje.direccion === "entrante";
   return {
     id: numero(mensaje.numeroCompat),
     content: mensaje.contenido ?? "",
     account_id: CUENTA.id,
-    inbox_id: INBOX.id,
+    inbox_id: numero(conv.canal.numeroCompat),
     conversation_id: numero(conv.numeroCompat),
     message_type: entrante ? 0 : 1,
     content_type: "text",
@@ -118,7 +123,7 @@ export function conversacionJson(conv: ConversacionCompleta, ultimo?: MensajeBas
   return {
     id: numero(conv.numeroCompat),
     account_id: CUENTA.id,
-    inbox_id: INBOX.id,
+    inbox_id: numero(conv.canal.numeroCompat),
     status: estadoChatwoot(conv.estado),
     labels: etiquetasDe(conv),
     custom_attributes: atributos(conv.atributos),
@@ -157,7 +162,7 @@ export function payloadMensaje(evento: "message_created", mensaje: MensajeBase, 
     source_id: mensaje.waMessageId,
     created_at: mensaje.timestamp.toISOString(),
     account: CUENTA,
-    inbox: INBOX,
+    inbox: inboxJson(conv.canal),
     sender: remitenteContacto(conv),
     attachments: archivosDe(mensaje),
     conversation: {
@@ -182,7 +187,7 @@ export function payloadConversacion(
   return {
     event: evento,
     account: CUENTA,
-    inbox: INBOX,
+    inbox: inboxJson(conv.canal),
     ...conversacionJson(conv),
     ...(cambios ? { changed_attributes: [cambios] } : {}),
   };

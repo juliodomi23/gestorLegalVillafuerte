@@ -7,13 +7,14 @@ import { conversacionJson, incluirConversacion } from "@/lib/bot/serializar";
 
 export const dynamic = "force-dynamic";
 
+// Las conversaciones de la persona en todos los números del despacho (cada una con su inbox_id).
 export async function GET(req: NextRequest, { params }: { params: { accountId: string; contactId: string } }) {
   return conBot(req, params, "contacto_conversaciones", async () => {
     const numero = parsearIdNumerico(params.contactId);
     const contacto = numero === null ? null : await prisma.contactoWhatsapp.findUnique({ where: { numeroCompat: numero } });
     if (!contacto) return noEncontrado("contacto inexistente");
     const conversaciones = await prisma.conversacion.findMany({
-      where: { contactoWhatsappId: contacto.id },
+      where: { telefonoNormalizado: contacto.telefonoNormalizado },
       include: incluirConversacion,
       orderBy: { creadoEn: "desc" },
     });

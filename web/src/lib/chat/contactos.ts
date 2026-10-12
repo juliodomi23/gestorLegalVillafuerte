@@ -1,9 +1,19 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { parsearIdNumerico } from "@/lib/bot/puro";
 import { digitosTelefono, e164Whatsapp, normalizarTelefonoWhatsapp, sourceIdWhatsapp } from "./telefono";
 
 export async function canalPorDefecto() {
   return prisma.canalWhatsapp.findFirst({ where: { activo: true }, orderBy: { creadoEn: "asc" } });
+}
+
+// inbox_id de la API = numero_compat del canal. Sin inbox_id se usa el primer canal activo.
+// null = el inbox_id viene mal o no existe.
+export async function canalDeInbox(inboxId: unknown) {
+  if (inboxId === undefined || inboxId === null || inboxId === "") return canalPorDefecto();
+  const numero = parsearIdNumerico(String(inboxId));
+  if (numero === null) return null;
+  return prisma.canalWhatsapp.findFirst({ where: { numeroCompat: numero, activo: true } });
 }
 
 type DatosContacto = { nombre?: string; telefono: unknown; respaldo: string };
