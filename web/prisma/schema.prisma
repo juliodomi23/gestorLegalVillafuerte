@@ -108,6 +108,9 @@ model Usuario {
   // Consulta global del módulo de Diligencias sin abrir Caja ni Configuración.
   // Se usa para secretaría/coordinación (Karen).
   verTodasDiligencias Boolean  @default(false) @map("ver_todas_diligencias")
+  // Recepción del chat de WhatsApp: ve la cola de conversaciones por atender y las
+  // reasigna a un abogado. Sin esto (y sin ser admin) solo se ven las asignadas a uno.
+  verChatRecepcion    Boolean  @default(false) @map("ver_chat_recepcion")
   // Envíos automáticos por WhatsApp. null = no recibe ninguno.
   //   "todas"            → citados del día de todo el despacho, 8:00 (Lic. Karen)
   //   <nombre sucursal>  → resumen de asesorías de ESA sucursal, 9:00
@@ -645,6 +648,8 @@ model Prospecto {
 
 model CanalWhatsapp {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // inbox_id de la API compatible con Chatwoot: un número por canal, empieza en 1.
+  numeroCompat  BigInt   @unique @default(autoincrement()) @map("numero_compat")
   nombre        String
   proveedor     String   @default("cloud_api")
   telefono      String?
