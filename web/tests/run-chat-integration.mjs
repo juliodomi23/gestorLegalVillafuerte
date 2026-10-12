@@ -14,6 +14,9 @@ const entorno = {
   WHATSAPP_CLOUD_API_MOCK: "true",
   WHATSAPP_BLOQUEAR_RED_META: "true",
   CHAT_TEST_BASE_URL: baseUrl,
+  WEBHOOK_HOSTS_PERMITIDOS: "127.0.0.1",
+  WEBHOOK_PERMITIR_HTTP: "true",
+  CHAT_MEDIA_DIR: process.env.CHAT_MEDIA_DIR || "uploads/chat-test",
 };
 
 function iniciarServidor(env, puertoServidor = puerto) {
@@ -43,6 +46,10 @@ try {
   });
   const codigo = await new Promise((resolve) => prueba.on("exit", resolve));
   if (codigo !== 0) throw new Error(`Falló la integración con código ${codigo}`);
+
+  const compat = spawn(process.execPath, ["tests/chat-api-compat.mjs"], { env: entorno, stdio: "inherit" });
+  const codigoCompat = await new Promise((resolve) => compat.on("exit", resolve));
+  if (codigoCompat !== 0) throw new Error(`Falló la compatibilidad con n8n (código ${codigoCompat})`);
 
   servidor.kill();
   await new Promise((resolve) => servidor.on("exit", resolve));
