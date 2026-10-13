@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { autorizarRuta, rutaPublicaSinSesion } from "../src/lib/autorizacion-middleware.ts";
 import { e164Whatsapp, sourceIdWhatsapp } from "../src/lib/chat/telefono.ts";
 import { alcanceDe, puedeReasignar, requiereAtencion } from "../src/lib/chat/alcance.ts";
-import { debeAvanzar, esClaveEtapa } from "../src/lib/chat/embudo-reglas.ts";
+import { claveDeSeguimiento, claveDeStatusAsesoria, debeAvanzar, esClaveEtapa } from "../src/lib/chat/embudo-reglas.ts";
 import { extensionPermitida, sePuedeMostrarEnLinea } from "../src/lib/chat/media.ts";
 import {
   atributosValidos,
@@ -148,18 +148,49 @@ test("requiere atención: sin responsable, abierta o pendiente y escalada o pend
   assert.equal(requiereAtencion({ ...base, responsableId: "u1", etiquetas: ["bot_off"] }), false, "ya tiene responsable");
 });
 
-test("embudo: los eventos solo avanzan; llamada y cita son caminos paralelos", () => {
+test("embudo: los eventos solo avanzan; llamada y contactado son pares", () => {
   assert.equal(debeAvanzar(null, "nuevo"), true, "sin etapa se coloca");
-  assert.equal(debeAvanzar("nuevo", "agendo_cita"), true);
+  assert.equal(debeAvanzar("nuevo", "contactado"), true);
   assert.equal(debeAvanzar("nuevo", "agendo_llamada"), true);
-  assert.equal(debeAvanzar("agendo_llamada", "agendo_cita"), true, "de llamada a cita");
-  assert.equal(debeAvanzar("agendo_cita", "agendo_llamada"), true, "de cita a llamada");
+  assert.equal(debeAvanzar("nuevo", "agendo_cita"), true, "puede agendar sin pasar por las otras");
+  assert.equal(debeAvanzar("agendo_llamada", "contactado"), true, "le llamaron");
+  assert.equal(debeAvanzar("contactado", "agendo_llamada"), true, "par");
+  assert.equal(debeAvanzar("contactado", "agendo_cita"), true, "llaman y agenda cita");
   assert.equal(debeAvanzar("agendo_cita", "asesorado"), true);
   assert.equal(debeAvanzar("asesorado", "contrato_firmado"), true);
+  assert.equal(debeAvanzar("agendo_cita", "contactado"), false, "no regresa");
+  assert.equal(debeAvanzar("agendo_cita", "agendo_llamada"), false, "no regresa");
   assert.equal(debeAvanzar("asesorado", "agendo_cita"), false, "no regresa");
-  assert.equal(debeAvanzar("contrato_firmado", "agendo_cita"), false, "no regresa");
-  assert.equal(debeAvanzar("contrato_firmado", "contrato_firmado"), false, "sin cambio");
+  assert.equal(debeAvanzar("agendo_cita", "agendo_cita"), false, "sin cambio");
   assert.equal(debeAvanzar("personalizada", "asesorado"), false, "una etapa propia no se mueve sola");
+});
+
+test("embudo: contrato firmado cierra; no asistió y perdido se reactivan", () => {
+  for (const destino of ["nuevo", "contactado", "agendo_cita", "asesorado", "no_asistio", "perdido"]) {
+    assert.equal(debeAvanzar("contrato_firmado", destino), false, `nada mueve un contrato firmado a ${destino}`);
+  }
+  assert.equal(debeAvanzar("agendo_cita", "no_asistio"), true);
+  assert.equal(debeAvanzar("agendo_llamada", "no_asistio"), true);
+  assert.equal(debeAvanzar("asesorado", "no_asistio"), false, "ya asistió");
+  assert.equal(debeAvanzar("no_asistio", "agendo_cita"), true, "volvió a agendar");
+  assert.equal(debeAvanzar("no_asistio", "contactado"), true, "le llamaron");
+  assert.equal(debeAvanzar("no_asistio", "nuevo"), false);
+  assert.equal(debeAvanzar("agendo_cita", "perdido"), true);
+  assert.equal(debeAvanzar("asesorado", "perdido"), true, "asesorado que no regresó");
+  assert.equal(debeAvanzar("perdido", "agendo_cita"), true, "se reactivó");
+  assert.equal(debeAvanzar("perdido", "perdido"), false);
+});
+
+test("embudo: resultado de la llamada y estado de la asesoría a etapa", () => {
+  assert.equal(claveDeSeguimiento("no_contesto"), "contactado");
+  assert.equal(claveDeSeguimiento("llamar_despues"), "contactado");
+  assert.equal(claveDeSeguimiento("agendo_cita"), "agendo_cita");
+  assert.equal(claveDeSeguimiento("descartado"), "perdido");
+  assert.equal(claveDeSeguimiento("por_contactar"), null);
+  assert.equal(claveDeStatusAsesoria("contrato_firmado"), "contrato_firmado");
+  assert.equal(claveDeStatusAsesoria("no_regreso"), "perdido");
+  assert.equal(claveDeStatusAsesoria("descartado"), "perdido");
+  assert.equal(claveDeStatusAsesoria("pendiente"), null);
 });
 
 test("embudo: solo las claves conocidas mueven solas", () => {

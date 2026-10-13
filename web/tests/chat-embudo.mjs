@@ -136,8 +136,8 @@ try {
   const etapas = (await ui("abogada", "/api/embudo/etapas")).json.etapas;
   const claves = etapas.filter((e) => e.clave).map((e) => e.clave);
   assert.deepEqual(
-    ["nuevo", "agendo_cita", "agendo_llamada", "asesorado", "contrato_firmado"].filter((c) => claves.includes(c)),
-    ["nuevo", "agendo_cita", "agendo_llamada", "asesorado", "contrato_firmado"],
+    ["nuevo", "contactado", "agendo_cita", "agendo_llamada", "asesorado", "contrato_firmado", "no_asistio", "perdido"].filter((c) => claves.includes(c)),
+    ["nuevo", "contactado", "agendo_cita", "agendo_llamada", "asesorado", "contrato_firmado", "no_asistio", "perdido"],
     "faltan etapas por defecto",
   );
   assert.equal((await ui("recepcion", "/api/embudo/etapas", "POST", { nombre: "No asistió" })).status, 403, "solo admin edita etapas");
@@ -229,6 +229,31 @@ try {
   assert.ok((await claveActual(telB)).startsWith("propia:"), "una etapa propia del despacho no se mueve sola");
   assert.equal((await ui("admin", `/api/embudo/etapas/${etapaPropia.id}`, "DELETE")).status, 409, "no se quita una etapa con conversaciones");
   assert.equal((await ui("recepcion", `/api/conversaciones/${tB.id}/etapa`, "POST", { etapaId: "no-existe" })).status, 400);
+
+  // ================================================================== 5b. llamadas, no-show y descartado
+  const telC = `9642${corrida}`;
+  const e164C = `+521${telC}`;
+  await entrante(telC, `wamid.embudo.${corrida}.c`, "Persona Embudo C");
+  await esperar((e) => e.event === "message_created" && e.sender?.name === "Persona Embudo C", "entrante C");
+  assert.equal(await claveActual(telC), "nuevo");
+  r = await n8n("/prospectos", "POST", { nombre: "Persona Embudo C", telefono: e164C });
+  const prospectoC = r.json.data.id;
+  assert.equal(await claveActual(telC), "agendo_llamada");
+  r = await n8n(`/prospectos/${prospectoC}`, "PATCH", { estado: "no_contesto" });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(await claveActual(telC), "contactado", "llamaron y no contestó = Contactado");
+  r = await n8n("/citas", "POST", { cliente: "Persona Embudo C", telefono: e164C, fechaHora: new Date(Date.now() + 86_400_000).toISOString() });
+  const citaC = r.json.data.id;
+  assert.equal(await claveActual(telC), "agendo_cita");
+  r = await n8n(`/citas/${citaC}`, "PATCH", { estado: "no_show" });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(await claveActual(telC), "no_asistio", "no llegó a su cita");
+  r = await n8n("/citas", "POST", { cliente: "Persona Embudo C", telefono: e164C, fechaHora: new Date(Date.now() + 2 * 86_400_000).toISOString() });
+  assert.equal(await claveActual(telC), "agendo_cita", "volvió a agendar");
+  r = await n8n(`/prospectos/${prospectoC}`, "PATCH", { estado: "descartado" });
+  assert.equal(await claveActual(telC), "perdido", "descartado = Perdido");
+  r = await n8n("/citas", "POST", { cliente: "Persona Embudo C", telefono: e164C, fechaHora: new Date(Date.now() + 3 * 86_400_000).toISOString() });
+  assert.equal(await claveActual(telC), "agendo_cita", "un perdido que vuelve a agendar se reactiva");
 
   // ================================================================== 6. visibilidad del tablero
   const idsRecepcion = new Set((await tablero("recepcion")).tarjetas.map((c) => c.numero));
