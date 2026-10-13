@@ -125,7 +125,9 @@ try {
   const convA = r.json.id;
 
   // sin etiquetas y sin responsable: la maneja el bot, nadie la tiene "por atender"
-  assert.equal((await lista("recepcion")).find((c) => c.numero === convA), undefined, "una conversación del bot no entra a la cola");
+  const sinEscalar = (await lista("recepcion")).find((c) => c.numero === convA);
+  assert.ok(sinEscalar, "recepción ve todas las conversaciones, incluso las que atiende el bot");
+  assert.equal(sinEscalar.requiereAtencion, false, "pero no cuentan como por atender");
   assert.ok((await veNumeros("admin")).has(convA), "admin ve todas");
   assert.equal((await lista("admin")).find((c) => c.numero === convA).requiereAtencion, false);
 
@@ -154,7 +156,10 @@ try {
   assert.equal(r.status, 200, JSON.stringify(r.json));
 
   assert.ok((await veNumeros("abogada")).has(convA), "la abogada ve lo que le asignaron");
-  assert.equal((await veNumeros("recepcion")).has(convA), false, "al reasignarla sale de la cola de recepción");
+  const trasAsignar = (await lista("recepcion")).find((c) => c.numero === convA);
+  assert.ok(trasAsignar, "recepción sigue viéndola");
+  assert.equal(trasAsignar.requiereAtencion, false, "al reasignarla sale de por atender");
+  assert.equal(trasAsignar.responsable.id, abogada.id);
   assert.equal((await veNumeros("abogado2")).has(convA), false, "otra abogada no la ve");
   assert.ok((await veNumeros("admin")).has(convA));
   assert.equal((await ui("abogado2", `/api/conversaciones/${idInterna}`)).status, 404);
@@ -171,12 +176,14 @@ try {
   r = await v1("/contacts", { metodo: "POST", cuerpo: { inbox_id: 1, name: "Cliente B", phone_number: `+521${telB}` } });
   const convB = (await v1("/conversations", { metodo: "POST", cuerpo: { source_id: `521${telB}`, inbox_id: 1, contact_id: r.json.payload.contact.id } })).json.id;
   const idB = (await lista("admin")).find((c) => c.numero === convB).id;
-  assert.equal((await veNumeros("recepcion")).has(convB), false);
+  const porAtender = async () => (await lista("recepcion")).find((c) => c.numero === convB)?.requiereAtencion;
+  assert.equal(await porAtender(), false);
   await ui("admin", `/api/conversaciones/${idB}`, "PATCH", { estado: "pendiente" });
-  assert.ok((await veNumeros("recepcion")).has(convB), "pendiente y sin responsable = por atender");
+  assert.equal(await porAtender(), true, "pendiente y sin responsable = por atender");
   await ui("admin", `/api/conversaciones/${idB}`, "PATCH", { estado: "resuelta" });
   await v1(`/conversations/${convB}/labels`, { metodo: "POST", cuerpo: { labels: ["bot_off"] } });
-  assert.equal((await veNumeros("recepcion")).has(convB), false, "resuelta ya no está por atender");
+  assert.equal(await porAtender(), false, "resuelta ya no está por atender");
+  assert.ok((await veNumeros("recepcion")).has(convB), "pero recepción la sigue viendo");
 
   // el permiso se consulta a la base: quitarlo surte efecto sin volver a iniciar sesión
   await prisma.usuario.update({ where: { id: recepcion.id }, data: { verChatRecepcion: false } });

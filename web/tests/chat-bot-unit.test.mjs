@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { autorizarRuta, rutaPublicaSinSesion } from "../src/lib/autorizacion-middleware.ts";
 import { e164Whatsapp, sourceIdWhatsapp } from "../src/lib/chat/telefono.ts";
 import { alcanceDe, puedeReasignar, requiereAtencion } from "../src/lib/chat/alcance.ts";
+import { debeAvanzar, esClaveEtapa } from "../src/lib/chat/embudo-reglas.ts";
 import { extensionPermitida, sePuedeMostrarEnLinea } from "../src/lib/chat/media.ts";
 import {
   atributosValidos,
@@ -145,4 +146,24 @@ test("requiere atención: sin responsable, abierta o pendiente y escalada o pend
   assert.equal(requiereAtencion({ ...base, estado: "resuelta", etiquetas: ["bot_off"] }), false);
   assert.equal(requiereAtencion({ ...base, estado: "pospuesta", etiquetas: ["bot_off"] }), false);
   assert.equal(requiereAtencion({ ...base, responsableId: "u1", etiquetas: ["bot_off"] }), false, "ya tiene responsable");
+});
+
+test("embudo: los eventos solo avanzan; llamada y cita son caminos paralelos", () => {
+  assert.equal(debeAvanzar(null, "nuevo"), true, "sin etapa se coloca");
+  assert.equal(debeAvanzar("nuevo", "agendo_cita"), true);
+  assert.equal(debeAvanzar("nuevo", "agendo_llamada"), true);
+  assert.equal(debeAvanzar("agendo_llamada", "agendo_cita"), true, "de llamada a cita");
+  assert.equal(debeAvanzar("agendo_cita", "agendo_llamada"), true, "de cita a llamada");
+  assert.equal(debeAvanzar("agendo_cita", "asesorado"), true);
+  assert.equal(debeAvanzar("asesorado", "contrato_firmado"), true);
+  assert.equal(debeAvanzar("asesorado", "agendo_cita"), false, "no regresa");
+  assert.equal(debeAvanzar("contrato_firmado", "agendo_cita"), false, "no regresa");
+  assert.equal(debeAvanzar("contrato_firmado", "contrato_firmado"), false, "sin cambio");
+  assert.equal(debeAvanzar("personalizada", "asesorado"), false, "una etapa propia no se mueve sola");
+});
+
+test("embudo: solo las claves conocidas mueven solas", () => {
+  assert.equal(esClaveEtapa("agendo_cita"), true);
+  assert.equal(esClaveEtapa("inventada"), false);
+  assert.equal(esClaveEtapa(null), false);
 });

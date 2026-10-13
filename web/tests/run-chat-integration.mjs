@@ -14,6 +14,7 @@ const entorno = {
   WHATSAPP_CLOUD_API_MOCK: "true",
   WHATSAPP_BLOQUEAR_RED_META: "true",
   CHAT_TEST_BASE_URL: baseUrl,
+  N8N_API_KEY: "test-n8n-key",
   WEBHOOK_HOSTS_PERMITIDOS: "127.0.0.1",
   WEBHOOK_PERMITIR_HTTP: "true",
   CHAT_MEDIA_DIR: process.env.CHAT_MEDIA_DIR || "uploads/chat-test",
@@ -54,6 +55,10 @@ try {
   const acceso = spawn(process.execPath, ["tests/chat-acceso-multinumero.mjs"], { env: entorno, stdio: "inherit" });
   const codigoAcceso = await new Promise((resolve) => acceso.on("exit", resolve));
   if (codigoAcceso !== 0) throw new Error(`Falló la prueba de permisos y varios números (código ${codigoAcceso})`);
+
+  const embudo = spawn(process.execPath, ["tests/chat-embudo.mjs"], { env: entorno, stdio: "inherit" });
+  const codigoEmbudo = await new Promise((resolve) => embudo.on("exit", resolve));
+  if (codigoEmbudo !== 0) throw new Error(`Falló la prueba del embudo (código ${codigoEmbudo})`);
 
   servidor.kill();
   await new Promise((resolve) => servidor.on("exit", resolve));
