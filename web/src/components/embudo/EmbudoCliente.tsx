@@ -38,6 +38,7 @@ export function EmbudoCliente({ alcance }: { alcance: Alcance }) {
   const { raiz, alto } = useAltoDisponible();
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [tarjetas, setTarjetas] = useState<Tarjeta[]>([]);
+  const [totales, setTotales] = useState<Record<string, number>>({});
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [arrastrando, setArrastrando] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export function EmbudoCliente({ alcance }: { alcance: Alcance }) {
     const data = await response.json();
     setEtapas(data.etapas || []);
     setTarjetas(data.tarjetas || []);
+    setTotales(data.totales || {});
     setCargando(false);
   }, []);
 
@@ -88,12 +90,13 @@ export function EmbudoCliente({ alcance }: { alcance: Alcance }) {
   }
 
   const puedeEditar = alcance === "todas";
+  const totalConversaciones = Object.values(totales).reduce((suma, n) => suma + n, 0) || tarjetas.length;
 
   return (
     <div ref={raiz} style={alto ? { height: alto } : undefined} className="flex min-h-[320px] flex-col">
       <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
         <p className="text-[13px] text-muted">
-          {tarjetas.length} conversación{tarjetas.length === 1 ? "" : "es"}
+          {totalConversaciones} conversación{totalConversaciones === 1 ? "" : "es"}
           {alcance === "propias" ? " asignadas a ti" : ""}
         </p>
         {puedeEditar && (
@@ -107,6 +110,7 @@ export function EmbudoCliente({ alcance }: { alcance: Alcance }) {
       <div className="flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto pb-1">
         {etapas.map((etapa) => {
           const lista = porEtapa.get(etapa.id) ?? [];
+          const enEtapa = totales[etapa.id] ?? lista.length;
           return (
             <section
               key={etapa.id}
@@ -127,7 +131,7 @@ export function EmbudoCliente({ alcance }: { alcance: Alcance }) {
               <header className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-2.5">
                 <i className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: etapa.color }} />
                 <h3 className="min-w-0 flex-1 truncate text-[13.5px] font-semibold">{etapa.nombre}</h3>
-                <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] text-muted">{lista.length}</span>
+                <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] text-muted">{enEtapa}</span>
               </header>
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
                 {lista.map((tarjeta) => (
@@ -178,6 +182,11 @@ export function EmbudoCliente({ alcance }: { alcance: Alcance }) {
                   </article>
                 ))}
                 {lista.length === 0 && <p className="px-2 py-6 text-center text-[12px] text-muted">{cargando ? "Cargando…" : "Sin conversaciones"}</p>}
+                {enEtapa > lista.length && (
+                  <p className="px-2 py-3 text-center text-[11.5px] text-muted">
+                    Mostrando las {lista.length} más recientes de {enEtapa}. Busca en Chat para ver las demás.
+                  </p>
+                )}
               </div>
             </section>
           );

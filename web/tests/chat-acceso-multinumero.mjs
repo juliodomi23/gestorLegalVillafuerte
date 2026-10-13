@@ -140,6 +140,21 @@ try {
   assert.equal((await ui("abogada", "/api/conversaciones")).json.acceso.alcance, "propias");
   assert.equal((await ui("admin", "/api/conversaciones")).json.acceso.alcance, "todas");
 
+  // la lista está acotada: busca en toda la base, abre por número y cuenta el total real
+  const porNombre = await ui("recepcion", `/api/conversaciones?q=${encodeURIComponent("Cliente A")}`);
+  assert.ok(porNombre.json.conversaciones.some((c) => c.numero === convA), "q encuentra por nombre");
+  assert.equal(porNombre.json.conversaciones.every((c) => /cliente a/i.test(c.contacto.nombre)), true, "q filtra de verdad");
+  const porNumero = await ui("recepcion", `/api/conversaciones?q=${telA.slice(-6)}`);
+  assert.ok(porNumero.json.conversaciones.some((c) => c.numero === convA), "q encuentra por teléfono");
+  const porEnlace = await ui("admin", `/api/conversaciones?c=${convA}`);
+  assert.ok(porEnlace.json.conversaciones.some((c) => c.numero === convA), "c abre una conversación por su número");
+  assert.ok(porEnlace.json.total >= porEnlace.json.conversaciones.length, "total cuenta todas las visibles");
+  assert.equal(
+    (await ui("abogada", `/api/conversaciones?c=${convA}`)).json.conversaciones.some((c) => c.numero === convA),
+    false,
+    "c no salta la visibilidad",
+  );
+
   // un abogado sin asignación no ve nada ni puede tocarla (404, no 403: no revela que existe)
   const idInterna = (await lista("admin")).find((c) => c.numero === convA).id;
   assert.equal((await veNumeros("abogada")).has(convA), false);

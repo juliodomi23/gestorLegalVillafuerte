@@ -86,6 +86,8 @@ export function ChatCliente({
   const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [busqueda, setBusqueda] = useState("");
+  const [terminoServidor, setTerminoServidor] = useState("");
+  const [total, setTotal] = useState(0);
   const [pestana, setPestana] = useState<Pestana>(alcance === "todas" ? "todas" : "por_atender");
   const [filtroCanal, setFiltroCanal] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
@@ -103,19 +105,28 @@ export function ChatCliente({
   seleccionadaRef.current = seleccionadaId;
 
 
+  useEffect(() => {
+    const espera = window.setTimeout(() => setTerminoServidor(busqueda.trim()), 350);
+    return () => window.clearTimeout(espera);
+  }, [busqueda]);
+
   const cargarConversaciones = useCallback(async () => {
-    const response = await fetch("/api/conversaciones", { cache: "no-store" });
+    const params = new URLSearchParams();
+    if (terminoServidor) params.set("q", terminoServidor);
+    if (conversacionInicial) params.set("c", String(conversacionInicial));
+    const response = await fetch(`/api/conversaciones?${params}`, { cache: "no-store" });
     if (!response.ok) return;
     const data = await response.json();
     const nuevas: ConversacionItem[] = data.conversaciones || [];
     setConversaciones(nuevas);
+    setTotal(Number(data.total) || nuevas.length);
     const pedida = conversacionInicial ? nuevas.find((item) => item.numero === conversacionInicial) : undefined;
     setSeleccionadaId((actual) => actual || pedida?.id || nuevas[0]?.id || null);
     if (pedida && !abiertaDesdeEmbudo.current) {
       abiertaDesdeEmbudo.current = true;
       setVista("chat");
     }
-  }, [conversacionInicial]);
+  }, [conversacionInicial, terminoServidor]);
 
   const cargarMensajes = useCallback(async (id: string) => {
     const response = await fetch(`/api/conversaciones/${id}/mensajes`, { cache: "no-store" });
@@ -168,11 +179,11 @@ export function ChatCliente({
   const conteos = useMemo(
     () => ({
       por_atender: conversaciones.filter((item) => item.requiereAtencion).length,
-      todas: conversaciones.length,
+      todas: Math.max(total, conversaciones.length),
       mias: conversaciones.filter((item) => item.responsable?.id === usuarioId).length,
       sin_asignar: conversaciones.filter((item) => !item.responsable).length,
     }),
-    [conversaciones, usuarioId],
+    [conversaciones, total, usuarioId],
   );
 
   const filtradas = useMemo(() => {

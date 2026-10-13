@@ -127,10 +127,11 @@ export async function actualizarEstadosMensajes(estados: ActualizacionEstado[]) 
   }
 }
 
-export async function listarConversaciones(donde: Prisma.ConversacionWhereInput = {}) {
+export async function listarConversaciones(donde: Prisma.ConversacionWhereInput = {}, limite?: number) {
   return prisma.conversacion.findMany({
     where: donde,
     orderBy: [{ ultimoMensajeAt: "desc" }, { creadoEn: "desc" }],
+    take: limite,
     include: {
       canal: { select: { id: true, nombre: true, activo: true } },
       cliente: { select: { id: true, nombre: true } },

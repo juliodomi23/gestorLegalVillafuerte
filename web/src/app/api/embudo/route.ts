@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { requerirChat } from "@/lib/chat/api";
 import { filtroConversaciones } from "@/lib/chat/acceso";
 import { puedeReasignar, requiereAtencion } from "@/lib/chat/alcance";
@@ -8,18 +10,27 @@ import { etiquetasVista } from "@/lib/chat/vista";
 
 export const dynamic = "force-dynamic";
 
+const LIMITE_COLUMNA = 60;
+
 // El tablero respeta la misma visibilidad que el chat: administración y recepción ven todas,
 // el resto solo las que le asignaron.
 export async function GET() {
   const permiso = await requerirChat();
   if ("error" in permiso) return permiso.error;
   const { acceso } = permiso;
-  const [etapas, conversaciones] = await Promise.all([
-    listarEtapas(),
-    listarConversaciones(filtroConversaciones(acceso)),
-  ]);
+  const etapas = await listarEtapas();
   const primera = etapas[0]?.id ?? null;
-  const tarjetas = conversaciones.map((c) => {
+  const visibles = filtroConversaciones(acceso);
+  // Una consulta por columna: con miles de chats solo se traen las más recientes de cada una.
+  const dondeEtapa = (etapaId: string): Prisma.ConversacionWhereInput => ({
+    AND: [visibles, etapaId === primera ? { OR: [{ etapaId }, { etapaId: null }] } : { etapaId }],
+  });
+  const [porColumna, conteos] = await Promise.all([
+    Promise.all(etapas.map((e) => listarConversaciones(dondeEtapa(e.id), LIMITE_COLUMNA))),
+    Promise.all(etapas.map((e) => prisma.conversacion.count({ where: dondeEtapa(e.id) }))),
+  ]);
+  const totales = Object.fromEntries(etapas.map((e, i) => [e.id, conteos[i]]));
+  const tarjetas = porColumna.flat().map((c) => {
     const etiquetas = etiquetasVista(c.etiquetas);
     return {
       id: c.id,
@@ -45,6 +56,7 @@ export async function GET() {
   return NextResponse.json({
     etapas: etapas.map((e) => ({ id: e.id, clave: e.clave, nombre: e.nombre, color: e.color, orden: e.orden })),
     tarjetas,
+    totales,
     acceso: { alcance: acceso.alcance, puedeReasignar: puedeReasignar(acceso.alcance) },
   });
 }
