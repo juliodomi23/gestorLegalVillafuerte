@@ -3,7 +3,8 @@ import { resolverSucursal, resolverAbogado, asignarFolio } from "./resolvers";
 import { hoyDespacho } from "@/lib/fecha";
 import type { Prisma } from "@prisma/client";
 import { normalizarTelefono } from "@/lib/citas-reporte-regla";
-import { avanzarAutomatico, sincronizarConChat } from "@/lib/chat/embudo";
+import { avanzarAutomatico, moverPorEvento, sincronizarConChat } from "@/lib/chat/embudo";
+import { claveDeStatusAsesoria } from "@/lib/chat/embudo-reglas";
 
 // Se pone la primera vez que el status llega a "contrato_firmado"; si ya tenía fecha
 // (o el status nuevo es otro) se deja igual, para no perder el día real de la firma
@@ -94,7 +95,17 @@ export async function actualizarAsesoria(id: string, cambios: CambiosAsesoria) {
   if (cambios.urlDocumento !== undefined) data.urlDocumento = cambios.urlDocumento;
   if (cambios.resumen !== undefined) data.resumen = cambios.resumen;
   const actualizada = await prisma.asesoria.update({ where: { id }, data });
-  if (cambios.status === "contrato_firmado") await moverPorFirma(actualizada);
+  if (cambios.status === "contrato_firmado") {
+    await moverPorFirma(actualizada);
+  } else if (claveDeStatusAsesoria(cambios.status) === "perdido") {
+    // No regresó / se descartó la asesoría = Perdido.
+    await moverPorEvento({
+      conversacionId: actualizada.conversacionId,
+      telefono: actualizada.telefono,
+      clave: "perdido",
+      detalle: `Asesoría: ${String(cambios.status).replace("_", " ")}`,
+    });
+  }
   return actualizada;
 }
 

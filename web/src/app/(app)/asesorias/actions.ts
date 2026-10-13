@@ -6,6 +6,8 @@ import { fechaFirmaSiAplica } from "@/lib/services/asesorias";
 import { requireSession, type Sesion } from "@/lib/guard";
 import { crearExpedienteAction, crearClienteRapidoAction } from "../expedientes/actions";
 import type { StatusAsesoria } from "@/lib/constants";
+import { moverPorEvento } from "@/lib/chat/embudo";
+import { claveDeSeguimiento } from "@/lib/chat/embudo-reglas";
 
 export type FormAsesoria = {
   nombre: string;
@@ -167,7 +169,7 @@ export async function guardarSeguimientoCitaAction(
     throw new Error("Estado inválido");
   }
   const abogadoLlamo = await quienLlamo(sesion, seguimiento.llamo);
-  await prisma.cita.update({
+  const cita = await prisma.cita.update({
     where: { id },
     data: {
       seguimientoEstado: seguimiento.estado || null,
@@ -176,6 +178,15 @@ export async function guardarSeguimientoCitaAction(
       seguimientoAbogado: abogadoLlamo,
     },
   });
+  const clave = claveDeSeguimiento(seguimiento.estado);
+  if (clave) {
+    await moverPorEvento({
+      conversacionId: cita.conversacionId,
+      telefono: cita.telefono,
+      clave,
+      detalle: "Llamada de seguimiento a quien no asistió",
+    });
+  }
   revalidatePath("/asesorias/no-asistieron");
   return abogadoLlamo ?? "";
 }
@@ -190,7 +201,7 @@ export async function guardarSeguimientoAsesoriaLlamadaAction(
     throw new Error("Estado inválido");
   }
   const abogadoLlamo = await quienLlamo(sesion, seguimiento.llamo);
-  await prisma.asesoria.update({
+  const asesoria = await prisma.asesoria.update({
     where: { id },
     data: {
       seguimientoEstado: seguimiento.estado || null,
@@ -199,6 +210,15 @@ export async function guardarSeguimientoAsesoriaLlamadaAction(
       seguimientoAbogado: abogadoLlamo,
     },
   });
+  const claveSeguimiento = claveDeSeguimiento(seguimiento.estado);
+  if (claveSeguimiento) {
+    await moverPorEvento({
+      conversacionId: asesoria.conversacionId,
+      telefono: asesoria.telefono,
+      clave: claveSeguimiento,
+      detalle: "Llamada de seguimiento a quien ya se asesoró",
+    });
+  }
   revalidatePath("/asesorias/ya-asesoraron");
   return abogadoLlamo ?? "";
 }

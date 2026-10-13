@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { parseFecha, rangoDelDiaDespacho } from "@/lib/fecha";
 import { resolverSucursal, resolverAbogado, upsertCliente } from "./resolvers";
-import { sincronizarConChat } from "@/lib/chat/embudo";
+import { moverPorEvento, sincronizarConChat } from "@/lib/chat/embudo";
 
 export type DatosCita = {
   cliente: string;
@@ -52,7 +52,16 @@ export async function citasDelDia(fecha: string) {
 }
 
 export async function actualizarCita(id: string, estado: "confirmada" | "cancelada" | "no_show") {
-  return prisma.cita.update({ where: { id }, data: { estado } });
+  const cita = await prisma.cita.update({ where: { id }, data: { estado } });
+  if (estado === "no_show") {
+    await moverPorEvento({
+      conversacionId: cita.conversacionId,
+      telefono: cita.telefono,
+      clave: "no_asistio",
+      detalle: "No asistió a su cita",
+    });
+  }
+  return cita;
 }
 
 export async function agendarCita(d: DatosCita) {

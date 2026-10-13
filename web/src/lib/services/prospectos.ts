@@ -3,7 +3,8 @@ import { porAbogado, type Alcance } from "@/lib/alcance";
 import { hoyDespacho, OFFSET_DESPACHO, TZ_DESPACHO } from "@/lib/fecha";
 import { lunesDe } from "@/lib/services/productividad";
 import { citaFueAtendida, crearDetectorLlegada, type AsesoriaDelDia } from "@/lib/citas-reporte-regla";
-import { sincronizarConChat } from "@/lib/chat/embudo";
+import { moverPorEvento, sincronizarConChat } from "@/lib/chat/embudo";
+import { claveDeSeguimiento } from "@/lib/chat/embudo-reglas";
 
 export const ANIO_PROSPECTOS = 2026;
 
@@ -128,6 +129,17 @@ export async function actualizarEstadoProspecto(
       },
       create: { prospectoId: id, abogadoId: opts.abogadoId, fecha: p.fechaContacto },
       update: {},
+    });
+  }
+
+  // Llamaron y no contestó / quedó de hablar = Contactado; descartado = Perdido.
+  const clave = claveDeSeguimiento(estado);
+  if (clave && estado !== "agendo_cita") {
+    await moverPorEvento({
+      conversationId: p.conversationId,
+      telefono: p.telefono,
+      clave,
+      detalle: `Prospecto: ${estado.replace("_", " ")}`,
     });
   }
 

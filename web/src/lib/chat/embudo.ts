@@ -91,6 +91,23 @@ export async function conversacionDe(datos: { conversationId?: string | null; te
   return conv?.id ?? null;
 }
 
+// Mueve la tarjeta por un evento que no crea nada que ligar (llamada, no-show, descarte).
+// Usa la conversación ya ligada si la hay; si no, busca por id del bot o teléfono.
+export async function moverPorEvento(opciones: {
+  conversacionId?: string | null;
+  conversationId?: string | null;
+  telefono?: string | null;
+  clave: ClaveEtapa;
+  detalle: string;
+}) {
+  try {
+    const id = opciones.conversacionId ?? (await conversacionDe(opciones));
+    if (id) await avanzarAutomatico(id, opciones.clave, opciones.detalle);
+  } catch (error) {
+    console.error("[embudo] no se pudo mover por evento", error instanceof Error ? error.message : "");
+  }
+}
+
 // Para colgar de cada evento del despacho: liga la cita/asesoría al chat y mueve la
 // tarjeta. Nunca debe romper el flujo del despacho, por eso traga y registra el error.
 export async function sincronizarConChat(opciones: {
