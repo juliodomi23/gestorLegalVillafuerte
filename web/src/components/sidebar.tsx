@@ -121,7 +121,7 @@ export function Sidebar({
   return (
     <aside
       className={`bg-navy-deep text-white/85 flex flex-col w-[244px] z-40
-        fixed inset-y-0 left-0 transition-transform lg:static lg:translate-x-0
+        fixed inset-y-0 left-0 transition-transform lg:sticky lg:top-0 lg:h-screen lg:self-start lg:translate-x-0
         ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
     >
       <div className="px-5 pt-6 pb-5 border-b border-white/10">
@@ -145,7 +145,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <nav className="flex-1 py-4 text-[14px]">
+      <nav className="flex-1 min-h-0 overflow-y-auto py-4 text-[14px]">
         {grupos.map((g) => {
           const items = g.items.filter(
             (it) =>

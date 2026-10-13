@@ -5,6 +5,8 @@ const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      // Ventanas bajas (laptops con la barra del navegador): se quita lo que no es esencial.
+      screens: { corta: { raw: "(max-height: 780px)" } },
       fontFamily: {
         serif: ["var(--font-serif)", "Georgia", "serif"],
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],

@@ -101,7 +101,7 @@ export function ChatCliente({ usuarioId, alcance }: { usuarioId: string; alcance
       const relleno = parseFloat(getComputedStyle(elemento.closest("main") ?? document.body).paddingBottom) || 0;
       const arriba = elemento.getBoundingClientRect().top + window.scrollY;
       const visible = window.visualViewport?.height ?? window.innerHeight;
-      setAlto(Math.max(420, Math.floor(visible - arriba - relleno)));
+      setAlto(Math.max(320, Math.floor(visible - arriba - relleno)));
     }
     medir();
     void document.fonts?.ready.then(medir);
@@ -244,7 +244,7 @@ export function ChatCliente({ usuarioId, alcance }: { usuarioId: string; alcance
     <div
       ref={raiz}
       style={alto ? { height: alto } : undefined}
-      className="relative flex min-h-[420px] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-card"
+      className="relative flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-card"
     >
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_300px]">
         {/* Lista */}
