@@ -7,7 +7,7 @@ import { requireSession } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage() {
+export default async function ChatPage({ searchParams }: { searchParams: { c?: string } }) {
   if (!chatWhatsappActivo()) notFound();
   let acceso;
   try {
@@ -26,7 +26,7 @@ export default async function ChatPage() {
       <div className="hidden lg:block corta:hidden">
         <PageTitle eyebrow="WhatsApp" title="Chat" subtitle={subtitulo} />
       </div>
-      <ChatCliente usuarioId={acceso.usuarioId} alcance={acceso.alcance} />
+      <ChatCliente usuarioId={acceso.usuarioId} alcance={acceso.alcance} conversacionInicial={Number(searchParams.c) || undefined} />
     </>
   );
 }

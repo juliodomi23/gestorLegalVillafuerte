@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCheck, ChevronLeft, Info, Lock, MessageCircle, Paperclip, Search, Send } from "lucide-react";
 import { estadoVentana } from "@/lib/meta/ventana";
 import { pollingPermitido } from "@/lib/chat/polling";
+import { useAltoDisponible } from "@/lib/chat/use-alto";
 import type { Alcance } from "@/lib/chat/alcance";
 import { PanelConversacion } from "./PanelConversacion";
 import { EnviarPlantilla } from "./EnviarPlantilla";
@@ -23,6 +24,7 @@ export type ConversacionItem = {
   canalActivo: boolean;
   responsable: { id: string; nombre: string } | null;
   etiquetas: EtiquetaItem[];
+  etapa: { id: string; nombre: string; color: string } | null;
   requiereAtencion: boolean;
   vinculo: { tipo: "cliente" | "prospecto"; id: string; nombre: string } | null;
 };
@@ -71,7 +73,15 @@ function Adjunto({ mensaje }: { mensaje: Mensaje }) {
   );
 }
 
-export function ChatCliente({ usuarioId, alcance }: { usuarioId: string; alcance: Alcance }) {
+export function ChatCliente({
+  usuarioId,
+  alcance,
+  conversacionInicial,
+}: {
+  usuarioId: string;
+  alcance: Alcance;
+  conversacionInicial?: number;
+}) {
   const [conversaciones, setConversaciones] = useState<ConversacionItem[]>([]);
   const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
@@ -87,44 +97,25 @@ export function ChatCliente({ usuarioId, alcance }: { usuarioId: string; alcance
   const [modalPlantilla, setModalPlantilla] = useState(false);
   const [versionPanel, setVersionPanel] = useState(0);
   const [vista, setVista] = useState<"lista" | "chat" | "info">("lista");
-  const [alto, setAlto] = useState<number | null>(null);
-  const raiz = useRef<HTMLDivElement>(null);
+  const { raiz, alto } = useAltoDisponible();
+  const abiertaDesdeEmbudo = useRef(false);
   const seleccionadaRef = useRef<string | null>(null);
   seleccionadaRef.current = seleccionadaId;
 
-  // El chat ocupa exactamente lo que queda de pantalla debajo de su posición:
-  // la página no se desplaza y cada columna hace su propio scroll.
-  useLayoutEffect(() => {
-    function medir() {
-      const elemento = raiz.current;
-      if (!elemento) return;
-      const relleno = parseFloat(getComputedStyle(elemento.closest("main") ?? document.body).paddingBottom) || 0;
-      const arriba = elemento.getBoundingClientRect().top + window.scrollY;
-      const visible = window.visualViewport?.height ?? window.innerHeight;
-      setAlto(Math.max(320, Math.floor(visible - arriba - relleno)));
-    }
-    medir();
-    void document.fonts?.ready.then(medir);
-    // El aviso de PIN y otros bloques de arriba cambian de alto al cargar: se vuelve a medir.
-    const observador = new ResizeObserver(medir);
-    observador.observe(document.body);
-    window.addEventListener("resize", medir);
-    window.visualViewport?.addEventListener("resize", medir);
-    return () => {
-      observador.disconnect();
-      window.removeEventListener("resize", medir);
-      window.visualViewport?.removeEventListener("resize", medir);
-    };
-  }, []);
 
   const cargarConversaciones = useCallback(async () => {
     const response = await fetch("/api/conversaciones", { cache: "no-store" });
     if (!response.ok) return;
     const data = await response.json();
-    const nuevas = data.conversaciones || [];
+    const nuevas: ConversacionItem[] = data.conversaciones || [];
     setConversaciones(nuevas);
-    setSeleccionadaId((actual) => actual || nuevas[0]?.id || null);
-  }, []);
+    const pedida = conversacionInicial ? nuevas.find((item) => item.numero === conversacionInicial) : undefined;
+    setSeleccionadaId((actual) => actual || pedida?.id || nuevas[0]?.id || null);
+    if (pedida && !abiertaDesdeEmbudo.current) {
+      abiertaDesdeEmbudo.current = true;
+      setVista("chat");
+    }
+  }, [conversacionInicial]);
 
   const cargarMensajes = useCallback(async (id: string) => {
     const response = await fetch(`/api/conversaciones/${id}/mensajes`, { cache: "no-store" });
@@ -303,9 +294,14 @@ export function ChatCliente({ usuarioId, alcance }: { usuarioId: string; alcance
                   <span className="min-w-0 flex-1">
                     <span className="flex justify-between gap-2"><b className="truncate text-[13.5px]">{item.contacto.nombre}</b><small className="shrink-0 text-muted">{hora(item.ultimoMensajeAt)}</small></span>
                     <span className="mt-0.5 block truncate text-[12.5px] text-muted">{item.preview || "Sin mensajes"}</span>
-                    {(item.etiquetas.length > 0 || item.estado !== "abierta" || item.responsable || item.requiereAtencion || canales.length > 1) && (
+                    {(item.etiquetas.length > 0 || item.estado !== "abierta" || item.responsable || item.requiereAtencion || item.etapa || canales.length > 1) && (
                       <span className="mt-1.5 flex flex-wrap items-center gap-1">
                         {canales.length > 1 && <span className="rounded bg-navy/[.08] px-1.5 py-0.5 text-[10.5px] text-navy">{item.canalNombre}</span>}
+                        {item.etapa && (
+                          <span className="inline-flex items-center gap-1 rounded bg-navy/[.06] px-1.5 py-0.5 text-[10.5px] text-ink">
+                            <i className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: item.etapa.color }} />{item.etapa.nombre}
+                          </span>
+                        )}
                         {item.requiereAtencion && <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10.5px] text-amber-700">Por atender</span>}
                         {item.estado !== "abierta" && <span className="rounded border border-line bg-paper px-1.5 py-0.5 text-[10.5px] text-muted">{item.estado}</span>}
                         {item.etiquetas.slice(0, 3).map((etiqueta) => (

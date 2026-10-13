@@ -26,6 +26,7 @@ import {
   Sparkles,
   GraduationCap,
   MessageCircle,
+  Kanban,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
@@ -58,6 +59,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
     items: [
       { href: "/clientes", label: "Clientes", icon: Users },
       { href: "/chat", label: "Chat", icon: MessageCircle, soloChat: true },
+      { href: "/embudo", label: "Embudo", icon: Kanban, soloChat: true },
       { href: "/prospectos", label: "Prospectos", icon: UserSearch },
       {
         href: "/asesorias",

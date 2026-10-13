@@ -17,7 +17,11 @@ type Detalle = {
   prospecto: { id: string; nombre: string; telefono: string | null } | null;
   responsable: { id: string; nombre: string } | null;
   etiquetas: Etiqueta[];
+  etapa: { id: string; nombre: string; color: string } | null;
+  citas: { id: string; fechaHora: string; estado: string; asunto: string | null }[];
+  asesorias: { id: string; folio: string | null; fecha: string; status: string; tema: string | null }[];
 };
+type EtapaOpcion = { id: string; nombre: string };
 
 const ESTADOS = ["abierta", "pendiente", "resuelta", "pospuesta"];
 
@@ -35,6 +39,7 @@ export function PanelConversacion({
   const [detalle, setDetalle] = useState<Detalle | null>(null);
   const [usuarios, setUsuarios] = useState<{ id: string; nombre: string }[]>([]);
   const [catalogo, setCatalogo] = useState<Etiqueta[]>([]);
+  const [etapas, setEtapas] = useState<EtapaOpcion[]>([]);
   const [nuevaEtiqueta, setNuevaEtiqueta] = useState("");
   const [claveAtributo, setClaveAtributo] = useState("");
   const [valorAtributo, setValorAtributo] = useState("");
@@ -55,6 +60,7 @@ export function PanelConversacion({
   useEffect(() => {
     if (puedeReasignar) fetch("/api/chat/usuarios").then((r) => (r.ok ? r.json() : null)).then((d) => d && setUsuarios(d.usuarios || []));
     fetch("/api/chat/etiquetas").then((r) => (r.ok ? r.json() : null)).then((d) => d && setCatalogo(d.etiquetas || []));
+    fetch("/api/embudo/etapas").then((r) => (r.ok ? r.json() : null)).then((d) => d && setEtapas(d.etapas || []));
   }, [puedeReasignar]);
 
   const guardar = useCallback(
@@ -79,6 +85,21 @@ export function PanelConversacion({
 
   const nombres = detalle.etiquetas.map((etiqueta) => etiqueta.nombre);
   const atributos = Object.entries(detalle.atributos || {});
+
+  async function cambiarEtapa(etapaId: string) {
+    setError("");
+    const response = await fetch(`/api/conversaciones/${conversacionId}/etapa`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ etapaId }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setError(data.error || "No se pudo mover");
+      return;
+    }
+    onCambio();
+  }
 
   async function agregarEtiqueta() {
     const nombre = nuevaEtiqueta.trim();
@@ -119,6 +140,13 @@ export function PanelConversacion({
             {usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nombre}</option>)}
           </select>
         </label>}
+        <label className="flex items-center justify-between gap-3">
+          <span className="text-muted">Etapa</span>
+          <select value={detalle.etapa?.id || ""} onChange={(e) => void cambiarEtapa(e.target.value)} className="min-w-0 max-w-[150px] rounded-lg border border-line bg-paper px-2 py-1 text-[12.5px]">
+            {!detalle.etapa && <option value="">Sin etapa</option>}
+            {etapas.map((etapa) => <option key={etapa.id} value={etapa.id}>{etapa.nombre}</option>)}
+          </select>
+        </label>
         <Fila etiqueta="Canal" valor={`${detalle.canal.nombre}${detalle.canal.activo ? "" : " · inactivo"}`} />
       </div>
 
@@ -165,6 +193,26 @@ export function PanelConversacion({
           <button onClick={() => void agregarAtributo()} aria-label="Agregar atributo" className="rounded-lg border border-line p-1.5 hover:border-navy/40"><Plus size={14} /></button>
         </div>
       </div>
+
+      {(detalle.citas.length > 0 || detalle.asesorias.length > 0) && (
+        <div className="border-t border-line pt-4">
+          <p className="eyebrow text-muted mb-2">Ligado a este chat</p>
+          <ul className="space-y-1.5 text-[12.5px]">
+            {detalle.citas.map((cita) => (
+              <li key={cita.id} className="flex justify-between gap-2">
+                <span>Cita · {new Date(cita.fechaHora).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="text-muted">{cita.estado}</span>
+              </li>
+            ))}
+            {detalle.asesorias.map((asesoria) => (
+              <li key={asesoria.id} className="flex justify-between gap-2">
+                <span>Asesoría{asesoria.folio ? ` ${asesoria.folio}` : ""}</span>
+                <span className="text-muted">{asesoria.status.replace("_", " ")}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="border-t border-line pt-4">
         <p className="eyebrow text-muted mb-2">Vinculación por teléfono</p>
