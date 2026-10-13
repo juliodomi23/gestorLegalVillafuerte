@@ -68,6 +68,9 @@ services:
       META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
       META_TOKEN_ENCRYPTION_KEY: ${META_TOKEN_ENCRYPTION_KEY:-}
       N8N_API_KEY: ${N8N_API_KEY}
+      # Hosts (separados por coma) a los que el chat puede mandar webhooks: el de n8n.
+      # Sin esto el gestor no le avisa al bot de los mensajes entrantes.
+      WEBHOOK_HOSTS_PERMITIDOS: ${WEBHOOK_HOSTS_PERMITIDOS:-}
       # Webhook de n8n que crea el evento en Google Calendar al agendar una cita.
       # Si faltan, crearEventoCalendar() devuelve null sin ruido y la cita se
       # guarda sin evento: definirlas en el .env NO basta, tienen que mapearse aquí.
