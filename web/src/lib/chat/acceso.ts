@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { Sesion } from "@/lib/guard";
-import { alcanceDe, ESTADOS_ABIERTOS, ETIQUETAS_ATENCION, type Alcance } from "./alcance";
+import { alcanceDe, type Alcance } from "./alcance";
 
 export type AccesoChat = { usuarioId: string; alcance: Alcance };
 
@@ -16,21 +16,9 @@ export async function resolverAcceso(sesion: Sesion): Promise<AccesoChat> {
   return { usuarioId: sesion.id, alcance: alcanceDe(usuario) };
 }
 
-// Misma regla que requiereAtencion() de alcance.ts, expresada como filtro de Prisma.
+// Qué conversaciones puede ver la persona. Administración y recepción ven todas;
+// "por atender" (requiereAtencion) es una vista, no un límite. El resto, solo las suyas.
 export function filtroConversaciones(acceso: AccesoChat): Prisma.ConversacionWhereInput {
-  if (acceso.alcance === "todas") return {};
   if (acceso.alcance === "propias") return { responsableId: acceso.usuarioId };
-  return {
-    OR: [
-      { responsableId: acceso.usuarioId },
-      {
-        responsableId: null,
-        estado: { in: [...ESTADOS_ABIERTOS] },
-        OR: [
-          { estado: "pendiente" },
-          { etiquetas: { some: { etiqueta: { nombre: { in: [...ETIQUETAS_ATENCION] } } } } },
-        ],
-      },
-    ],
-  };
+  return {};
 }

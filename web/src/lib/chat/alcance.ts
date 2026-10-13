@@ -6,8 +6,8 @@ export const ETIQUETAS_ATENCION = ["escalado_humano", "bot_off", "requiere_atenc
 export const ESTADOS_ABIERTOS = ["abierta", "pendiente"] as const;
 
 // - admin: todas.
-// - recepción: quien tiene el permiso "Chat: recepción" (verChatRecepcion):
-//   ve la cola de atención y las suyas, y puede reasignar.
+// - recepción: quien tiene el permiso "Chat: recepción" (verChatRecepcion): ve todas
+//   las conversaciones y puede reasignarlas a un abogado.
 // - el resto: solo las conversaciones asignadas a ellos.
 export function alcanceDe(usuario: { rol: string; verChatRecepcion: boolean }): Alcance {
   if (usuario.rol === "admin") return "todas";
