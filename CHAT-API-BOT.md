@@ -36,13 +36,19 @@ color, orden, agregar; las del sistema no se quitan). Por defecto:
 | Etapa | Clave | Cuándo llega sola |
 |---|---|---|
 | Nuevo | `nuevo` | Al nacer la conversación (primer mensaje) |
-| Agendó cita | `agendo_cita` | Se registra una cita (`POST /api/n8n/citas`) o `prospectos/agendo-cita` |
+| Contactado | `contactado` | El resultado de una llamada es "no contestó" o "llamar después" (prospectos, no asistieron, ya asesoraron) |
+| Agendó cita | `agendo_cita` | Se registra una cita (`POST /api/n8n/citas`), `prospectos/agendo-cita`, o la llamada termina en "agendó cita" |
 | Agendó llamada | `agendo_llamada` | El bot registra al prospecto (`POST /api/n8n/prospectos`) |
 | Asesorado | `asesorado` | Se registra la asesoría (`POST /api/n8n/asesorias`) |
 | Contrato firmado | `contrato_firmado` | La asesoría pasa a `contrato_firmado` o se sube el contrato |
+| No asistió | `no_asistio` | La cita se marca `no_show` |
+| Perdido | `perdido` | Prospecto o llamada "descartado", o asesoría `no_regreso` / `descartado` |
 
-- **Solo avanza** solo: un evento tardío nunca regresa una tarjeta. Llamada y cita son caminos
-  paralelos (se puede pasar de uno a otro). Una etapa propia del despacho no se mueve sola.
+- **Solo avanza**: un evento tardío nunca regresa una tarjeta. Llamada y Contactado son pares
+  (se puede pasar de uno a otro); la cita es lo que sigue. **Contrato firmado cierra** y nada lo mueve.
+  **No asistió** y **Perdido** se pueden marcar desde casi cualquier punto y se reactivan con
+  cualquier avance posterior (volvió a agendar, le contestaron). Una etapa propia del despacho
+  no se mueve sola.
 - **Ligado al chat:** la cita o asesoría queda ligada a la conversación por el `conversationId`
   que mande el bot o, si no lo manda, por el teléfono. Se ve en el panel de la conversación.
 - **El bot también la mueve:** `POST /api/v1/accounts/1/conversations/:id/funnel` con
@@ -150,7 +156,8 @@ Se limpia cada hora desde el proceso web.
    etiquetas semilla, secuencias desde 1,000,000 y backfill de contactos), `add_chat_multinumero.sql`
    (IDs de inbox), `add_chat_permisos.sql` (permiso de recepción: al crearse la columna, quien ya
    tenía "Ver todas las asesorías" y no es admin la recibe encendida) y `add_chat_embudo.sql`
-   (etapas por defecto, etapa de cada conversación y el vínculo de citas y asesorías).
+   (las 8 etapas, la etapa de cada conversación y el vínculo de citas y asesorías; si el despacho ya
+   tenía una etapa propia con el mismo nombre de una del sistema, la adopta en vez de duplicarla).
    Después, en Configuración › Usuarios, marcar **Chat: recepción** a quien corresponda.
 4. Variables: `CHAT_WHATSAPP_ACTIVO`, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`,
    `META_TOKEN_ENCRYPTION_KEY`, `NEXTAUTH_URL` (se usa para los `data_url`), `WEBHOOK_HOSTS_PERMITIDOS`.
