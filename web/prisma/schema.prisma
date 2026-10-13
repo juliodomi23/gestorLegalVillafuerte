@@ -102,6 +102,7 @@ model Usuario {
   // operaciones). Es un permiso suelto para no tener que hacer admin a alguien que
   // no debe ver Caja ni Configuración.
   verProductividad    Boolean  @default(false) @map("ver_productividad")
+  verReportes         Boolean  @default(false) @map("ver_reportes")
   // Permiso independiente para recepción/coordinación: ve asesorías de todas las
   // sucursales sin obtener acceso administrativo a Caja o Configuración.
   verTodasAsesorias   Boolean  @default(false) @map("ver_todas_asesorias")

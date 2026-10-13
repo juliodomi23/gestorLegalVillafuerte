@@ -11,6 +11,7 @@ export function AppShell({
   nombre,
   rol,
   verProductividad = false,
+  verReportes = false,
   chatWhatsappActivo = false,
   estadoPin = "propio",
   children,
@@ -18,6 +19,7 @@ export function AppShell({
   nombre: string;
   rol: Rol;
   verProductividad?: boolean;
+  verReportes?: boolean;
   chatWhatsappActivo?: boolean;
   estadoPin?: EstadoPin;
   children: React.ReactNode;
@@ -31,6 +33,7 @@ export function AppShell({
         nombre={nombre}
         rol={rol}
         verProductividad={verProductividad}
+        verReportes={verReportes}
         chatWhatsappActivo={chatWhatsappActivo}
         drawerOpen={drawer}
         onClose={() => setDrawer(false)}

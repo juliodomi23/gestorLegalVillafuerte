@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/guard";
+import { requireReportes } from "@/lib/guard";
 import { resumenLlamadasPorAbogado, mesActualMX, ANIO_PROSPECTOS } from "@/lib/services/prospectos";
 import { resumenCitasMes } from "@/lib/services/citas-reporte";
 import { hoyDespacho } from "@/lib/fecha";
@@ -11,7 +11,7 @@ export default async function ReportesPage({
   searchParams: { mes?: string };
 }) {
   try {
-    await requireAdmin();
+    await requireReportes();
   } catch {
     redirect("/inicio");
   }

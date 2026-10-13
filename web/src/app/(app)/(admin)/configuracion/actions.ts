@@ -15,6 +15,7 @@ export type FormUsuario = {
   telefonoWhatsapp: string;
   pin: string;
   verProductividad: boolean;
+  verReportes: boolean;
   verTodasAsesorias: boolean;
   verTodasDiligencias: boolean;
   verChatRecepcion: boolean;
@@ -49,6 +50,7 @@ export async function crearUsuarioAction(data: FormUsuario) {
         telefonoWhatsapp: d.telefonoWhatsapp || null,
         pin: d.pin || null,
         verProductividad: d.verProductividad,
+        verReportes: d.verReportes,
         verTodasAsesorias: d.verTodasAsesorias,
         verTodasDiligencias: d.verTodasDiligencias,
         verChatRecepcion: d.verChatRecepcion,
@@ -74,6 +76,7 @@ export async function editarUsuarioAction(id: string, data: FormUsuario) {
     telefonoWhatsapp: d.telefonoWhatsapp || null,
     pin: d.pin || null,
     verProductividad: d.verProductividad,
+    verReportes: d.verReportes,
     verTodasAsesorias: d.verTodasAsesorias,
     verTodasDiligencias: d.verTodasDiligencias,
     verChatRecepcion: d.verChatRecepcion,

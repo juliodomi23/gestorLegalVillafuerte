@@ -11,7 +11,9 @@
     "db:generate": "prisma generate",
     "test:chat": "node --experimental-strip-types --test tests/chat-unit.test.mjs tests/chat-bot-unit.test.mjs tests/chat-importador-unit.test.mjs tests/chat-presentacion-unit.test.mjs",
     "test:chat:integration": "node tests/run-chat-integration.mjs",
-    "test:chat:ui": "node tests/chat-ui.mjs"
+    "test:chat:ui": "node tests/chat-ui.mjs",
+    "test:reportes": "node --experimental-strip-types --test tests/reportes-permiso-unit.test.mjs",
+    "test:reportes:integration": "node tests/run-reportes-integration.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0",

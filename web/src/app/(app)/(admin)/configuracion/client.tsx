@@ -17,6 +17,7 @@ export type UsuarioView = {
   telefonoWhatsapp: string | null;
   pin: string | null;
   verProductividad: boolean;
+  verReportes: boolean;
   verTodasAsesorias: boolean;
   verTodasDiligencias: boolean;
   verChatRecepcion: boolean;
@@ -34,6 +35,7 @@ const ENVIO_TODAS = "Citados de todo el despacho (8:00)";
 const vacio = {
   nombre: "", email: "", password: "", rol: "abogado", sucursalId: "", telefonoWhatsapp: "", pin: "",
   verProductividad: false,
+  verReportes: false,
   verTodasAsesorias: false,
   verTodasDiligencias: false,
   verChatRecepcion: false,
@@ -109,6 +111,7 @@ export default function ConfiguracionClient({
       telefonoWhatsapp: u.telefonoWhatsapp ?? "",
       pin: u.pin ?? "",
       verProductividad: u.verProductividad,
+      verReportes: u.verReportes,
       verTodasAsesorias: u.verTodasAsesorias,
       verTodasDiligencias: u.verTodasDiligencias,
       verChatRecepcion: u.verChatRecepcion,
@@ -307,6 +310,20 @@ export default function ConfiguracionClient({
               Ver Productividad
               <span className="block text-[12.5px] text-muted">
                 La rutina del Coordinador de Operaciones. Los admin la ven siempre.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2.5 text-[13.5px] cursor-pointer mt-3">
+            <input
+              type="checkbox"
+              checked={form.verReportes}
+              onChange={(e) => setForm((f) => ({ ...f, verReportes: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 accent-navy shrink-0"
+            />
+            <span>
+              Reportes de llamadas
+              <span className="block text-[12.5px] text-muted">
+                Ve llamadas y cifras de citas de todas las sucursales. Los admin lo ven siempre.
               </span>
             </span>
           </label>

@@ -41,6 +41,7 @@ export const usuarioSchema = z.object({
   recibeEnvio: z.string().trim().max(60).default(""),
   // Acceso a la sección de Productividad sin necesidad de ser admin.
   verProductividad: z.boolean().default(false),
+  verReportes: z.boolean().default(false),
   verTodasAsesorias: z.boolean().default(false),
   verTodasDiligencias: z.boolean().default(false),
   // Recepción del chat de WhatsApp (cola por atender y reasignación).

@@ -40,6 +40,7 @@ type Item = {
   sub?: { href: string; label: string }[];
   // Se muestra solo a quien tiene el permiso de Productividad (admins incluidos).
   soloProductividad?: boolean;
+  soloReportes?: boolean;
   soloChat?: boolean;
 };
 
@@ -85,7 +86,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
         soloAdmin: true,
         sub: [{ href: "/caja/cobros", label: "Cobros Mercado Pago" }],
       },
-      { href: "/reportes", label: "Reportes de llamadas", icon: Phone, soloAdmin: true },
+      { href: "/reportes", label: "Reportes de llamadas", icon: Phone, soloReportes: true },
       { href: "/reloj-checador", label: "Reloj checador", icon: Clock, soloProductividad: true },
       {
         href: "/productividad",
@@ -105,6 +106,7 @@ export function Sidebar({
   nombre,
   rol,
   verProductividad = false,
+  verReportes = false,
   chatWhatsappActivo = false,
   drawerOpen = false,
   onClose,
@@ -112,6 +114,7 @@ export function Sidebar({
   nombre: string;
   rol: Rol;
   verProductividad?: boolean;
+  verReportes?: boolean;
   chatWhatsappActivo?: boolean;
   drawerOpen?: boolean;
   onClose?: () => void;
@@ -153,6 +156,7 @@ export function Sidebar({
             (it) =>
               (!it.soloAdmin || rol === "admin") &&
               (!it.soloProductividad || verProductividad) &&
+              (!it.soloReportes || rol === "admin" || verReportes) &&
               (!it.soloChat || chatWhatsappActivo)
           );
           if (items.length === 0) return null;

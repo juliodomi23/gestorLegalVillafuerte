@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ver_reportes boolean NOT NULL DEFAULT false;
+
+COMMIT;

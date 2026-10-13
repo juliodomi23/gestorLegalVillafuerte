@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
-import { puedeVerProductividad } from "@/lib/guard";
+import { puedeVerProductividad, puedeVerReportes } from "@/lib/guard";
 import { prisma } from "@/lib/prisma";
 import { chatWhatsappActivo } from "@/lib/chat/modulo";
 
@@ -17,8 +17,9 @@ export default async function AppLayout({
   const { name, rol, debeCambiarPassword } = session.user;
   if (debeCambiarPassword) redirect("/cambiar-password");
 
-  const [verProductividad, usuario] = await Promise.all([
+  const [verProductividad, verReportes, usuario] = await Promise.all([
     puedeVerProductividad(),
+    puedeVerReportes(),
     prisma.usuario.findUnique({
       where: { id: session.user.id },
       select: { pin: true, pinGenerado: true },
@@ -30,6 +31,7 @@ export default async function AppLayout({
       nombre={name ?? "Usuario"}
       rol={rol}
       verProductividad={verProductividad}
+      verReportes={verReportes}
       chatWhatsappActivo={chatWhatsappActivo()}
       estadoPin={!usuario?.pin ? "sin_pin" : usuario.pinGenerado ? "generado" : "propio"}
     >

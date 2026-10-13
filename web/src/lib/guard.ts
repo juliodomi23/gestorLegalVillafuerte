@@ -52,6 +52,27 @@ export async function puedeVerProductividad(): Promise<boolean> {
   }
 }
 
+export async function requireReportes(): Promise<Sesion> {
+  const sesion = await requireSession();
+  if (sesion.rol === "admin") return sesion;
+  const { prisma } = await import("@/lib/prisma");
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: sesion.id },
+    select: { activo: true, verReportes: true },
+  });
+  if (!usuario?.activo || !usuario.verReportes) throw new Error("No tienes acceso a Reportes de llamadas");
+  return sesion;
+}
+
+export async function puedeVerReportes(): Promise<boolean> {
+  try {
+    await requireReportes();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function requireAdmin(): Promise<Sesion> {
   const sesion = await requireSession();
   if (sesion.rol !== "admin") throw new Error("Requiere rol de administrador");

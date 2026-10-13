@@ -85,6 +85,7 @@ CREATE TABLE usuarios (
   ver_todas_asesorias  boolean NOT NULL DEFAULT false,
   ver_todas_diligencias boolean NOT NULL DEFAULT false,
   ver_chat_recepcion   boolean NOT NULL DEFAULT false,
+  ver_reportes         boolean NOT NULL DEFAULT false,
   creado_en            timestamptz NOT NULL DEFAULT now()
 );
 

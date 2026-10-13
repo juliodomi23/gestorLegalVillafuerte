@@ -23,6 +23,7 @@ export default async function ConfiguracionPage() {
     telefonoWhatsapp: u.telefonoWhatsapp,
     pin: u.pin,
     verProductividad: u.verProductividad,
+    verReportes: u.verReportes,
     verTodasAsesorias: u.verTodasAsesorias,
     verTodasDiligencias: u.verTodasDiligencias,
     verChatRecepcion: u.verChatRecepcion,
