@@ -187,4 +187,24 @@ Todos usan la misma forma de llamada; solo cambia **la base y el token**.
 - Orden de eventos concurrentes no garantizado; deduplicar con `X-Chatwoot-Delivery`.
 - La visibilidad es por persona asignada, no por sucursal. Un abogado no puede devolver una
   conversación a recepción por sí mismo (solo la reasigna recepción o administración).
-- No hay importador del historial de Chatwoot (el diseño de IDs ya lo permite).
+- El historial de Chatwoot se importa con `web/scripts/importar-chatwoot.mjs` (ver abajo). Los
+  adjuntos no se descargan: entran como `[imagen — adjunto no importado]`.
+
+## Importar el historial de Chatwoot
+
+```
+CW_TOKEN=<token de administrador> node scripts/importar-chatwoot.mjs --solo-lectura   # cuenta, no escribe
+CW_TOKEN=... node scripts/importar-chatwoot.mjs --limite 50                           # prueba
+CW_TOKEN=... node scripts/importar-chatwoot.mjs                                       # todo
+```
+
+- En Chatwoot solo lee. No dispara webhooks ni bots (escribe directo en la base).
+- Se puede repetir: omite lo ya importado y solo agrega mensajes y conversaciones nuevas.
+- Conserva los IDs de conversación, contacto y mensaje (por debajo de 1,000,000) y el `inbox_id`
+  del canal. Varias conversaciones del mismo teléfono se unen en la más reciente.
+- Crea el canal con el `phone_number_id` y el WABA de Chatwoot, **desconectado**: al conectar el
+  número real en Configuración › WhatsApp el mismo canal se actualiza y no se duplican chats.
+- Etapa inicial por etiqueta: `no_asistio` → No asistió, `cita_cancelada` → Contactado,
+  `cita_confirmada`/`cita_agendada` → Agendó cita, `llamada_agendada` → Agendó llamada, el resto Nuevo.
+- `pending` y `open` entran como abiertas (no inundan "Por atender"); `resolved` como cerradas.
+- Vínculo con cliente/prospecto: por teléfono único o por `Prospecto.conversationId`.

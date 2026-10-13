@@ -8,10 +8,11 @@ ALTER TABLE canales_whatsapp
 CREATE UNIQUE INDEX IF NOT EXISTS canales_whatsapp_numero_compat_key
   ON canales_whatsapp(numero_compat);
 
+-- Con la tabla vacía el siguiente canal debe ser el 1 (el bot manda inbox_id 1): is_called = false.
 SELECT setval(
   pg_get_serial_sequence('canales_whatsapp', 'numero_compat'),
   GREATEST(1, COALESCE((SELECT MAX(numero_compat) FROM canales_whatsapp), 1)),
-  true
+  EXISTS (SELECT 1 FROM canales_whatsapp)
 );
 
 COMMIT;
