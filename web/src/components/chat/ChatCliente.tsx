@@ -1,13 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCheck, ChevronLeft, Info, Lock, MessageCircle, Paperclip, Search, Send } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, ChevronLeft, Info, Lock, MessageCircle, Search, Send } from "lucide-react";
 import { estadoVentana } from "@/lib/meta/ventana";
 import { pollingPermitido } from "@/lib/chat/polling";
 import { useAltoDisponible } from "@/lib/chat/use-alto";
+import { fechaConversacion } from "@/lib/chat/fechas";
 import type { Alcance } from "@/lib/chat/alcance";
 import { PanelConversacion } from "./PanelConversacion";
 import { EnviarPlantilla } from "./EnviarPlantilla";
+import { AvatarContacto } from "./AvatarContacto";
+import { EsqueletoChat, MensajesConversacion } from "./MensajesConversacion";
 
 export type EtiquetaItem = { nombre: string; color: string };
 
@@ -29,7 +32,7 @@ export type ConversacionItem = {
   vinculo: { tipo: "cliente" | "prospecto"; id: string; nombre: string } | null;
 };
 
-type Mensaje = {
+export type Mensaje = {
   id: string;
   direccion: "entrante" | "saliente";
   tipo: string;
@@ -53,26 +56,6 @@ const ESTADOS = [
   { valor: "pospuesta", texto: "Pospuestas" },
 ];
 
-function hora(fecha: string | null) {
-  return fecha ? new Date(fecha).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "";
-}
-
-function Adjunto({ mensaje }: { mensaje: Mensaje }) {
-  if (!mensaje.tieneMedia) return null;
-  const url = `/api/mensajes/${mensaje.id}/media`;
-  const mime = mensaje.mediaMime || "";
-  if (mime.startsWith("image/")) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={mensaje.mediaNombre || "Imagen"} className="mt-2 max-h-56 rounded-lg" />;
-  }
-  if (mime.startsWith("audio/")) return <audio controls src={url} className="mt-2 w-full max-w-[260px]" />;
-  return (
-    <a href={url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] underline">
-      <Paperclip size={13} /> {mensaje.mediaNombre || "Descargar archivo"}
-    </a>
-  );
-}
-
 export function ChatCliente({
   usuarioId,
   alcance,
@@ -84,7 +67,11 @@ export function ChatCliente({
 }) {
   const [conversaciones, setConversaciones] = useState<ConversacionItem[]>([]);
   const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
-  const [mensajes, setMensajes] = useState<Mensaje[]>([]);
+  const [historial, setHistorial] = useState<{ id: string; mensajes: Mensaje[] } | null>(null);
+  const [listaCargada, setListaCargada] = useState(false);
+  const [errorLista, setErrorLista] = useState("");
+  const [errorHistorial, setErrorHistorial] = useState<{ id: string; texto: string } | null>(null);
+  const [ultimosConocidos, setUltimosConocidos] = useState<Record<string, Mensaje>>({});
   const [busqueda, setBusqueda] = useState("");
   const [terminoServidor, setTerminoServidor] = useState("");
   const [total, setTotal] = useState(0);
@@ -102,8 +89,20 @@ export function ChatCliente({
   const { raiz, alto } = useAltoDisponible();
   const abiertaDesdeEmbudo = useRef(false);
   const seleccionadaRef = useRef<string | null>(null);
+  const solicitudMensajes = useRef(0);
+  const respuestaAplicada = useRef(0);
+  const solicitudLista = useRef(0);
+  const compositor = useRef<HTMLTextAreaElement>(null);
   seleccionadaRef.current = seleccionadaId;
+  const mensajesCargados = historial?.id === seleccionadaId;
+  const mensajes = useMemo(() => mensajesCargados ? historial!.mensajes : [], [historial, mensajesCargados]);
 
+  useLayoutEffect(() => {
+    const campo = compositor.current;
+    if (!campo) return;
+    campo.style.height = "auto";
+    campo.style.height = `${Math.min(campo.scrollHeight, 136)}px`;
+  }, [texto, seleccionadaId, vista]);
 
   useEffect(() => {
     const espera = window.setTimeout(() => setTerminoServidor(busqueda.trim()), 350);
@@ -111,12 +110,22 @@ export function ChatCliente({
   }, [busqueda]);
 
   const cargarConversaciones = useCallback(async () => {
+    const solicitud = ++solicitudLista.current;
     const params = new URLSearchParams();
     if (terminoServidor) params.set("q", terminoServidor);
     if (conversacionInicial) params.set("c", String(conversacionInicial));
-    const response = await fetch(`/api/conversaciones?${params}`, { cache: "no-store" });
-    if (!response.ok) return;
-    const data = await response.json();
+    let data;
+    try {
+      const response = await fetch(`/api/conversaciones?${params}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("No se pudieron cargar las conversaciones. Reintentando…");
+      data = await response.json();
+    } catch {
+      if (solicitud === solicitudLista.current) setErrorLista("No se pudieron cargar las conversaciones. Reintentando…");
+      return;
+    }
+    if (solicitud !== solicitudLista.current) return;
+    setListaCargada(true);
+    setErrorLista("");
     const nuevas: ConversacionItem[] = data.conversaciones || [];
     setConversaciones(nuevas);
     setTotal(Number(data.total) || nuevas.length);
@@ -129,10 +138,22 @@ export function ChatCliente({
   }, [conversacionInicial, terminoServidor]);
 
   const cargarMensajes = useCallback(async (id: string) => {
-    const response = await fetch(`/api/conversaciones/${id}/mensajes`, { cache: "no-store" });
-    if (!response.ok) return;
-    const data = await response.json();
-    setMensajes(data.mensajes || []);
+    const solicitud = ++solicitudMensajes.current;
+    try {
+      const response = await fetch(`/api/conversaciones/${id}/mensajes`, { cache: "no-store" });
+      if (!response.ok) throw new Error("No se pudieron cargar los mensajes");
+      const data = await response.json();
+      if (seleccionadaRef.current !== id || solicitud < respuestaAplicada.current) return;
+      respuestaAplicada.current = solicitud;
+      const nuevos: Mensaje[] = data.mensajes || [];
+      setHistorial({ id, mensajes: nuevos });
+      setErrorHistorial(null);
+      if (nuevos.length) setUltimosConocidos((actual) => ({ ...actual, [id]: nuevos[nuevos.length - 1] }));
+    } catch {
+      if (seleccionadaRef.current === id && solicitud >= respuestaAplicada.current) {
+        setErrorHistorial({ id, texto: "No se pudieron cargar los mensajes. Reintentando…" });
+      }
+    }
   }, []);
 
   const refrescarVisible = useCallback(async () => {
@@ -159,7 +180,7 @@ export function ChatCliente({
 
   useEffect(() => {
     if (seleccionadaId) void cargarMensajes(seleccionadaId);
-    else setMensajes([]);
+    setError("");
   }, [seleccionadaId, cargarMensajes]);
 
   const seleccionada = conversaciones.find((item) => item.id === seleccionadaId) || null;
@@ -205,23 +226,28 @@ export function ChatCliente({
   const puedeEscribir = esNota || ventanaAbierta;
 
   async function enviar() {
-    if (!seleccionadaId || !texto.trim()) return;
+    if (!seleccionadaId || !texto.trim() || !puedeEscribir || enviando) return;
     setEnviando(true);
     setError("");
-    const response = await fetch("/api/mensajes/enviar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversacionId: seleccionadaId, texto, privado: esNota }),
-    });
-    const data = await response.json().catch(() => ({}));
-    setEnviando(false);
-    if (!response.ok) {
-      setError(data.error || "No se pudo enviar");
-      if (data.ventanaCerrada) setModalPlantilla(true);
-      return;
+    try {
+      const response = await fetch("/api/mensajes/enviar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversacionId: seleccionadaId, texto, privado: esNota }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error || "No se pudo enviar");
+        if (data.ventanaCerrada) setModalPlantilla(true);
+        return;
+      }
+      setTexto("");
+      await refrescarVisible();
+    } catch {
+      setError("No se pudo enviar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setEnviando(false);
     }
-    setTexto("");
-    await refrescarVisible();
   }
 
   const pestanas: { id: Pestana; texto: string }[] =
@@ -246,7 +272,7 @@ export function ChatCliente({
     <div
       ref={raiz}
       style={alto ? { height: alto } : undefined}
-      className="relative flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-card"
+      className="chat-cliente relative flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-line bg-surface text-ink shadow-card"
     >
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_300px]">
         {/* Lista */}
@@ -257,9 +283,9 @@ export function ChatCliente({
                 <button
                   key={item.id}
                   onClick={() => setPestana(item.id)}
-                  className={`flex-1 shrink-0 whitespace-nowrap px-3 py-2.5 transition-colors ${pestana === item.id ? "border-b-2 border-navy font-semibold text-navy" : "text-muted hover:text-ink"}`}
+                  className={`flex min-w-0 flex-1 shrink-0 flex-col items-center gap-0.5 whitespace-nowrap px-2 py-2 transition-colors ${pestana === item.id ? "border-b-2 border-navy font-semibold text-navy" : "text-muted hover:text-ink"}`}
                 >
-                  {item.texto} <span className="text-[11px] text-muted">{conteos[item.id]}</span>
+                  <span>{item.texto}</span><span className="text-[10.5px] text-muted">{conteos[item.id].toLocaleString("es-MX")}</span>
                 </button>
               ))}
             </div>
@@ -269,6 +295,7 @@ export function ChatCliente({
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 value={busqueda}
+                aria-label="Buscar conversación"
                 onChange={(event) => setBusqueda(event.target.value)}
                 placeholder="Buscar conversación…"
                 className="w-full rounded-lg border border-line bg-paper py-2 pl-9 pr-3 text-[16px] outline-none focus:ring-2 focus:ring-navy/20 sm:text-[13px]"
@@ -276,35 +303,40 @@ export function ChatCliente({
             </div>
             <div className="flex flex-wrap gap-2">
               {canales.length > 1 && (
-                <select value={filtroCanal} onChange={(event) => setFiltroCanal(event.target.value)} className={campoFiltro}>
+                <select aria-label="Filtrar por número" value={filtroCanal} onChange={(event) => setFiltroCanal(event.target.value)} className={campoFiltro}>
                   <option value="">Todos los números</option>
                   {canales.map((canal) => <option key={canal.id} value={canal.id}>{canal.nombre}</option>)}
                 </select>
               )}
-              <select value={filtroEstado} onChange={(event) => setFiltroEstado(event.target.value)} className={campoFiltro}>
+              <select aria-label="Filtrar por estado" value={filtroEstado} onChange={(event) => setFiltroEstado(event.target.value)} className={campoFiltro}>
                 {ESTADOS.map((estado) => <option key={estado.valor} value={estado.valor}>{estado.texto}</option>)}
               </select>
-              <select value={filtroEtiqueta} onChange={(event) => setFiltroEtiqueta(event.target.value)} className={campoFiltro}>
+              <select aria-label="Filtrar por etiqueta" value={filtroEtiqueta} onChange={(event) => setFiltroEtiqueta(event.target.value)} className={campoFiltro}>
                 <option value="">Todas las etiquetas</option>
                 {etiquetasDisponibles.map((nombre) => <option key={nombre} value={nombre}>{nombre}</option>)}
               </select>
             </div>
           </div>
-          <div className="min-h-0 flex-1 divide-y divide-line/70 overflow-y-auto">
+          <div aria-label="Conversaciones" aria-busy={!listaCargada && !errorLista} className="min-h-0 flex-1 divide-y divide-line/70 overflow-y-auto overscroll-contain">
+            {errorLista && <p role="alert" className="p-4 text-xs text-danger">{errorLista}</p>}
+            {!listaCargada && !errorLista && <EsqueletoChat lista />}
             {filtradas.map((item) => (
               <button
                 key={item.id}
+                aria-pressed={item.id === seleccionadaId}
                 onClick={() => {
                   setSeleccionadaId(item.id);
                   setVista("chat");
                 }}
-                className={`w-full px-4 py-3 text-left transition-colors ${item.id === seleccionadaId ? "bg-navy/[.07]" : "hover:bg-paper"}`}
+                className={`w-full border-l-[3px] px-3 py-3 text-left transition-colors ${item.id === seleccionadaId ? "border-l-navy bg-navy/[.07]" : "border-l-transparent hover:bg-paper"}`}
               >
                 <div className="flex items-start gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success-wash text-success"><MessageCircle size={17} /></span>
+                  <AvatarContacto nombre={item.contacto.nombre} telefono={item.contacto.telefono} />
                   <span className="min-w-0 flex-1">
-                    <span className="flex justify-between gap-2"><b className="truncate text-[13.5px]">{item.contacto.nombre}</b><small className="shrink-0 text-muted">{hora(item.ultimoMensajeAt)}</small></span>
-                    <span className="mt-0.5 block truncate text-[12.5px] text-muted">{item.preview || "Sin mensajes"}</span>
+                    <span className="flex justify-between gap-2"><b className="truncate text-[14px]">{item.contacto.nombre}</b><small className={`shrink-0 text-[10.5px] ${item.noLeidos ? "font-semibold text-success" : "text-muted"}`}>{fechaConversacion(item.ultimoMensajeAt)}</small></span>
+                    <span className="mt-1 flex items-center gap-2"><span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">{ultimosConocidos[item.id]?.direccion === "saliente" && item.ultimoMensajeAt && new Date(ultimosConocidos[item.id].timestamp).getTime() === new Date(item.ultimoMensajeAt).getTime() ? "Tú: " : ""}{item.preview || "Sin mensajes"}</span>
+                      {item.noLeidos > 0 && <span aria-label={`${item.noLeidos} mensajes no leídos`} className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-success px-1.5 text-[10.5px] font-semibold text-white">{item.noLeidos}</span>}
+                    </span>
                     {(item.etiquetas.length > 0 || item.estado !== "abierta" || item.responsable || item.requiereAtencion || item.etapa || canales.length > 1) && (
                       <span className="mt-1.5 flex flex-wrap items-center gap-1">
                         {canales.length > 1 && <span className="rounded bg-navy/[.08] px-1.5 py-0.5 text-[10.5px] text-navy">{item.canalNombre}</span>}
@@ -313,7 +345,7 @@ export function ChatCliente({
                             <i className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: item.etapa.color }} />{item.etapa.nombre}
                           </span>
                         )}
-                        {item.requiereAtencion && <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10.5px] text-amber-700">Por atender</span>}
+                        {item.requiereAtencion && <span className="rounded bg-amber-wash px-1.5 py-0.5 text-[10.5px] font-semibold text-amber">Por atender</span>}
                         {item.estado !== "abierta" && <span className="rounded border border-line bg-paper px-1.5 py-0.5 text-[10.5px] text-muted">{item.estado}</span>}
                         {item.etiquetas.slice(0, 3).map((etiqueta) => (
                           <span key={etiqueta.nombre} className="inline-flex items-center gap-1 rounded border border-line bg-paper px-1.5 py-0.5 text-[10.5px]">
@@ -324,11 +356,10 @@ export function ChatCliente({
                       </span>
                     )}
                   </span>
-                  {item.noLeidos > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-success px-1 text-[11px] text-white">{item.noLeidos}</span>}
                 </div>
               </button>
             ))}
-            {filtradas.length === 0 && <p className="p-8 text-center text-[13px] text-muted">Sin conversaciones.</p>}
+            {listaCargada && filtradas.length === 0 && <div className="flex flex-col items-center gap-2 px-5 py-10 text-center text-muted"><MessageCircle size={28} /><p className="text-sm">{busqueda ? "Sin coincidencias" : "Sin conversaciones"}</p><p className="text-xs">{busqueda ? "Prueba con otro nombre o teléfono." : "Las conversaciones aparecerán aquí."}</p></div>}
           </div>
         </section>
 
@@ -337,60 +368,50 @@ export function ChatCliente({
           {seleccionada ? (
             <>
               <header className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-2.5 sm:px-4">
-                <button onClick={() => setVista("lista")} aria-label="Volver a la lista" className="rounded-lg p-1.5 text-muted hover:bg-paper lg:hidden"><ChevronLeft size={20} /></button>
+                <button onClick={() => setVista("lista")} aria-label="Volver a la lista" className="rounded-lg p-2 text-navy hover:bg-paper lg:hidden"><ChevronLeft size={22} /></button>
+                <span className="hidden sm:inline-flex"><AvatarContacto nombre={seleccionada.contacto.nombre} telefono={seleccionada.contacto.telefono} /></span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate font-serif text-[17px] leading-tight sm:text-[18px]">{seleccionada.contacto.nombre}</h2>
+                  <h2 className="truncate text-[15px] font-semibold leading-tight sm:text-[16px]">{seleccionada.contacto.nombre}</h2>
                   <p className="truncate text-[12px] text-muted">{seleccionada.contacto.telefono} · {seleccionada.canalNombre} · #{seleccionada.numero}</p>
+                  <p className="mt-1 flex min-w-0 items-center gap-2 text-[11px] text-muted">
+                    {seleccionada.etapa && <span className="inline-flex min-w-0 items-center gap-1 rounded bg-paper px-1.5 py-0.5 text-ink"><i className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: seleccionada.etapa.color }} /><span className="truncate">{seleccionada.etapa.nombre}</span></span>}
+                    <span className="truncate" title={seleccionada.responsable?.nombre}>Asignada: {seleccionada.responsable?.nombre || "sin asignar"}</span>
+                  </p>
                 </div>
                 <button onClick={() => setVista("info")} aria-label="Ver detalles" className="rounded-lg border border-line p-1.5 text-muted hover:border-navy/40 xl:hidden"><Info size={18} /></button>
               </header>
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-paper/50 px-3 py-4 sm:px-4">
-                {mensajes.map((mensaje) => {
-                  const saliente = mensaje.direccion === "saliente";
-                  const estilo = mensaje.privado
-                    ? "border border-amber-200 bg-amber-50 text-ink"
-                    : saliente
-                      ? "bg-navy text-white"
-                      : "border border-line bg-surface";
-                  return (
-                    <div key={mensaje.id} className={`flex ${saliente ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[85%] break-words rounded-xl px-3.5 py-2.5 text-[14px] shadow-sm sm:max-w-[78%] sm:text-[13.5px] ${estilo}`}>
-                        {mensaje.privado && <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-amber-700"><Lock size={11} /> Nota privada · no sale al cliente</p>}
-                        <p className="whitespace-pre-wrap">{mensaje.contenido || `[${mensaje.tipo}]`}</p>
-                        <Adjunto mensaje={mensaje} />
-                        <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${saliente && !mensaje.privado ? "text-white/60" : "text-muted"}`}>
-                          {hora(mensaje.timestamp)}
-                          {saliente && !mensaje.privado && <CheckCheck size={12} className={mensaje.status === "leido" ? "text-sky-300" : ""} />}
-                        </div>
-                        {mensaje.errorDetalle && <p className="mt-1 text-[11px] text-danger">{mensaje.errorDetalle}</p>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <MensajesConversacion conversacionId={seleccionada.id} mensajes={mensajes} cargados={mensajesCargados} vista={vista} error={errorHistorial?.id === seleccionada.id ? errorHistorial.texto : ""} />
               <footer className="shrink-0 border-t border-line p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                {!ventanaAbierta && !esNota && <p className="mb-2 text-[12px] text-amber">Ventana de 24 h cerrada: usa una plantilla aprobada o escribe una nota privada.</p>}
-                {error && <p className="mb-2 text-[12px] text-danger">{error}</p>}
+                {mensajesCargados && !ventanaAbierta && !esNota && <div className="mb-2 flex items-center gap-2 rounded-lg bg-amber-wash px-3 py-2 text-[12px] text-amber"><Lock size={15} className="shrink-0" /><p className="min-w-0 flex-1">Pasaron 24 h desde el último mensaje del contacto. Retoma con una plantilla aprobada.</p><button onClick={() => setModalPlantilla(true)} className="shrink-0 rounded-md border border-amber/30 px-2 py-1 font-semibold">Usar plantilla</button></div>}
+                {error && <p role="alert" className="mb-2 flex items-start gap-1.5 text-[12px] text-danger"><AlertCircle size={14} className="shrink-0" />{error}</p>}
                 <label className="mb-2 flex items-center gap-2 text-[12px] text-muted">
                   <input type="checkbox" checked={esNota} onChange={(event) => setEsNota(event.target.checked)} />
-                  Nota privada (solo la ve el equipo)
+                  <Lock size={12} /> Nota privada · solo equipo
                 </label>
                 <div className="flex gap-2">
                   <button onClick={() => setModalPlantilla(true)} className="self-end rounded-lg border border-line px-3 py-2.5 text-[12.5px] hover:border-navy/40">Plantilla</button>
                   <textarea
+                    ref={compositor}
+                    aria-label={esNota ? "Nota privada" : "Escribe un mensaje"}
                     value={texto}
                     onChange={(event) => setTexto(event.target.value)}
-                    disabled={!puedeEscribir}
-                    rows={2}
+                    disabled={!puedeEscribir || !mensajesCargados || enviando}
+                    rows={1}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        void enviar();
+                      }
+                    }}
                     placeholder={esNota ? "Escribe una nota interna…" : ventanaAbierta ? "Escribe un mensaje…" : "Solo plantillas fuera de 24 h"}
-                    className={`min-w-0 flex-1 resize-none rounded-lg border px-3 py-2 text-[16px] outline-none focus:ring-2 focus:ring-navy/20 disabled:bg-paper sm:text-[13.5px] ${esNota ? "border-amber-300 bg-amber-50" : "border-line"}`}
+                    className={`max-h-[136px] min-h-11 min-w-0 flex-1 resize-none rounded-xl border px-3 py-2.5 text-[16px] leading-[22px] outline-none disabled:bg-paper sm:text-[14px] ${esNota ? "chat-nota border-amber/30 bg-amber-wash" : "border-line bg-paper/50"}`}
                   />
-                  <button onClick={enviar} disabled={!puedeEscribir || !texto.trim() || enviando} aria-label="Enviar" className="self-end rounded-lg bg-navy p-2.5 text-white disabled:opacity-40"><Send size={18} /></button>
+                  <button onClick={() => void enviar()} disabled={!puedeEscribir || !mensajesCargados || !texto.trim() || enviando} aria-label={enviando ? "Enviando" : "Enviar"} className="self-end rounded-xl bg-navy p-3 text-white disabled:cursor-not-allowed disabled:opacity-40"><Send size={18} /></button>
                 </div>
               </footer>
             </>
           ) : (
-            <div className="flex flex-1 items-center justify-center text-[14px] text-muted">Selecciona una conversación.</div>
+            <div className="chat-mensajes flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center text-muted"><MessageCircle size={40} strokeWidth={1.5} /><p className="text-[16px] font-semibold text-ink">Tu espacio de conversación</p><p className="max-w-60 text-sm">Selecciona un contacto para ver su historial y continuar la conversación.</p></div>
           )}
         </section>
 
@@ -403,7 +424,7 @@ export function ChatCliente({
             <button onClick={() => setVista("chat")} className="rounded-lg border border-line px-2.5 py-1 text-[12.5px] hover:border-navy/40">Cerrar</button>
           </div>
           {seleccionada ? (
-            <PanelConversacion conversacionId={seleccionada.id} version={versionPanel} onCambio={() => void refrescarVisible()} puedeReasignar={alcance !== "propias"} />
+            <PanelConversacion key={seleccionada.id} conversacionId={seleccionada.id} version={versionPanel} onCambio={() => void refrescarVisible()} puedeReasignar={alcance !== "propias"} />
           ) : null}
         </aside>
       </div>

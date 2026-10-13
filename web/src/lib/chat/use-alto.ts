@@ -21,6 +21,8 @@ export function useAltoDisponible(minimo = 320) {
     void document.fonts?.ready.then(medir);
     const observador = new ResizeObserver(medir);
     observador.observe(document.body);
+    const principal = raiz.current?.closest("main");
+    if (principal) observador.observe(principal);
     window.addEventListener("resize", medir);
     window.visualViewport?.addEventListener("resize", medir);
     return () => {

@@ -132,3 +132,48 @@
 .scroll-oscuro::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.28);
 }
+
+.chat-cliente {
+  color-scheme: light;
+  --chat-amber: 126 88 12;
+}
+.chat-mensajes {
+  background-color: rgb(var(--chat-paper, 246 242 234));
+  background-image: radial-gradient(rgb(var(--chat-line, 231 224 212) / .6) .7px, transparent .7px);
+  background-size: 18px 18px;
+}
+.chat-cliente :where(button, input, select, textarea, a, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--chat-focus, 30 58 95));
+  outline-offset: -2px;
+}
+.chat-cliente :where(input:not([type="checkbox"]), select) {
+  color: inherit;
+  background-color: rgb(var(--chat-paper, 246 242 234));
+}
+.chat-cliente :where(input[type="checkbox"]) {
+  accent-color: rgb(var(--chat-focus, 30 58 95));
+}
+@media (prefers-color-scheme: dark) {
+  .chat-cliente {
+    color-scheme: dark;
+    --chat-paper: 20 29 38;
+    --chat-surface: 29 40 51;
+    --chat-ink: 238 239 242;
+    --chat-muted: 173 185 196;
+    --chat-line: 57 73 87;
+    --chat-navy: 39 77 113;
+    --chat-focus: 141 195 246;
+    --chat-amber: 235 196 114;
+    --chat-amber-wash: 65 52 30;
+    --chat-success: 137 200 156;
+    --chat-success-wash: 30 59 43;
+    --chat-danger: 244 163 158;
+    --chat-danger-wash: 67 38 39;
+  }
+  .chat-cliente .text-navy {
+    color: rgb(var(--chat-focus));
+  }
+  .chat-cliente .bg-success.text-white {
+    background-color: #3f6b4f;
+  }
+}

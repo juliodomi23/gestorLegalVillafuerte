@@ -9,8 +9,9 @@
     "lint": "next lint",
     "db:pull": "prisma db pull",
     "db:generate": "prisma generate",
-    "test:chat": "node --experimental-strip-types --test tests/chat-unit.test.mjs tests/chat-bot-unit.test.mjs tests/chat-importador-unit.test.mjs",
-    "test:chat:integration": "node tests/run-chat-integration.mjs"
+    "test:chat": "node --experimental-strip-types --test tests/chat-unit.test.mjs tests/chat-bot-unit.test.mjs tests/chat-importador-unit.test.mjs tests/chat-presentacion-unit.test.mjs",
+    "test:chat:integration": "node tests/run-chat-integration.mjs",
+    "test:chat:ui": "node tests/chat-ui.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0",

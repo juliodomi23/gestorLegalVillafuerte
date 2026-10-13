@@ -35,20 +35,29 @@ export function EnviarPlantilla({
   const [valores, setValores] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [cargando, setCargando] = useState(false);
   const elegida = useMemo(() => plantillas.find((item) => `${item.name}:${item.language}` === clave) || null, [plantillas, clave]);
   const variables = variablesDePlantilla(cuerpo(elegida));
   const previa = cuerpo(elegida).replace(/\{\{(\d+)\}\}/g, (_, numero) => valores[Number(numero) - 1] || `{{${numero}}}`);
 
   useEffect(() => {
     if (!open) return;
+    let vigente = true;
+    setCargando(true);
+    setPlantillas([]);
+    setClave("");
+    setValores([]);
     setError("");
     fetch(`/api/meta/templates?canalId=${encodeURIComponent(canalId)}`)
       .then(async (response) => ({ ok: response.ok, data: await response.json().catch(() => ({})) }))
       .then(({ ok, data }) => {
+        if (!vigente) return;
         if (!ok) throw new Error(data.error || "No se pudieron cargar las plantillas");
         setPlantillas((data.plantillas || []).filter((item: Plantilla) => item.status === "APPROVED"));
       })
-      .catch((cause) => setError(cause.message));
+      .catch((cause) => vigente && setError(cause.message))
+      .finally(() => vigente && setCargando(false));
+    return () => { vigente = false; };
   }, [open, canalId]);
 
   function elegir(valor: string) {
@@ -58,7 +67,7 @@ export function EnviarPlantilla({
   }
 
   async function enviar() {
-    if (!elegida || variables.some((numero) => !valores[numero - 1]?.trim())) return;
+    if (enviando || !elegida || variables.some((numero) => !valores[numero - 1]?.trim())) return;
     setEnviando(true);
     setError("");
     const response = await fetch("/api/mensajes/enviar", {
@@ -94,8 +103,9 @@ export function EnviarPlantilla({
         </Field>
       ))}
       {elegida && <div className="col-span-full rounded-lg bg-paper p-3 text-[13px] whitespace-pre-wrap">{previa}</div>}
-      {error && <p className="col-span-full text-[12px] text-danger">{error}</p>}
-      {!error && plantillas.length === 0 && <p className="col-span-full text-[12px] text-muted">No hay plantillas aprobadas disponibles.</p>}
+      {cargando && <div role="status" aria-label="Cargando plantillas" className="col-span-full h-16 rounded-lg bg-line/40 motion-safe:animate-pulse" />}
+      {error && <p role="alert" className="col-span-full text-[12px] text-danger">{error}</p>}
+      {!cargando && !error && plantillas.length === 0 && <p className="col-span-full text-[12px] text-muted">No hay plantillas aprobadas disponibles.</p>}
     </Modal>
   );
 }

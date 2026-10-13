@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { BriefcaseBusiness, CircleUserRound, Phone, Plus, X } from "lucide-react";
+import { AvatarContacto } from "./AvatarContacto";
+import { EsqueletoChat } from "./MensajesConversacion";
 
 type Etiqueta = { nombre: string; color: string };
 type Detalle = {
@@ -81,7 +83,7 @@ export function PanelConversacion({
     [conversacionId, onCambio],
   );
 
-  if (!detalle) return <p className="p-5 text-[13px] text-muted">Cargando detalles…</p>;
+  if (!detalle) return <EsqueletoChat />;
 
   const nombres = detalle.etiquetas.map((etiqueta) => etiqueta.nombre);
   const atributos = Object.entries(detalle.atributos || {});
@@ -119,7 +121,7 @@ export function PanelConversacion({
   return (
     <div className="p-5 space-y-5">
       <div className="text-center">
-        <span className="mx-auto w-14 h-14 rounded-full bg-navy/[.08] text-navy flex items-center justify-center"><CircleUserRound size={28} /></span>
+        <AvatarContacto nombre={detalle.nombreContacto} telefono={detalle.telefono} grande />
         <h3 className="font-serif text-[18px] mt-2">{detalle.nombreContacto}</h3>
         <p className="text-[12.5px] text-muted flex items-center justify-center gap-1 mt-1"><Phone size={13} /> {detalle.telefono}</p>
       </div>
