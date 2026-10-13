@@ -165,13 +165,15 @@ export function EmbudoCliente({ alcance }: { alcance: Alcance }) {
                       <span className="truncate">{tarjeta.responsable ? tarjeta.responsable.nombre.split(" ")[0] : "Sin asignar"}</span>
                       <span className="shrink-0">{hace(tarjeta.etapaDesde)}</span>
                     </div>
+                    {/* En el teléfono no se puede arrastrar: ahí sí hace falta el selector. */}
                     <select
                       aria-label={`Mover a otra etapa: ${tarjeta.nombre}`}
-                      value={etapa.id}
-                      onChange={(event) => void mover(tarjeta.id, event.target.value)}
-                      className="mt-2 w-full rounded-md border border-line bg-paper px-1.5 py-1 text-[16px] text-muted sm:text-[11.5px]"
+                      value=""
+                      onChange={(event) => event.target.value && void mover(tarjeta.id, event.target.value)}
+                      className="mt-2 w-full rounded-md border border-line bg-paper px-2 py-1.5 text-[16px] text-muted sm:hidden"
                     >
-                      {etapas.map((opcion) => <option key={opcion.id} value={opcion.id}>{opcion.id === etapa.id ? `Etapa: ${opcion.nombre}` : `Mover a ${opcion.nombre}`}</option>)}
+                      <option value="">Mover a…</option>
+                      {etapas.filter((opcion) => opcion.id !== etapa.id).map((opcion) => <option key={opcion.id} value={opcion.id}>{opcion.nombre}</option>)}
                     </select>
                   </article>
                 ))}
