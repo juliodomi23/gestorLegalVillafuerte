@@ -35,6 +35,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       prospecto: c.prospecto,
       responsable: c.responsable,
       etiquetas: etiquetasVista(c.etiquetas),
+      etapa: c.etapa,
+      citas: c.citas,
+      asesorias: c.asesorias,
     },
     puedeReasignar: puedeReasignar(permiso.acceso.alcance),
   });

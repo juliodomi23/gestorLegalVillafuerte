@@ -26,6 +26,7 @@ export async function GET() {
       canalActivo: item.canal.activo,
       responsable: item.responsable ? { id: item.responsable.id, nombre: item.responsable.nombre } : null,
       etiquetas,
+      etapa: item.etapa ? { id: item.etapa.id, nombre: item.etapa.nombre, color: item.etapa.color } : null,
       requiereAtencion: requiereAtencion({
         estado: item.estado,
         responsableId: item.responsable?.id ?? null,

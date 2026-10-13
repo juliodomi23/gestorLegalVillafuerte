@@ -5,6 +5,7 @@ import { parsearIdNumerico } from "@/lib/bot/puro";
 import { invalido, json, leerJson } from "@/lib/bot/respuestas";
 import { conversacionJson } from "@/lib/bot/serializar";
 import { asegurarContacto, canalDeInbox } from "@/lib/chat/contactos";
+import { datosEtapaInicial } from "@/lib/chat/embudo";
 import { cargarConversacion, publicarConversacion } from "@/lib/chat/operaciones";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: { accountId: 
           telefono: enCanal.sourceId,
           telefonoNormalizado: enCanal.telefonoNormalizado,
           estado: "abierta",
+          ...(await datosEtapaInicial()),
         },
       });
       id = creada.id;

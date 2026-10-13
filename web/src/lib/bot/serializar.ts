@@ -9,6 +9,7 @@ export const incluirConversacion = Prisma.validator<Prisma.ConversacionInclude>(
   etiquetas: { include: { etiqueta: true } },
   responsable: { select: { id: true, nombre: true, email: true } },
   canal: { select: { numeroCompat: true, nombre: true, telefono: true } },
+  etapa: { select: { id: true, clave: true, nombre: true } },
 });
 
 export type ConversacionCompleta = Prisma.ConversacionGetPayload<{ include: typeof incluirConversacion }>;
@@ -132,6 +133,7 @@ export function conversacionJson(conv: ConversacionCompleta, ultimo?: MensajeBas
     can_reply: true,
     muted: false,
     unread_count: conv.noLeidos,
+    funnel_stage: conv.etapa ? { id: conv.etapa.id, key: conv.etapa.clave, name: conv.etapa.nombre } : null,
     assignee_id: conv.responsable?.id ?? null,
     contact_inbox: {
       contact_id: numero(contacto?.numeroCompat),
