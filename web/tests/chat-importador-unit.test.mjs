@@ -58,3 +58,16 @@ test("agrupa por teléfono: la más reciente va primero y sin teléfono se omite
   assert.deepEqual(grupos[0].convs.map((c) => c.id), [2, 1]);
   assert.equal(grupos[1].convs[0].id, 3);
 });
+
+import { errorDeMeta, normalizarEstadosMeta } from "../src/lib/channel/normalizar.ts";
+
+test("un envío fallido conserva el código y el motivo de Meta", () => {
+  assert.equal(errorDeMeta(undefined), "Meta reportó un envío fallido");
+  assert.match(errorDeMeta({ code: 131049, title: "Message undeliverable" }), /^Meta 131049: Meta no entregó el mensaje de marketing/);
+  assert.equal(errorDeMeta({ code: 999, title: "Algo raro", error_data: { details: "detalle útil" } }), "Meta 999: Algo raro — detalle útil");
+  const estados = normalizarEstadosMeta({
+    entry: [{ changes: [{ value: { statuses: [{ id: "wamid.X", status: "failed", errors: [{ code: 132001, title: "Template does not exist" }] }] } }] }],
+  });
+  assert.equal(estados[0].status, "fallido");
+  assert.match(estados[0].error, /^Meta 132001: la plantilla no existe en ese idioma/);
+});

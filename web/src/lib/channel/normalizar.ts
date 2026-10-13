@@ -63,6 +63,30 @@ export function normalizarMensajesMeta(payload: unknown): MensajeMetaNormalizado
   return resultado;
 }
 
+// Códigos de Meta que más se ven al enviar plantillas; el resto conserva el título que manda Meta.
+const PISTAS_META: Record<number, string> = {
+  131026: "no se pudo entregar: el número no tiene WhatsApp o no lo aceptó",
+  131047: "fuera de la ventana de 24 h: solo se puede enviar una plantilla",
+  131049: "Meta no entregó el mensaje de marketing para proteger al usuario (límite por destinatario)",
+  131051: "tipo de mensaje no compatible",
+  132000: "los parámetros no coinciden con la plantilla",
+  132001: "la plantilla no existe en ese idioma",
+  132005: "el texto traducido de la plantilla es demasiado largo",
+  132007: "la plantilla viola una política de Meta",
+  132012: "el formato de un parámetro no es el que espera la plantilla",
+  132015: "la plantilla está pausada por baja calidad",
+  132016: "la plantilla está deshabilitada",
+};
+
+export function errorDeMeta(error: any): string {
+  const codigo = Number(error?.code);
+  const titulo = String(error?.title || error?.message || "").trim();
+  const detalle = String(error?.error_data?.details || "").trim();
+  if (!codigo && !titulo) return "Meta reportó un envío fallido";
+  const texto = `Meta ${codigo || "?"}: ${PISTAS_META[codigo] || titulo}`;
+  return (detalle && !texto.includes(detalle) ? `${texto} — ${detalle}` : texto).slice(0, 300);
+}
+
 export function normalizarEstadosMeta(payload: unknown): EstadoMetaNormalizado[] {
   const resultado: EstadoMetaNormalizado[] = [];
   const raw = payload as any;
@@ -75,7 +99,7 @@ export function normalizarEstadosMeta(payload: unknown): EstadoMetaNormalizado[]
         resultado.push({
           waMessageId: String(status.id),
           status: mapa[clave],
-          ...(clave === "failed" ? { error: "Meta reportó un envío fallido" } : {}),
+          ...(clave === "failed" ? { error: errorDeMeta(status?.errors?.[0]) } : {}),
         });
       }
     }
