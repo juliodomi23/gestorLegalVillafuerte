@@ -145,7 +145,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <nav className="flex-1 min-h-0 overflow-y-auto py-4 text-[14px]">
+      <nav className="scroll-oscuro flex-1 min-h-0 overflow-y-auto py-4 text-[14px]">
         {grupos.map((g) => {
           const items = g.items.filter(
             (it) =>
