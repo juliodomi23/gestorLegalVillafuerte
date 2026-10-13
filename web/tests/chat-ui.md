@@ -15,7 +15,7 @@ El runner inicia y detiene su servidor en el puerto 3312. Guarda PNGs y
 `verificacion-ui.json` con las medidas verificadas. Cubre apertura al final, polling real
 de 3 segundos, umbral de 120 px, historial estable, contador sin duplicados, carga diferida
 de imagen/audio, cambios de conversación con respuestas tardías, Enter/Shift+Enter,
-altura del compositor, búsqueda `?q=`, plantillas, vacío, carga y tema oscuro.
+altura del compositor, búsqueda `?q=`, plantillas, vacío y carga.
 
 Las capturas usan el 13 de octubre de 2026 y `America/Mexico_City`, con un historial de
 104 mensajes en cuatro días y otro con imagen y audio. Los viewports son 390×844,

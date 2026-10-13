@@ -61,7 +61,7 @@ export function MensajesConversacion({ conversacionId, mensajes, cargados, vista
         {error && <p role="alert" className="my-3 rounded-lg bg-danger-wash p-3 text-sm text-danger">{error}</p>}
         {!cargados && !error ? <EsqueletoChat /> : !mensajes.length && !error ? <div className="flex flex-col items-center gap-2 py-16 text-center text-muted"><MessageCircle size={32} /><p className="text-sm">Todavía no hay mensajes</p><p className="text-xs">El historial aparecerá aquí.</p></div> : null}
         {dias.map((dia) => <section key={dia.clave} aria-label={etiquetaDia(dia.fecha)} className="pb-3">
-          <div className="sticky top-0 z-10 flex justify-center py-3 pointer-events-none"><span className="rounded-full border border-line bg-surface/95 px-3 py-1 text-[11px] font-semibold text-muted shadow-sm">{etiquetaDia(dia.fecha)}</span></div>
+          <div className="sticky top-0 z-10 flex justify-center py-3 pointer-events-none"><span className="rounded-full border border-line bg-surface px-3 py-1 text-[11px] font-semibold text-muted shadow-sm">{etiquetaDia(dia.fecha)}</span></div>
           <div className="space-y-3">{dia.grupos.map((grupo) => <div key={grupo[0].id} className="space-y-1">
             {grupo.map((mensaje, indice) => {
               const saliente = mensaje.direccion === "saliente";

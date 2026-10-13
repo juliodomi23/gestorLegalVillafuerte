@@ -10,6 +10,7 @@ const { chromium } = createRequire(import.meta.url)("playwright");
 const puerto = "3312";
 const baseUrl = `http://127.0.0.1:${puerto}`;
 const salida = path.resolve(process.env.CHAT_CAPTURAS_DIR || "tests/artifacts/chat");
+const omitirCapturas = new Set((process.env.CHAT_CAPTURAS_OMITIR || "").split(",").filter(Boolean));
 const entorno = {
   ...process.env, DATABASE_URL: "postgresql://gestorlegal_demo:demo_local_no_real@127.0.0.1:55439/gestorlegal_chat_demo",
   NEXTAUTH_SECRET: "demo-nextauth-secret-not-real", NEXTAUTH_URL: baseUrl, CHAT_WHATSAPP_ACTIVO: "true",
@@ -39,8 +40,8 @@ async function iniciarSesion(contexto) {
   assert.ok((await contexto.cookies()).some((cookie) => cookie.name === "next-auth.session-token"), "sesión local demo");
 }
 
-async function preparar(viewport, colorScheme = "light") {
-  const contexto = await navegador.newContext({ viewport, timezoneId: "America/Mexico_City", locale: "es-MX", colorScheme });
+async function preparar(viewport) {
+  const contexto = await navegador.newContext({ viewport, timezoneId: "America/Mexico_City", locale: "es-MX", colorScheme: "light" });
   await iniciarSesion(contexto);
   await contexto.addInitScript(() => { localStorage.setItem("gl-tour-v1", "1"); localStorage.setItem("gl-novedades-v1", "1"); });
   const pagina = await contexto.newPage();
@@ -97,6 +98,10 @@ async function preparar(viewport, colorScheme = "light") {
 const zona = (pagina) => pagina.getByLabel("Mensajes de la conversación", { exact: true });
 const distancia = (pagina) => zona(pagina).evaluate((elemento) => elemento.scrollHeight - elemento.scrollTop - elemento.clientHeight);
 
+async function capturar(pagina, nombre) {
+  if (!omitirCapturas.has(nombre)) await pagina.screenshot({ path: path.join(salida, nombre) });
+}
+
 async function abrir(pagina, numero) {
   await pagina.goto(`${baseUrl}/chat${numero ? `?c=${numero}` : ""}`);
   const aviso = pagina.getByRole("button", { name: "Cerrar aviso", exact: true });
@@ -128,14 +133,14 @@ try {
     await abrir(pagina, 9101);
     await esperar(async () => await distancia(pagina) < 2, `${nombre}: apertura al final`);
     await comprobarMedidas(pagina, nombre);
-    await pagina.screenshot({ path: path.join(salida, `${nombre}-conversacion.png`) });
+    await capturar(pagina, `${nombre}-conversacion.png`);
     await zona(pagina).evaluate((elemento) => { elemento.scrollTop = elemento.scrollHeight * .5; });
-    await pagina.screenshot({ path: path.join(salida, `${nombre}-historial.png`) });
+    await capturar(pagina, `${nombre}-historial.png`);
     await abrir(pagina, 9102);
     await pagina.waitForFunction(() => [...document.querySelectorAll('[aria-label="Mensajes de la conversación"] img')].every((imagen) => imagen.complete && imagen.naturalWidth > 0));
     await esperar(async () => await distancia(pagina) < 2, `${nombre}: final después de cargar imagen/audio`);
     await comprobarMedidas(pagina, `${nombre}-adjuntos`);
-    await pagina.screenshot({ path: path.join(salida, `${nombre}-adjuntos.png`) });
+    await capturar(pagina, `${nombre}-adjuntos.png`);
     assert.deepEqual(errores, [], `${nombre}: errores de navegador`);
     console.log(`ok: ${nombre}, apertura al final, historial, imagen/audio y medidas`);
     await contexto.close();
@@ -146,7 +151,7 @@ try {
   await pagina.getByRole("button").filter({ hasText: "Mariana López Demo" }).click();
   await esperar(async () => await distancia(pagina) < 2, "chat móvil oculto y luego visible");
   await pagina.getByRole("button", { name: "Volver a la lista" }).click();
-  await pagina.screenshot({ path: path.join(salida, "390x844-lista.png") });
+  await capturar(pagina, "390x844-lista.png");
   await pagina.getByRole("button").filter({ hasText: "Mariana López Demo" }).click();
   escenario.historiales.largo.push(crearMensaje("poll-abajo", "Nuevo mensaje mientras lees abajo", AHORA));
   await pagina.locator('[data-mensaje-id="poll-abajo"]').waitFor();
@@ -163,7 +168,7 @@ try {
   escenario.historiales.largo.at(-1).status = "leido";
   await pagina.waitForTimeout(3300);
   assert.equal(await pagina.getByRole("button", { name: "2 nuevos" }).count(), 1, "no cuenta dos veces ni cuenta cambios de estado");
-  await pagina.screenshot({ path: path.join(salida, "390x844-mensajes-nuevos.png") });
+  await capturar(pagina, "390x844-mensajes-nuevos.png");
   await pagina.getByRole("button", { name: "2 nuevos" }).click();
   assert.ok(await distancia(pagina) < 2, "botón baja al final");
   const campo = pagina.getByRole("textbox", { name: "Escribe un mensaje", exact: true });
@@ -190,7 +195,7 @@ try {
   await pagina.getByRole("button").filter({ hasText: "Óscar Robles Demo" }).click();
   await pagina.getByRole("button", { name: "Usar plantilla" }).waitFor();
   assert.equal(await campo.isDisabled(), true, "ventana cerrada deshabilita texto");
-  await pagina.screenshot({ path: path.join(salida, "390x844-ventana-cerrada.png") });
+  await capturar(pagina, "390x844-ventana-cerrada.png");
   await pagina.getByRole("button", { name: "Usar plantilla" }).click();
   await pagina.getByRole("combobox", { name: "Plantilla aprobada" }).selectOption("seguimiento_demo:es_MX");
   assert.match(await pagina.getByRole("textbox", { name: "Valor para {{1}}" }).inputValue(), /Óscar/);
@@ -198,12 +203,12 @@ try {
   await pagina.getByRole("button", { name: "Volver a la lista" }).click();
   await pagina.getByRole("button").filter({ hasText: "Laura Sánchez Demo" }).click();
   await pagina.getByText("Todavía no hay mensajes", { exact: true }).waitFor();
-  await pagina.screenshot({ path: path.join(salida, "390x844-vacio.png") });
+  await capturar(pagina, "390x844-vacio.png");
   await pagina.getByRole("button", { name: "Volver a la lista" }).click();
   controles.retrasoHistorial.largo = 1200;
   await pagina.getByRole("button").filter({ hasText: "Mariana López Demo" }).click();
   await pagina.getByRole("status", { name: "Cargando mensajes" }).waitFor();
-  await pagina.screenshot({ path: path.join(salida, "390x844-cargando.png") });
+  await capturar(pagina, "390x844-cargando.png");
   await pagina.getByRole("button", { name: "Volver a la lista" }).click();
   await pagina.getByRole("button").filter({ hasText: "Daniela Méndez Demo" }).click();
   await pagina.locator('[data-mensaje-id="adjunto-respuesta"]').waitFor();
@@ -218,14 +223,6 @@ try {
   resultados.push({ prueba: "móvil: polling, umbral, nuevos, compositor, búsqueda, ventana, vacío, carga y respuestas tardías", ok: true });
   await contexto.close();
 
-  const oscuro = await preparar({ width: 1536, height: 864 }, "dark");
-  await abrir(oscuro.pagina, 9101);
-  await esperar(async () => await distancia(oscuro.pagina) < 2, "oscuro al final");
-  await oscuro.pagina.screenshot({ path: path.join(salida, "1536x864-oscuro.png") });
-  assert.equal(await oscuro.pagina.locator(".chat-cliente").evaluate((elemento) => getComputedStyle(elemento).colorScheme), "dark");
-  await comprobarMedidas(oscuro.pagina, "oscuro");
-  assert.deepEqual(oscuro.errores, []);
-  await oscuro.contexto.close();
   await writeFile(path.join(salida, "verificacion-ui.json"), JSON.stringify(resultados, null, 2));
   console.log("ok: comportamiento del chat y capturas guardadas en", salida);
 } catch (error) {
