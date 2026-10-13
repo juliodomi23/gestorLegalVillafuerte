@@ -331,6 +331,8 @@ model Cita {
   seguimientoFecha   DateTime? @map("seguimiento_fecha") @db.Date
   seguimientoAbogado String?   @map("seguimiento_abogado") // quién hizo la llamada
   abogadoAsignadoEn  DateTime? @map("abogado_asignado_en") @db.Timestamptz // desde cuándo tiene ese abogado (bloqueo de 24 h)
+  // Conversación de WhatsApp de la que salió la cita (la vincula el bot o el teléfono).
+  conversacionId     String?   @map("conversacion_id") @db.Uuid
   creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz
 
   cliente    Cliente?    @relation(fields: [clienteId], references: [id])
@@ -338,7 +340,9 @@ model Cita {
   abogado    Usuario?    @relation(fields: [abogadoId], references: [id])
   sucursal   Sucursal?   @relation(fields: [sucursalId], references: [id])
   pagos      Pago[]
+  conversacion Conversacion? @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
 
+  @@index([conversacionId])
   @@map("citas")
 }
 
@@ -382,6 +386,8 @@ model Asesoria {
   abogadoId          String?   @map("abogado_id") @db.Uuid
   abogadoAgendoId    String?   @map("abogado_agendo_id") @db.Uuid
   origen             String    @default("web") // web | whatsapp
+  // Conversación de WhatsApp de la que salió la asesoría.
+  conversacionId     String?   @map("conversacion_id") @db.Uuid
   creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz
 
   cliente       Cliente?    @relation(fields: [clienteId], references: [id])
@@ -390,7 +396,9 @@ model Asesoria {
   abogado       Usuario?    @relation("AsesoriaAtendida", fields: [abogadoId], references: [id])
   abogadoAgendo Usuario?    @relation("AsesoriaAgendada", fields: [abogadoAgendoId], references: [id])
   pagos         Pago[]
+  conversacion  Conversacion? @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
 
+  @@index([conversacionId])
   @@map("asesorias")
 }
 
@@ -701,6 +709,8 @@ model Conversacion {
   responsableId       String?   @map("responsable_id") @db.Uuid
   estado              String    @default("abierta")
   atributos           Json      @default("{}")
+  etapaId             String?   @map("etapa_id") @db.Uuid
+  etapaDesde          DateTime? @map("etapa_desde") @db.Timestamptz
   noLeidos            Int       @default(0) @map("no_leidos")
   ultimoMensajeAt     DateTime? @map("ultimo_mensaje_at") @db.Timestamptz
   creadoEn            DateTime  @default(now()) @map("creado_en") @db.Timestamptz
@@ -714,13 +724,50 @@ model Conversacion {
   mensajes    Mensaje[]
   etiquetas   ConversacionEtiqueta[]
   auditoriasBot AuditoriaBot[]
+  etapa       EmbudoEtapa?  @relation("ConversacionEtapa", fields: [etapaId], references: [id], onDelete: SetNull)
+  historialEtapas ConversacionEtapaHistorial[]
+  citas       Cita[]
+  asesorias   Asesoria[]
 
   @@unique([canalId, telefonoNormalizado])
   @@index([ultimoMensajeAt])
   @@index([clienteId])
   @@index([prospectoId])
   @@index([contactoWhatsappId])
+  @@index([etapaId])
   @@map("conversaciones")
+}
+
+// Columnas del embudo. `clave` marca las que se mueven solas (nuevo, agendo_cita,
+// agendo_llamada, asesorado, contrato_firmado); las que agrega el despacho no la tienen.
+model EmbudoEtapa {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clave         String?  @unique
+  nombre        String
+  color         String   @default("#64748b")
+  orden         Int
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  conversaciones Conversacion[] @relation("ConversacionEtapa")
+
+  @@map("embudo_etapas")
+}
+
+model ConversacionEtapaHistorial {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversacionId   String   @map("conversacion_id") @db.Uuid
+  etapaId          String?  @map("etapa_id") @db.Uuid
+  etapaAnteriorId  String?  @map("etapa_anterior_id") @db.Uuid
+  origen           String // automatico | bot | usuario
+  usuarioId        String?  @map("usuario_id") @db.Uuid
+  detalle          String?
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  conversacion Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+
+  @@index([conversacionId, creadoEn(sort: Desc)])
+  @@map("conversaciones_etapas_historial")
 }
 
 model EtiquetaChat {
