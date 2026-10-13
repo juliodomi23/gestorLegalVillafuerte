@@ -15,16 +15,41 @@ a la base en cada petición, así que quitar un permiso surte efecto de inmediat
 | Alcance | Quién | Qué ve | Puede reasignar |
 |---|---|---|---|
 | Todas | Administradores | Todas las conversaciones de todos los números | Sí |
-| Recepción | Quien tenga el permiso **Chat: recepción** (Configuración › Usuarios) | La cola **por atender** y las que tiene asignadas | Sí |
+| Recepción | Quien tenga el permiso **Chat: recepción** (Configuración › Usuarios) | **Todas** las conversaciones | Sí |
 | Propias | El resto (abogados, asistentes) | Solo las asignadas a esa persona | No |
 
-**Por atender** = sin responsable, abierta o pendiente, y con la etiqueta `escalado_humano`,
-`bot_off` o `requiere_atencion` (o en estado pendiente). Al asignarla a un abogado sale de la cola.
+**Por atender** es una vista (pestaña y etiqueta), no un límite: sin responsable, abierta o
+pendiente, y con la etiqueta `escalado_humano`, `bot_off` o `requiere_atencion` (o en estado
+pendiente). Al asignarla a un abogado deja de estar por atender.
 Una conversación que no es visible para la persona responde **404** (no revela que existe).
-La regla vive en `src/lib/chat/alcance.ts` (`requiereAtencion`) y `acceso.ts` (`filtroConversaciones`).
+La regla vive en `src/lib/chat/alcance.ts` y `acceso.ts`.
 
 El permiso de recepción es **independiente** de "Ver todas las asesorías": no da acceso a
 asesorías de otras sucursales. Configuración del canal, tokens y webhooks siguen siendo solo de admin.
+
+## Embudo
+
+Sección **Embudo** (debajo de Chat): un tablero tipo kanban donde cada tarjeta es una conversación.
+Respeta la misma visibilidad que el chat. Las etapas son configurables (solo admin: renombrar,
+color, orden, agregar; las del sistema no se quitan). Por defecto:
+
+| Etapa | Clave | Cuándo llega sola |
+|---|---|---|
+| Nuevo | `nuevo` | Al nacer la conversación (primer mensaje) |
+| Agendó cita | `agendo_cita` | Se registra una cita (`POST /api/n8n/citas`) o `prospectos/agendo-cita` |
+| Agendó llamada | `agendo_llamada` | El bot registra al prospecto (`POST /api/n8n/prospectos`) |
+| Asesorado | `asesorado` | Se registra la asesoría (`POST /api/n8n/asesorias`) |
+| Contrato firmado | `contrato_firmado` | La asesoría pasa a `contrato_firmado` o se sube el contrato |
+
+- **Solo avanza** solo: un evento tardío nunca regresa una tarjeta. Llamada y cita son caminos
+  paralelos (se puede pasar de uno a otro). Una etapa propia del despacho no se mueve sola.
+- **Ligado al chat:** la cita o asesoría queda ligada a la conversación por el `conversationId`
+  que mande el bot o, si no lo manda, por el teléfono. Se ve en el panel de la conversación.
+- **El bot también la mueve:** `POST /api/v1/accounts/1/conversations/:id/funnel` con
+  `{ "etapa": "Agendó cita" }` (acepta nombre, clave o id; si no existe responde 422 con la lista
+  válida) y `GET` para leerla. Para que los workflows manden el `conversationId` basta con
+  agregarlo al body de `agendar_cita_*`, `registrar_prospecto` y `Registrar Asesoria`.
+- Cada movimiento queda en `conversaciones_etapas_historial` (automático, bot o persona).
 
 ## Varios números de WhatsApp
 
@@ -123,8 +148,9 @@ Se limpia cada hora desde el proceso web.
 2. Desplegar la rama. El `prisma db push` del contenedor (sin cambios en el Dockerfile) crea las tablas **vacías**.
 3. Correr, en orden, las migraciones (todas idempotentes): `add_chat_bot_api.sql` (los `CHECK`,
    etiquetas semilla, secuencias desde 1,000,000 y backfill de contactos), `add_chat_multinumero.sql`
-   (IDs de inbox) y `add_chat_permisos.sql` (permiso de recepción: al crearse la columna, quien ya
-   tenía "Ver todas las asesorías" y no es admin la recibe encendida).
+   (IDs de inbox), `add_chat_permisos.sql` (permiso de recepción: al crearse la columna, quien ya
+   tenía "Ver todas las asesorías" y no es admin la recibe encendida) y `add_chat_embudo.sql`
+   (etapas por defecto, etapa de cada conversación y el vínculo de citas y asesorías).
    Después, en Configuración › Usuarios, marcar **Chat: recepción** a quien corresponda.
 4. Variables: `CHAT_WHATSAPP_ACTIVO`, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`,
    `META_TOKEN_ENCRYPTION_KEY`, `NEXTAUTH_URL` (se usa para los `data_url`), `WEBHOOK_HOSTS_PERMITIDOS`.
@@ -154,5 +180,4 @@ Todos usan la misma forma de llamada; solo cambia **la base y el token**.
 - Orden de eventos concurrentes no garantizado; deduplicar con `X-Chatwoot-Delivery`.
 - La visibilidad es por persona asignada, no por sucursal. Un abogado no puede devolver una
   conversación a recepción por sí mismo (solo la reasigna recepción o administración).
-- Quien recepciona no ve una conversación después de asignarla a otra persona (sale de su cola).
 - No hay importador del historial de Chatwoot (el diseño de IDs ya lo permite).
