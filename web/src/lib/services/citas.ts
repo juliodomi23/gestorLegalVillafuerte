@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { parseFecha, rangoDelDiaDespacho } from "@/lib/fecha";
 import { resolverSucursal, resolverAbogado, upsertCliente } from "./resolvers";
+import { sincronizarConChat } from "@/lib/chat/embudo";
 
 export type DatosCita = {
   cliente: string;
@@ -12,6 +13,8 @@ export type DatosCita = {
   numeroExpediente?: string;
   origen?: "bot_externo" | "manual";
   googleEventId?: string;
+  // Id de la conversación de WhatsApp (el bot lo manda); sin él se liga por teléfono.
+  conversationId?: string;
   // Solo "cancelada" tiene efecto: lo manda el sync de Calendar cuando el evento se borró
   // o quedó marcado con ❌ (cancelar_reagendar_cita). Sin esto, la cita seguía "agendada"
   // y a las 20:00 se le mandaba el mensaje de no-show a alguien que sí avisó.
@@ -76,7 +79,7 @@ export async function agendarCita(d: DatosCita) {
       where: { googleEventId: d.googleEventId },
     });
     if (existente) {
-      return prisma.cita.update({
+      const actualizada = await prisma.cita.update({
         where: { id: existente.id },
         data: {
           clienteId,
@@ -88,6 +91,8 @@ export async function agendarCita(d: DatosCita) {
           ...(cancelada && { estado: "cancelada" }),
         },
       });
+      if (!cancelada) await enlazarConChat(actualizada.id, d);
+      return actualizada;
     }
   }
 
@@ -99,7 +104,7 @@ export async function agendarCita(d: DatosCita) {
     expedienteId = e?.id ?? null;
   }
 
-  return prisma.cita.create({
+  const creada = await prisma.cita.create({
     data: {
       clienteId,
       abogadoId,
@@ -113,5 +118,18 @@ export async function agendarCita(d: DatosCita) {
       clienteNombre: clienteId ? null : (d.cliente ?? null),
       ...(cancelada && { estado: "cancelada" }),
     },
+  });
+  if (!cancelada) await enlazarConChat(creada.id, d);
+  return creada;
+}
+
+// Liga la cita a la conversación de WhatsApp y mueve la tarjeta del embudo a "Agendó cita".
+function enlazarConChat(citaId: string, d: DatosCita) {
+  return sincronizarConChat({
+    conversationId: d.conversationId,
+    telefono: d.telefono,
+    clave: "agendo_cita",
+    detalle: "Se agendó una cita",
+    vincular: { tabla: "cita", id: citaId },
   });
 }

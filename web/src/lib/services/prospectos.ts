@@ -3,6 +3,7 @@ import { porAbogado, type Alcance } from "@/lib/alcance";
 import { hoyDespacho, OFFSET_DESPACHO, TZ_DESPACHO } from "@/lib/fecha";
 import { lunesDe } from "@/lib/services/productividad";
 import { citaFueAtendida, crearDetectorLlegada, type AsesoriaDelDia } from "@/lib/citas-reporte-regla";
+import { sincronizarConChat } from "@/lib/chat/embudo";
 
 export const ANIO_PROSPECTOS = 2026;
 
@@ -33,6 +34,18 @@ function fechaHoyMexico(): Date {
 // Dedup: si el mismo teléfono ya existe como prospecto en los últimos 30 días → actualiza.
 // Evita duplicados cuando el cron manda el mismo lote varias veces.
 export async function upsertProspecto(d: DatosProspecto) {
+  const prospecto = await guardarProspecto(d);
+  // Que el bot registre a alguien para llamada = "Agendó llamada" en el embudo del chat.
+  await sincronizarConChat({
+    conversationId: d.conversationId,
+    telefono: d.telefono,
+    clave: "agendo_llamada",
+    detalle: "Se registró para llamada",
+  });
+  return prospecto;
+}
+
+async function guardarProspecto(d: DatosProspecto) {
   const treintaDias = new Date();
   treintaDias.setDate(treintaDias.getDate() - 30);
 
@@ -129,6 +142,7 @@ export async function borrarProspecto(id: string) {
 // refleje al instante y el CRON de 24h (o el abogado revisando la lista) no le
 // llame a alguien que ya tiene cita. Antes solo se marcaba al día siguiente.
 export async function marcarAgendoCitaPorConversacion(conversationId: string) {
+  await sincronizarConChat({ conversationId, clave: "agendo_cita", detalle: "El bot agendó una cita" });
   const p = await prisma.prospecto.findFirst({
     where: { conversationId },
     orderBy: { creadoEn: "desc" },

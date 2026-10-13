@@ -3,6 +3,7 @@ import { resolverSucursal, resolverAbogado, asignarFolio } from "./resolvers";
 import { hoyDespacho } from "@/lib/fecha";
 import type { Prisma } from "@prisma/client";
 import { normalizarTelefono } from "@/lib/citas-reporte-regla";
+import { avanzarAutomatico, sincronizarConChat } from "@/lib/chat/embudo";
 
 // Se pone la primera vez que el status llega a "contrato_firmado"; si ya tenía fecha
 // (o el status nuevo es otro) se deja igual, para no perder el día real de la firma
@@ -17,6 +18,8 @@ export function fechaFirmaSiAplica(statusNuevo: string | undefined, fechaFirmaAc
 export type DatosAsesoria = {
   nombre: string;
   telefono?: string;
+  // Id de la conversación de WhatsApp (el bot lo manda); sin él se liga por teléfono.
+  conversationId?: string;
   edad?: string;
   sexo?: string;
   estadoCivil?: string;
@@ -90,7 +93,28 @@ export async function actualizarAsesoria(id: string, cambios: CambiosAsesoria) {
   }
   if (cambios.urlDocumento !== undefined) data.urlDocumento = cambios.urlDocumento;
   if (cambios.resumen !== undefined) data.resumen = cambios.resumen;
-  return prisma.asesoria.update({ where: { id }, data });
+  const actualizada = await prisma.asesoria.update({ where: { id }, data });
+  if (cambios.status === "contrato_firmado") await moverPorFirma(actualizada);
+  return actualizada;
+}
+
+async function moverPorFirma(a: { id: string; telefono: string | null; conversacionId: string | null }) {
+  if (a.conversacionId) {
+    try {
+      await avanzarAutomatico(a.conversacionId, "contrato_firmado", "Contrato firmado");
+    } catch (error) {
+      console.error("[embudo] no se pudo mover por firma", error instanceof Error ? error.message : "");
+    }
+    return;
+  }
+  await sincronizarConChat({
+    telefono: a.telefono,
+    // Si la asesoría ya estaba ligada a su conversación se usa esa, no el teléfono.
+    conversationId: null,
+    clave: "contrato_firmado",
+    detalle: "Contrato firmado",
+    vincular: { tabla: "asesoria", id: a.id },
+  });
 }
 
 export async function resumenDiario(fecha: string) {
@@ -128,7 +152,7 @@ export async function registrarAsesoria(d: DatosAsesoria) {
   ]);
   const folio = await asignarFolio(sucursalId);
 
-  return prisma.asesoria.create({
+  const creada = await prisma.asesoria.create({
     data: {
       folio,
       nombre: d.nombre,
@@ -158,6 +182,15 @@ export async function registrarAsesoria(d: DatosAsesoria) {
       origen: d.origen ?? "whatsapp",
     },
   });
+  // Registrar la asesoría = "Asesorado" (o "Contrato firmado" si ya llegó firmada).
+  await sincronizarConChat({
+    conversationId: d.conversationId,
+    telefono: d.telefono,
+    clave: creada.status === "contrato_firmado" ? "contrato_firmado" : "asesorado",
+    detalle: creada.status === "contrato_firmado" ? "Contrato firmado" : "Se registró la asesoría",
+    vincular: { tabla: "asesoria", id: creada.id },
+  });
+  return creada;
 }
 
 // Al subir un contrato, la asesoría pendiente de esa persona pasa sola a "contrato_firmado".
@@ -184,7 +217,7 @@ export async function marcarFirmadaPorContrato(expedienteId: string) {
   );
   if (!coincide) return;
 
-  await prisma.asesoria.update({
+  const firmada = await prisma.asesoria.update({
     where: { id: coincide.id },
     data: {
       status: "contrato_firmado",
@@ -192,4 +225,5 @@ export async function marcarFirmadaPorContrato(expedienteId: string) {
       expedienteId,
     },
   });
+  await moverPorFirma(firmada);
 }

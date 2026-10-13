@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { asegurarContacto, asegurarContactoDeConversacion } from "./contactos";
+import { datosEtapaInicial } from "./embudo";
 import { claveTelefono, normalizarTelefonoWhatsapp } from "./telefono";
 import type { ActualizacionEstado, MensajeEntranteNormalizado } from "@/lib/channel/types";
 
@@ -58,6 +59,7 @@ export async function ingestarMensajeEntrante(mensaje: MensajeEntranteNormalizad
           telefono: telefono.telefono,
           telefonoNormalizado: telefono.clave,
           ...vinculo,
+          ...(await datosEtapaInicial()),
         },
       });
       conversacionCreada = true;
@@ -135,6 +137,7 @@ export async function listarConversaciones(donde: Prisma.ConversacionWhereInput 
       prospecto: { select: { id: true, nombre: true } },
       responsable: { select: { id: true, nombre: true } },
       etiquetas: { include: { etiqueta: { select: { nombre: true, color: true } } } },
+      etapa: { select: { id: true, clave: true, nombre: true, color: true } },
       mensajes: {
         where: { privado: false },
         orderBy: { timestamp: "desc" },
@@ -155,6 +158,9 @@ export async function obtenerConversacion(id: string, donde: Prisma.Conversacion
       prospecto: { select: { id: true, nombre: true, telefono: true } },
       responsable: { select: { id: true, nombre: true } },
       etiquetas: { include: { etiqueta: { select: { nombre: true, color: true } } } },
+      etapa: { select: { id: true, clave: true, nombre: true, color: true } },
+      citas: { orderBy: { fechaHora: "desc" }, take: 10, select: { id: true, fechaHora: true, estado: true, asunto: true } },
+      asesorias: { orderBy: { creadoEn: "desc" }, take: 10, select: { id: true, folio: true, fecha: true, status: true, tema: true } },
     },
   });
 }
