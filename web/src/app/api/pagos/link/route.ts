@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 const SERVICIOS = new Set([
   "confirmacion_cita",
   "llamada_asesoria",
+  "asesoria_presencial",
   "asesoria_promocion",
   "asesoria_regular",
 ]);

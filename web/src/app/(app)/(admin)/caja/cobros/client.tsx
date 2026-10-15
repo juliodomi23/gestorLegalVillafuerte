@@ -22,6 +22,7 @@ const SERVICIO_LABELS: Record<string, string> = {
   llamada_asesoria: "Llamada de asesoría",
   llamada_no_show: "Llamada de asesoría · reagenda (no asistió)",
   confirmacion_cita: "Confirmación de cita",
+  asesoria_presencial: "Asesoría presencial",
   asesoria_promocion: "Asesoría presencial · promoción",
   asesoria_regular: "Asesoría presencial · precio regular",
 };
@@ -35,6 +36,7 @@ const PAGO_ESTADO: Record<string, { label: string; cls: string }> = {
 const COMISIONES_COBRO: Record<string, number> = {
   confirmacion_cita: 10,
   llamada_asesoria: 15,
+  asesoria_presencial: 15,
   asesoria_promocion: 0,
   asesoria_regular: 0,
 };
@@ -158,6 +160,7 @@ export default function CobrosClient({ pagos }: { pagos: PagoMercadoPagoView[] }
           >
             <option value="confirmacion_cita">Confirmación de cita · $100</option>
             <option value="llamada_asesoria">Llamada de asesoría · $300</option>
+            <option value="asesoria_presencial">Asesoría presencial · $400</option>
             <option value="asesoria_promocion">Asesoría promoción · $500</option>
             <option value="asesoria_regular">Asesoría regular · $600</option>
           </select>
