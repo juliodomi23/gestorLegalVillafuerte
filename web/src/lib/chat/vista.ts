@@ -7,8 +7,14 @@ export function etiquetasVista(items: { etiqueta: Etiqueta }[]): Etiqueta[] {
   return items.map(({ etiqueta }) => ({ nombre: etiqueta.nombre, color: etiqueta.color })).sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
-export function mensajeVista(m: Prisma.MensajeGetPayload<object>) {
+type MensajeConAutor = Prisma.MensajeGetPayload<object> & { usuario?: { nombre: string } | null };
+
+export function mensajeVista(m: MensajeConAutor) {
+  const saliente = m.direccion === "saliente";
   return {
+    // Saliente sin usuario = lo mandó el bot (n8n); con usuario = un abogado desde el chat.
+    esBot: saliente && !m.enviadoPor,
+    remitente: saliente && m.enviadoPor ? m.usuario?.nombre ?? "Equipo" : null,
     id: m.id,
     numero: Number(m.numeroCompat),
     direccion: m.direccion,

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, ArrowDown, Check, CheckCheck, Clock, Lock, MessageCircle, Paperclip } from "lucide-react";
+import { AlertCircle, ArrowDown, Bot, Check, CheckCheck, Clock, Lock, MessageCircle, Paperclip, User } from "lucide-react";
 import { claveDia, etiquetaDia, horaMensaje } from "@/lib/chat/fechas";
 import { agruparMensajes } from "@/lib/chat/agrupacion";
 import { useScrollMensajes } from "@/lib/chat/use-scroll-mensajes";
@@ -69,6 +69,9 @@ export function MensajesConversacion({ conversacionId, mensajes, cargados, vista
               const estilo = mensaje.privado ? "chat-nota border border-amber/20 bg-amber-wash text-ink" : saliente ? "bg-navy text-white" : "border border-line bg-surface text-ink";
               return <div key={mensaje.id} data-mensaje-id={mensaje.id} className={`flex ${saliente ? "justify-end" : "justify-start"}`}>
                 <div className={`min-w-0 max-w-[88%] rounded-2xl px-3 py-2 text-[14px] leading-relaxed shadow-sm sm:max-w-[80%] xl:max-w-[75%] ${ultimo ? saliente ? "rounded-br-sm" : "rounded-bl-sm" : ""} ${estilo}`}>
+                  {saliente && <p className={`mb-1 flex items-center gap-1 text-[11px] font-semibold ${mensaje.privado ? "text-amber" : "text-white/80"}`}>
+                    {mensaje.esBot ? <Bot size={12} /> : <User size={12} />}{mensaje.esBot ? "Bot" : mensaje.remitente}
+                  </p>}
                   {mensaje.privado && <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-amber"><Lock size={12} />Nota privada · solo equipo</p>}
                   {(mensaje.contenido || !mensaje.tieneMedia) && <TextoMensaje texto={mensaje.contenido || `[${mensaje.tipo}]`} />}
                   <Adjunto mensaje={mensaje} />

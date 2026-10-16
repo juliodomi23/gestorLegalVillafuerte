@@ -43,5 +43,5 @@ export async function POST(req: NextRequest) {
       { status: resultado.status },
     );
   }
-  return NextResponse.json({ ok: true, mensaje: mensajeVista(resultado.mensaje) });
+  return NextResponse.json({ ok: true, mensaje: mensajeVista({ ...resultado.mensaje, usuario: { nombre: permiso.sesion.nombre } }) });
 }

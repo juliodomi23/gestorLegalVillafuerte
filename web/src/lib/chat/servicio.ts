@@ -169,6 +169,7 @@ export async function obtenerConversacion(id: string, donde: Prisma.Conversacion
 export async function listarMensajes(conversacionId: string) {
   const mensajes = await prisma.mensaje.findMany({
     where: { conversacionId },
+    include: { usuario: { select: { nombre: true } } },
     orderBy: { timestamp: "asc" },
   });
   await prisma.conversacion.updateMany({ where: { id: conversacionId }, data: { noLeidos: 0 } });

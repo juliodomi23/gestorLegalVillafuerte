@@ -35,6 +35,8 @@ export type ConversacionItem = {
 export type Mensaje = {
   id: string;
   direccion: "entrante" | "saliente";
+  esBot: boolean;
+  remitente: string | null;
   tipo: string;
   contenido: string | null;
   status: string;
