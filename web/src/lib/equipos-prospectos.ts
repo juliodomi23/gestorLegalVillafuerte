@@ -18,7 +18,8 @@ const EQUIPOS: { label: string; nombres: string[] }[] = [
   // 2026-10-06: Alain pasa con Giselle; Rosario y Fernando (titular de Villaflores)
   // quedan individuales, como los foráneos.
   { label: "Alain y Giselle", nombres: ["Alain Aquiahuatl Gomez", "Karla Giselle Villafuerte De Paz"] },
-  { label: "Estrella y Carolina", nombres: ["Estrella Fabiola Sanchez Vives", "Carolina Velazquez"] },
+  // 2026-10-16: Estrella dada de baja; Carolina pasa con Rosario.
+  { label: "Rosario y Carolina", nombres: ["Maria del Rosario Alvarez Vera", "Carolina Velazquez"] },
 ];
 
 export type MetricaRanking = "llamadasHoy" | "agendadasHoy" | "citasHoy" | "contratosHoy";
