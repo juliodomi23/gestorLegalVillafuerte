@@ -230,8 +230,8 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
 
   const rangoFecha = { gte: new Date(`${inicioMes}T00:00:00.000Z`), lt: new Date(`${finMes}T00:00:00.000Z`) };
   const [abogados, llamadasMes, agendadasMes, citasDelPeriodo, asesoriasDelPeriodo, contratosMes, seguimientosCita, seguimientosAsesoria] = await Promise.all([
+    // Incluye dados de baja: sus llamadas del periodo siguen contando (ver filtro al final).
     prisma.usuario.findMany({
-      where: { activo: true },
       orderBy: { nombre: "asc" },
       include: { sucursal: { select: { nombre: true } } },
     }),
@@ -323,7 +323,7 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
       a.id,
       {
         abogadoId: a.id,
-        nombre: a.nombre,
+        nombre: a.activo ? a.nombre : `${a.nombre} (baja)`,
         sucursalNombre: a.sucursal?.nombre ?? null,
         llamadasMes: 0,
         agendadasMes: 0,
@@ -384,7 +384,10 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
     if (f.fechaFirma.getTime() === hoyUTC.getTime()) r.contratosHoy++;
   }
 
-  return Array.from(porAbogadoId.values());
+  const inactivos = new Set(abogados.filter((a) => !a.activo).map((a) => a.id));
+  return Array.from(porAbogadoId.values()).filter(
+    (r) => !inactivos.has(r.abogadoId) || r.llamadasMes + r.agendadasMes + r.citasMes + r.contratosMes > 0,
+  );
 }
 
 // Para el bot externo: prospectos marcados "no contestó" pendientes de la plantilla
