@@ -7,5 +7,5 @@ export async function guardarMetaAction(sucursalId: string, contratos: number, a
   await requireAdmin();
   const entero = (n: number) => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
   await guardarMeta(sucursalId, { contratos: entero(contratos), asesorias: entero(asesorias) });
-  revalidatePath("/reportes");
+  revalidatePath("/metas");
 }

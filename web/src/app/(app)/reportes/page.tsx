@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { requireReportes } from "@/lib/guard";
 import { resumenLlamadasPorAbogado, mesActualMX, ANIO_PROSPECTOS } from "@/lib/services/prospectos";
 import { resumenCitasMes } from "@/lib/services/citas-reporte";
-import { resumenMetasMes } from "@/lib/services/metas-reporte";
 import { hoyDespacho } from "@/lib/fecha";
 import ReportesClient from "./client";
 
@@ -11,9 +10,8 @@ export default async function ReportesPage({
 }: {
   searchParams: { mes?: string };
 }) {
-  let esAdmin = false;
   try {
-    esAdmin = (await requireReportes()).rol === "admin";
+    await requireReportes();
   } catch {
     redirect("/inicio");
   }
@@ -21,10 +19,9 @@ export default async function ReportesPage({
   const mesActual = mesActualMX();
   const mes = searchParams.mes ? parseInt(searchParams.mes) : mesActual;
 
-  const [resumen, citas, metas] = await Promise.all([
+  const [resumen, citas] = await Promise.all([
     resumenLlamadasPorAbogado(mes, ANIO_PROSPECTOS),
     resumenCitasMes(mes, ANIO_PROSPECTOS),
-    resumenMetasMes(mes, ANIO_PROSPECTOS),
   ]);
   const hoyLabel = new Date(`${hoyDespacho()}T00:00:00.000Z`).toLocaleDateString("es-MX", {
     day: "numeric",
@@ -32,5 +29,5 @@ export default async function ReportesPage({
     timeZone: "UTC",
   });
 
-  return <ReportesClient resumen={resumen} citas={citas} metas={metas} esAdmin={esAdmin} hoyLabel={hoyLabel} filtroMes={mes} esMesActual={mes === mesActual} />;
+  return <ReportesClient resumen={resumen} citas={citas} hoyLabel={hoyLabel} filtroMes={mes} esMesActual={mes === mesActual} />;
 }

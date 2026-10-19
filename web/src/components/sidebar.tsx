@@ -62,6 +62,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
       { href: "/chat", label: "Chat", icon: MessageCircle, soloChat: true },
       { href: "/embudo", label: "Embudo", icon: Kanban, soloChat: true },
       { href: "/prospectos", label: "Prospectos", icon: UserSearch },
+      { href: "/metas", label: "Estadísticas", icon: BarChart3, soloAdmin: true },
       {
         href: "/asesorias",
         label: "Asesorías",
