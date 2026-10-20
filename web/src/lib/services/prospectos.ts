@@ -385,8 +385,10 @@ export async function resumenLlamadasPorAbogado(mesSel?: number, anioSel?: numbe
   }
 
   const inactivos = new Set(abogados.filter((a) => !a.activo).map((a) => a.id));
+  // Mes en curso: las bajas no salen (la ventana móvil de 30 días las arrastraría semanas).
+  // Meses cerrados: salen si tuvieron actividad, para no perder el historial.
   return Array.from(porAbogadoId.values()).filter(
-    (r) => !inactivos.has(r.abogadoId) || r.llamadasMes + r.agendadasMes + r.citasMes + r.contratosMes > 0,
+    (r) => !inactivos.has(r.abogadoId) || (!esMesActual && r.llamadasMes + r.agendadasMes + r.citasMes + r.contratosMes > 0),
   );
 }
 
