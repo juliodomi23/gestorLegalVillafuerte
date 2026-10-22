@@ -88,9 +88,10 @@ async function guardarProspecto(d: DatosProspecto) {
 // Prospectos del bot de WhatsApp (tienen conversationId) que llevan entre 24 y 72 horas
 // sin avanzar de estado. El CRON de seguimiento revisa las etiquetas de Chatwoot antes de
 // escribirles: si ya agendaron, solo actualiza el estado sin mandar el mensaje de nuevo.
-export async function listarProspectosPendientes24h() {
-  const desde = new Date(Date.now() - 72 * 60 * 60 * 1000);
-  const hasta = new Date(Date.now() - 24 * 60 * 60 * 1000);
+// Por defecto 24-72 h; el seguimiento por WhatsApp pide 22.5-23 h para caer dentro de la ventana de 24 h.
+export async function listarProspectosPendientes24h(horasMax = 72, horasMin = 24) {
+  const desde = new Date(Date.now() - horasMax * 60 * 60 * 1000);
+  const hasta = new Date(Date.now() - horasMin * 60 * 60 * 1000);
   return prisma.prospecto.findMany({
     where: {
       estado: "por_contactar",

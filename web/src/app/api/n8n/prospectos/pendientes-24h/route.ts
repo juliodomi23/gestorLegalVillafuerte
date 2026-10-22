@@ -6,7 +6,12 @@ import { listarProspectosPendientes24h } from "@/lib/services/prospectos";
 export async function GET(req: Request) {
   if (!autorizado(req)) return noAutorizado();
   try {
-    const data = await listarProspectosPendientes24h();
+    const params = new URL(req.url).searchParams;
+    const horas = (nombre: string, defecto: number) => {
+      const n = Number(params.get(nombre));
+      return Number.isFinite(n) && n > 0 ? n : defecto;
+    };
+    const data = await listarProspectosPendientes24h(horas("horas_max", 72), horas("horas_min", 24));
     return ok(data);
   } catch (e) {
     return fail((e as Error).message, 500);
