@@ -33,6 +33,15 @@ test("mapea todos los tipos desconocidos de Meta a texto y no pierde mensajes", 
   }
 });
 
+test("los botones de plantilla e interactivos llegan como el texto del botón", () => {
+  const messages = [
+    { id: "wamid.a", from: "5219611234567", type: "button", button: { text: "Confirmo asistencia", payload: "Confirmo asistencia" } },
+    { id: "wamid.b", from: "5219611234567", type: "interactive", interactive: { type: "button_reply", button_reply: { id: "1", title: "Necesito reprogramar" } } },
+  ];
+  const mensajes = normalizarMensajesMeta({ entry: [{ changes: [{ value: { messages } }] }] });
+  assert.deepEqual(mensajes.map((m) => m.contenido), ["Confirmo asistencia", "Necesito reprogramar"]);
+});
+
 test("solo el webhook exacto puede pasar middleware sin sesión", () => {
   assert.equal(rutaPublicaSinSesion("/api/meta/webhook"), true);
   assert.equal(rutaPublicaSinSesion("/api/meta/webhook/extra"), false);

@@ -27,6 +27,9 @@ const MARCADORES: Partial<Record<string, { tipo: TipoMensajeNormalizado; conteni
 
 function contenidoMensaje(message: any): { tipo: TipoMensajeNormalizado; contenido: string } {
   if (message?.type === "text") return { tipo: "texto", contenido: String(message.text?.body ?? "") };
+  // Botones de plantilla (type "button") y de mensajes interactivos: el bot espera el texto del botón.
+  const textoBoton = message?.button?.text ?? message?.interactive?.button_reply?.title ?? message?.interactive?.list_reply?.title;
+  if (textoBoton) return { tipo: "texto", contenido: String(textoBoton) };
   const marcador = MARCADORES[String(message?.type ?? "")];
   if (marcador) return marcador;
   const tipo = String(message?.type || "desconocido").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40);
