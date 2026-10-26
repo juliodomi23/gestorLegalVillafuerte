@@ -27,6 +27,7 @@ import {
   GraduationCap,
   MessageCircle,
   Kanban,
+  Network,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/usuarios";
@@ -52,6 +53,7 @@ const grupos: { titulo: string; items: Item[] }[] = [
       { href: "/expedientes", label: "Expedientes", icon: FolderOpen },
       { href: "/diligencias", label: "Diligencias", icon: Receipt },
       { href: "/agenda", label: "Agenda", icon: CalendarDays },
+      { href: "/organigrama", label: "Organigrama de la empresa", icon: Network },
       { href: "/estadisticas", label: "Estadísticas", icon: BarChart3, soloAdmin: true },
     ],
   },
