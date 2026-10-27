@@ -53,16 +53,16 @@ function FilaProspecto({
   p,
   esAdmin,
   abogados,
-  sucursales,
   hoy,
   miId,
+  onAgendar,
 }: {
   p: ProspectoView;
   esAdmin: boolean;
   abogados: Abogado[];
-  sucursales: string[];
   hoy: string;
   miId: string | null;
+  onAgendar: (p: ProspectoView, abogadoId: string | null) => void;
 }) {
   const router = useRouter();
   const [expandido, setExpandido] = useState(false);
@@ -74,40 +74,6 @@ function FilaProspecto({
   const [pending, startTransition] = useTransition();
   const confirmar = useConfirm();
   const notaEnfocada = useRef(false);
-
-  // Al marcar "Agendó cita" se abre el mismo formulario de Nueva cita de Agenda,
-  // precargado con los datos del prospecto, para que la cita quede real (con fecha
-  // y hora) y el proceso pueda seguir ahí: llegó/no llegó, y luego si firmó.
-  const [citaAbierta, setCitaAbierta] = useState(false);
-  const [citaForm, setCitaForm] = useState(CITA_VACIA);
-  const [citaGuardando, setCitaGuardando] = useState(false);
-
-  function abrirModalCita(abogadoActualId: string | null) {
-    setCitaForm({
-      fecha: "",
-      hora: "",
-      sucursal: sucursalDeCiudad(p.ciudad, sucursales),
-      abogado: abogados.find((a) => a.id === abogadoActualId)?.nombre ?? "",
-      asunto: p.asunto === "—" ? "" : p.asunto,
-    });
-    setCitaAbierta(true);
-  }
-
-  async function guardarCita() {
-    setCitaGuardando(true);
-    await crearCitaAction({
-      cliente: p.nombre,
-      asunto: citaForm.asunto,
-      telefono: p.telefono === "—" ? "" : p.telefono,
-      fecha: citaForm.fecha,
-      hora: citaForm.hora,
-      sucursal: citaForm.sucursal,
-      abogado: citaForm.abogado,
-    });
-    setCitaGuardando(false);
-    setCitaAbierta(false);
-    router.refresh();
-  }
 
   // El refresco automático (otra persona registró una llamada, el bot cambió el
   // estado, etc.) trae props nuevos, pero useState solo lee el valor inicial: sin
@@ -137,7 +103,7 @@ function FilaProspecto({
     startTransition(() => {
       actualizarProspectoAction(p.id, nuevoEstado, nota, { fechaContacto: nuevaFecha, abogadoId: nuevoAbogado || null });
     });
-    if (nuevoEstado === "agendo_cita" && estado !== "agendo_cita") abrirModalCita(nuevoAbogado);
+    if (nuevoEstado === "agendo_cita" && estado !== "agendo_cita") onAgendar(p, nuevoAbogado || null);
   }
 
   function guardarNota() {
@@ -339,12 +305,61 @@ function FilaProspecto({
         </td>
       </tr>
     )}
+    </>
+  );
+}
+
+// Al marcar "Agendó cita" se abre el mismo formulario de Nueva cita de Agenda,
+// precargado con los datos del prospecto, para que la cita quede real (con fecha
+// y hora) y el proceso pueda seguir ahí: llegó/no llegó, y luego si firmó.
+// Vive fuera de la fila a propósito: con el filtro "No contestó" activo, la fila
+// desaparece al cambiar de estado (el refresco de 20s ya no la trae) y se llevaba
+// el modal consigo antes de poder agendar.
+function ModalCitaProspecto({
+  p,
+  abogadoId,
+  abogados,
+  sucursales,
+  onClose,
+}: {
+  p: ProspectoView;
+  abogadoId: string | null;
+  abogados: Abogado[];
+  sucursales: string[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [citaForm, setCitaForm] = useState({
+    ...CITA_VACIA,
+    sucursal: sucursalDeCiudad(p.ciudad, sucursales),
+    abogado: abogados.find((a) => a.id === abogadoId)?.nombre ?? "",
+    asunto: p.asunto === "—" ? "" : p.asunto,
+  });
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardarCita() {
+    setGuardando(true);
+    await crearCitaAction({
+      cliente: p.nombre,
+      asunto: citaForm.asunto,
+      telefono: p.telefono === "—" ? "" : p.telefono,
+      fecha: citaForm.fecha,
+      hora: citaForm.hora,
+      sucursal: citaForm.sucursal,
+      abogado: citaForm.abogado,
+    });
+    setGuardando(false);
+    onClose();
+    router.refresh();
+  }
+
+  return (
     <Modal
-      open={citaAbierta}
-      onClose={() => setCitaAbierta(false)}
+      open
+      onClose={onClose}
       title={`Agendar cita — ${p.nombre}`}
       onSubmit={guardarCita}
-      submitLabel={citaGuardando ? "Guardando…" : "Agendar cita"}
+      submitLabel={guardando ? "Guardando…" : "Agendar cita"}
     >
       <Field label="Fecha">
         <Input type="date" value={citaForm.fecha} onChange={(e) => setCitaForm((f) => ({ ...f, fecha: e.target.value }))} required />
@@ -362,7 +377,6 @@ function FilaProspecto({
         <Textarea value={citaForm.asunto} onChange={(e) => setCitaForm((f) => ({ ...f, asunto: e.target.value }))} />
       </Field>
     </Modal>
-    </>
   );
 }
 
@@ -503,6 +517,7 @@ export default function ProspectosClient({
   const [prospectos, setProspectos] = useState(prospectosIniciales);
   const [miResumen, setMiResumen] = useState(miResumenInicial);
   const [resumen, setResumen] = useState(resumenInicial);
+  const [citaDe, setCitaDe] = useState<{ p: ProspectoView; abogadoId: string | null } | null>(null);
 
   // Cambiar de filtro (mes/estado/ciudad) navega de verdad, con datos frescos del server.
   useEffect(() => setProspectos(prospectosIniciales), [prospectosIniciales]);
@@ -708,7 +723,7 @@ export default function ProspectosClient({
           </thead>
           <tbody className="divide-y divide-line/70">
             {prospectos.map((p) => (
-              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} sucursales={sucursales} hoy={hoy} miId={miId} />
+              <FilaProspecto key={p.id} p={p} esAdmin={esAdmin} abogados={abogados} hoy={hoy} miId={miId} onAgendar={(pr, abogadoId) => setCitaDe({ p: pr, abogadoId })} />
             ))}
             {prospectos.length === 0 && (
               <tr>
@@ -723,6 +738,16 @@ export default function ProspectosClient({
           </tbody>
         </table>
       </Card>
+      {citaDe && (
+        <ModalCitaProspecto
+          key={citaDe.p.id}
+          p={citaDe.p}
+          abogadoId={citaDe.abogadoId}
+          abogados={abogados}
+          sucursales={sucursales}
+          onClose={() => setCitaDe(null)}
+        />
+      )}
     </>
   );
 }
