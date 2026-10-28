@@ -18,9 +18,7 @@ export default async function ChatPage({ searchParams }: { searchParams: { c?: s
   const subtitulo =
     acceso.alcance === "propias"
       ? "Tus conversaciones asignadas"
-      : acceso.alcance === "recepcion"
-        ? "Conversaciones por atender y las que tienes asignadas"
-        : "Conversaciones de los números del despacho";
+      : "Conversaciones de los números del despacho";
   return (
     <>
       <div className="hidden lg:block corta:hidden">

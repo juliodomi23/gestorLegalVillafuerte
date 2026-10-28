@@ -77,7 +77,7 @@ export function ChatCliente({
   const [busqueda, setBusqueda] = useState("");
   const [terminoServidor, setTerminoServidor] = useState("");
   const [total, setTotal] = useState(0);
-  const [pestana, setPestana] = useState<Pestana>(alcance === "todas" ? "todas" : "por_atender");
+  const [pestana, setPestana] = useState<Pestana>(alcance === "propias" ? "por_atender" : "todas");
   const [filtroCanal, setFiltroCanal] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
@@ -253,19 +253,14 @@ export function ChatCliente({
   }
 
   const pestanas: { id: Pestana; texto: string }[] =
-    alcance === "todas"
-      ? [
+    alcance === "propias"
+      ? []
+      : [
           { id: "por_atender", texto: "Por atender" },
           { id: "mias", texto: "Mías" },
           { id: "sin_asignar", texto: "Sin asignar" },
           { id: "todas", texto: "Todas" },
-        ]
-      : alcance === "recepcion"
-        ? [
-            { id: "por_atender", texto: "Por atender" },
-            { id: "mias", texto: "Mías" },
-          ]
-        : [];
+        ];
 
   const campoFiltro =
     "min-w-[calc(50%-0.25rem)] flex-1 rounded-lg border border-line bg-paper px-2 py-1.5 text-[16px] sm:text-[12px]";
