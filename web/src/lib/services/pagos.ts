@@ -10,6 +10,7 @@ export type DatosPago = {
   comision?: number;
   estado?: EstadoPago;
   concepto?: string;
+  solicitadoPor?: string;
   linkPago?: string;
   mpPaymentId?: string;
   mpPreferenceId?: string;
@@ -45,6 +46,7 @@ export async function registrarPago(d: DatosPago) {
         externalReference: d.externalReference.trim(),
         servicio: d.servicio.trim(),
         concepto: d.concepto?.trim() || null,
+        solicitadoPor: d.solicitadoPor?.trim() || null,
         montoBase,
         comision,
         montoTotal,
@@ -64,6 +66,7 @@ export async function registrarPago(d: DatosPago) {
         comision,
         montoTotal,
         estado,
+        ...(d.solicitadoPor !== undefined ? { solicitadoPor: d.solicitadoPor?.trim() || null } : {}),
         ...(d.linkPago !== undefined ? { linkPago: d.linkPago || null } : {}),
         ...(d.mpPaymentId !== undefined ? { mpPaymentId: d.mpPaymentId || null } : {}),
         ...(d.mpPreferenceId !== undefined ? { mpPreferenceId: d.mpPreferenceId || null } : {}),

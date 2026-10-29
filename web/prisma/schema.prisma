@@ -412,6 +412,7 @@ model Pago {
   asesoriaId        String?   @map("asesoria_id") @db.Uuid
   servicio          String // llamada_asesoria | confirmacion_cita | asesoria_presencial
   concepto          String?
+  solicitadoPor     String?   @map("solicitado_por") // abogado que pidió el enlace al bot
   montoBase         Decimal   @map("monto_base") @db.Decimal(14, 2)
   comision          Decimal   @default(0) @db.Decimal(14, 2)
   montoTotal        Decimal   @map("monto_total") @db.Decimal(14, 2)

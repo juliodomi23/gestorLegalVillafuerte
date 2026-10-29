@@ -10,6 +10,7 @@ export type PagoMercadoPagoView = {
   fecha: string;
   cliente: string;
   servicio: string;
+  solicitadoPor: string | null;
   montoBase: number;
   comision: number;
   montoTotal: number;
@@ -23,6 +24,7 @@ const SERVICIO_LABELS: Record<string, string> = {
   llamada_no_show: "Llamada de asesoría · reagenda (no asistió)",
   confirmacion_cita: "Confirmación de cita",
   asesoria_presencial: "Asesoría presencial",
+  asesoria_en_linea: "Asesoría en línea",
   asesoria_promocion: "Asesoría presencial · promoción",
   asesoria_regular: "Asesoría presencial · precio regular",
 };
@@ -115,6 +117,7 @@ export default function CobrosClient({ pagos }: { pagos: PagoMercadoPagoView[] }
               <th className="eyebrow text-muted px-5 py-3">Fecha</th>
               <th className="eyebrow text-muted px-3 py-3">Cliente / concepto</th>
               <th className="eyebrow text-muted px-3 py-3">Servicio</th>
+              <th className="eyebrow text-muted px-3 py-3">Solicitó</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Precio base</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Comisión</th>
               <th className="eyebrow text-muted px-3 py-3 text-right">Total</th>
@@ -130,6 +133,7 @@ export default function CobrosClient({ pagos }: { pagos: PagoMercadoPagoView[] }
                   <td className="px-5 py-3.5 num">{p.fecha}</td>
                   <td className="px-3 py-3.5 font-bold">{p.cliente}</td>
                   <td className="px-3 py-3.5">{SERVICIO_LABELS[p.servicio] ?? p.servicio}</td>
+                  <td className="px-3 py-3.5 text-muted">{p.solicitadoPor ?? "—"}</td>
                   <td className="px-3 py-3.5 num text-right">{fmt(p.montoBase)}</td>
                   <td className="px-3 py-3.5 num text-right text-muted">{fmt(p.comision)}</td>
                   <td className="px-3 py-3.5 num text-right font-bold">{fmt(p.montoTotal)}</td>
@@ -140,7 +144,7 @@ export default function CobrosClient({ pagos }: { pagos: PagoMercadoPagoView[] }
                 </tr>
               );
             })}
-            {pagos.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-muted">Todavía no hay cobros de Mercado Pago registrados.</td></tr>}
+            {pagos.length === 0 && <tr><td colSpan={9} className="px-5 py-10 text-center text-muted">Todavía no hay cobros de Mercado Pago registrados.</td></tr>}
           </tbody>
         </table>
       </Card>

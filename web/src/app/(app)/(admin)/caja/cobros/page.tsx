@@ -21,6 +21,7 @@ export default async function CobrosPage() {
     fecha: fmtDate(p.creadoEn),
     cliente: p.cliente?.nombre ?? p.cita?.cliente?.nombre ?? p.cita?.clienteNombre ?? p.asesoria?.nombre ?? p.concepto ?? "—",
     servicio: p.servicio,
+    solicitadoPor: p.solicitadoPor,
     montoBase: Number(p.montoBase),
     comision: Number(p.comision),
     montoTotal: Number(p.montoTotal),
