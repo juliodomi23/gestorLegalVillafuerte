@@ -177,8 +177,8 @@ export default function ReportesClient({
           <thead>
             <tr className="border-b border-line text-left bg-paper/50">
               <th className="eyebrow text-muted px-4 py-3">Abogado</th>
-              <th className="eyebrow text-muted px-2 py-3 text-right">Llamadas</th>
               <th className="eyebrow text-muted px-2 py-3 text-right">Agendaron</th>
+              <th className="eyebrow text-muted px-2 py-3 text-right">Llamadas</th>
               <th className="eyebrow text-muted px-4 py-3 text-right">Llegaron</th>
             </tr>
           </thead>
@@ -186,8 +186,8 @@ export default function ReportesClient({
             {resumen.map((r) => (
               <tr key={r.abogadoId}>
                 <td className="px-4 py-2.5 font-bold text-ink">{r.nombre}</td>
-                <td className="px-2 py-2.5 num text-right">{r[campos.llamadas]}</td>
                 <td className="px-2 py-2.5 num text-right">{r[campos.agendaron]}</td>
+                <td className="px-2 py-2.5 num text-right">{r[campos.llamadas]}</td>
                 <td className="px-4 py-2.5 num text-right">{r[campos.llegaron]}</td>
               </tr>
             ))}
