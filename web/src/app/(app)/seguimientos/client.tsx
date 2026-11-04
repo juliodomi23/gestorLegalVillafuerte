@@ -54,18 +54,18 @@ function ResumenPorAbogado({ resumen }: { resumen: ResumenAbogadoSeguimiento[] }
           <thead>
             <tr className="border-b border-line text-left bg-paper/50">
               <th className="eyebrow text-muted px-4 py-2">Abogado</th>
-              <th className="eyebrow text-muted px-2 py-2 text-right" title="Personas con llamada de seguimiento activa asignadas a este abogado (tabla Seguimientos, independiente de si tienen expediente)">Clientes en seguimiento</th>
+              <th className="eyebrow text-muted px-2 py-2 text-right">Falta por llamar</th>
               <th className="eyebrow text-muted px-2 py-2 text-right">Llamó esta semana</th>
-              <th className="eyebrow text-muted px-4 py-2 text-right">Le faltó llamar</th>
+              <th className="eyebrow text-muted px-4 py-2 text-right" title="Personas con llamada de seguimiento activa asignadas a este abogado (tabla Seguimientos, independiente de si tienen expediente)">Clientes en seguimiento</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/60">
             {resumen.map((r) => (
               <tr key={r.abogadoId}>
                 <td className="px-4 py-2.5 font-bold text-ink">{r.nombre}</td>
-                <td className="px-2 py-2.5 num text-right">{r.carteraSeguimiento}</td>
+                <td className={`px-2 py-2.5 num text-right font-bold ${r.faltanSemana > 0 ? "text-danger" : "text-muted"}`}>{r.faltanSemana}</td>
                 <td className="px-2 py-2.5 num text-right text-success font-bold">{r.llamadosSemana}</td>
-                <td className={`px-4 py-2.5 num text-right font-bold ${r.faltanSemana > 0 ? "text-danger" : "text-muted"}`}>{r.faltanSemana}</td>
+                <td className="px-4 py-2.5 num text-right">{r.carteraSeguimiento}</td>
               </tr>
             ))}
           </tbody>
