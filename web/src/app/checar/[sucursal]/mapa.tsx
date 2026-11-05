@@ -21,13 +21,11 @@ export default function MapaGeocerca({ geocerca, yo }: { geocerca: Geocerca; yo:
   useEffect(() => {
     if (!div.current || mapa.current) return;
     const m = L.map(div.current, { zoomControl: false }).setView([geocerca.lat, geocerca.lon], 17);
-    // Los tiles NO pueden salir de tile.openstreetmap.org: su política de uso bloquea
-    // a Leaflet desde el navegador y devuelve 503 (header x-blocked). CARTO sirve los
-    // mismos datos de OSM y sí permite este uso; la atribución es obligatoria.
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    // tile.openstreetmap.org bloquea Leaflet desde el navegador (503) y CARTO ahora exige
+    // API key (marca de agua "API key required"). Esri no pide key; la atribución es obligatoria.
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 19,
-      subdomains: "abcd",
-      attribution: "&copy; OpenStreetMap &copy; CARTO",
+      attribution: "Tiles &copy; Esri",
     }).addTo(m);
     L.circle([geocerca.lat, geocerca.lon], {
       radius: geocerca.radioM,
