@@ -718,3 +718,43 @@ export function mapProspectosRows(rows: FilaProspectoUnificada[]): ProspectoRow[
     })),
   }));
 }
+
+// Para el workflow n8n "[VOZ] Lanzar llamadas a prospectos". Devuelve los prospectos a los
+// que el agente de voz debe llamar ahora: los nuevos (por_contactar, nunca llamados por la IA)
+// y los que ya están "llamando" de un día anterior (no contestaron: 1 reintento por día).
+// El workflow marca "llamando" y escribe en la nota "[Intento IA N dd/mm/aaaa]" antes de marcar.
+// Si la llamada se atiende, registrar_resultado cambia el estado y deja de calificar.
+const MAX_INTENTOS_IA = 3;
+
+export function intentosIA(nota?: string | null): number {
+  const m = nota?.match(/^\[Intento IA (\d+)/);
+  return m ? parseInt(m[1]) : 0;
+}
+
+export async function listarProspectosPorLlamar(limite = 1, dias = 5) {
+  const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+  const inicioHoy = new Date(`${hoyDespacho()}T00:00:00${OFFSET_DESPACHO}`);
+  const candidatos = await prisma.prospecto.findMany({
+    where: {
+      telefono: { not: null },
+      creadoEn: { gte: desde },
+      OR: [
+        { estado: "por_contactar", OR: [{ nota: null }, { nota: { not: { startsWith: "[Llamada IA" } } }] },
+        { estado: "llamando", actualizadoEn: { lt: inicioHoy } },
+      ],
+    },
+    orderBy: { creadoEn: "asc" },
+    take: 50,
+  });
+  return candidatos
+    .filter((p) => intentosIA(p.nota) < MAX_INTENTOS_IA && (p.telefono ?? "").replace(/\D/g, "").length >= 10)
+    .slice(0, limite)
+    .map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      telefono: p.telefono,
+      ciudad: p.ciudad,
+      asunto: p.asunto,
+      intento: intentosIA(p.nota) + 1,
+    }));
+}
