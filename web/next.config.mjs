@@ -17,8 +17,8 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      // cartocdn: tiles del minimapa del reloj checador.
-      "img-src 'self' data: blob: https://*.basemaps.cartocdn.com",
+      // arcgisonline: tiles del minimapa del reloj checador.
+      "img-src 'self' data: blob: https://server.arcgisonline.com",
       "font-src 'self'",
       "connect-src 'self'",
       "frame-ancestors 'none'",
