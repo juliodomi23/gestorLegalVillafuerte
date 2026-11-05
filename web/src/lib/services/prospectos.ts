@@ -721,7 +721,8 @@ export function mapProspectosRows(rows: FilaProspectoUnificada[]): ProspectoRow[
 
 // Para el workflow n8n "[VOZ] Lanzar llamadas a prospectos". Devuelve los prospectos a los
 // que el agente de voz debe llamar ahora: los nuevos (por_contactar, nunca llamados por la IA)
-// y los que ya están "llamando" de un día anterior (no contestaron: 1 reintento por día).
+// los que ya están "llamando" de un día anterior (no contestaron: 1 reintento por día) y los
+// "no_contesto" del abogado. Orden: nuevos primero (son los que acaban de pedir la llamada).
 // El workflow marca "llamando" y escribe en la nota "[Intento IA N dd/mm/aaaa]" antes de marcar.
 // Si la llamada se atiende, registrar_resultado cambia el estado y deja de calificar.
 const MAX_INTENTOS_IA = 3;
@@ -739,14 +740,16 @@ export async function listarProspectosPorLlamar(limite = 1, dias = 5) {
       telefono: { not: null },
       creadoEn: { gte: desde },
       OR: [
-        { estado: "por_contactar", OR: [{ nota: null }, { nota: { not: { startsWith: "[Llamada IA" } } }] },
+        { estado: { in: ["por_contactar", "no_contesto"] }, OR: [{ nota: null }, { nota: { not: { startsWith: "[Llamada IA" } } }] },
         { estado: "llamando", actualizadoEn: { lt: inicioHoy } },
       ],
     },
     orderBy: { creadoEn: "asc" },
     take: 50,
   });
+  const prioridad = (estado: string) => (estado === "por_contactar" ? 0 : estado === "llamando" ? 1 : 2);
   return candidatos
+    .sort((x, y) => prioridad(x.estado) - prioridad(y.estado))
     .filter((p) => intentosIA(p.nota) < MAX_INTENTOS_IA && (p.telefono ?? "").replace(/\D/g, "").length >= 10)
     .slice(0, limite)
     .map((p) => ({
