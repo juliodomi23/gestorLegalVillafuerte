@@ -52,6 +52,13 @@ export type ContratoView = {
   link: string | null;
   subidoEl: string;
   subidoPor: string | null;
+  /** yyyy-mm de subida, para filtrar por mes. */
+  mes: string;
+  /** yyyy-mm-dd de la firma (la de la asesoría ligada al expediente); null si no hay. */
+  fechaFirma: string | null;
+  /** Plan con saldo cuya fecha de pago ya pasó y sin prórroga vigente. */
+  vencido: boolean;
+  sucursal: string;
   expedienteId: string;
   numeroExpediente: string;
   cliente: string;
@@ -86,7 +93,9 @@ export async function listarContratos(alcance: Alcance): Promise<ContratoView[]>
         include: {
           cliente: { select: { nombre: true } },
           abogadoResponsable: { select: { nombre: true } },
+          sucursal: { select: { nombre: true } },
           planPago: true,
+          asesorias: { select: { fechaFirma: true } },
         },
       },
     },
@@ -110,10 +119,18 @@ export async function listarContratos(alcance: Alcance): Promise<ContratoView[]>
     pagosPorExpediente.set(m.expedienteId, lista);
   }
 
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+
   return docs.map((d) => {
     const p = d.expediente.planPago;
     const pagos = pagosPorExpediente.get(d.expedienteId) ?? [];
     const pagado = pagos.reduce((s, m) => s + Number(m.monto), 0);
+    const fechasFirma = d.expediente.asesorias.flatMap((a) => (a.fechaFirma ? [a.fechaFirma.toISOString().slice(0, 10)] : []));
+    const fechaFirma = fechasFirma.sort()[0] ?? null;
+    const proxPago = p?.fechaProxPago ? p.fechaProxPago.toISOString().slice(0, 10) : null;
+    const prorroga = d.prorrogaHasta ? d.prorrogaHasta.toISOString().slice(0, 10) : null;
+    const vencido =
+      !!p && tienePagosPendientes(p.tipo) && Number(p.montoTotal) - pagado > 0 && !!proxPago && proxPago < hoy && !(prorroga && prorroga >= hoy);
     return {
       documentoId: d.id,
       nombre: d.nombre,
@@ -125,6 +142,10 @@ export async function listarContratos(alcance: Alcance): Promise<ContratoView[]>
         year: "numeric",
       }),
       subidoPor: d.usuario?.nombre ?? null,
+      mes: (fechaFirma ?? d.creadoEn.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" })).slice(0, 7),
+      fechaFirma,
+      vencido,
+      sucursal: d.expediente.sucursal?.nombre ?? "Sin sucursal",
       expedienteId: d.expedienteId,
       numeroExpediente: d.expediente.numeroInterno ?? "—",
       cliente: d.expediente.cliente?.nombre ?? "Sin cliente",
@@ -212,6 +233,50 @@ export async function guardarPlanPago(d: DatosPlan): Promise<{ eventoCreado: boo
   });
 
   return { eventoCreado: !!id };
+}
+
+// Un pago desde Contratos es un ingreso de Caja ligado al expediente (misma tabla que
+// ya lee listarContratos). Si el plan es por parcialidades, la fecha del próximo pago
+// avanza un periodo desde la fecha que tenía, para que "vencido" se limpie solo.
+export async function registrarPagoContrato(d: {
+  expedienteId: string;
+  monto: number;
+  fecha: string;
+  concepto: string | null;
+  usuarioId: string;
+}) {
+  const exp = await prisma.expediente.findUnique({ where: { id: d.expedienteId }, include: { planPago: true } });
+  if (!exp) throw new Error("Expediente no encontrado");
+  const fecha = new Date(d.fecha);
+  if (Number.isNaN(fecha.getTime())) throw new Error("Fecha inválida");
+
+  await prisma.movimientoCaja.create({
+    data: {
+      tipo: "ingreso",
+      concepto: d.concepto ?? "Pago de contrato",
+      monto: d.monto,
+      sucursalId: exp.sucursalId,
+      expedienteId: d.expedienteId,
+      registradoPor: d.usuarioId,
+      fecha,
+      origen: "web",
+    },
+  });
+
+  const plan = exp.planPago;
+  if (!plan || !plan.fechaProxPago || !["semanal", "quincenal", "mensual"].includes(plan.tipo)) return;
+  const { _sum } = await prisma.movimientoCaja.aggregate({
+    where: { expedienteId: d.expedienteId, tipo: "ingreso" },
+    _sum: { monto: true },
+  });
+  const siguiente = new Date(plan.fechaProxPago);
+  if (Number(plan.montoTotal) - Number(_sum.monto ?? 0) <= 0) {
+    await prisma.planPago.update({ where: { id: plan.id }, data: { fechaProxPago: null } });
+    return;
+  }
+  if (plan.tipo === "mensual") siguiente.setUTCMonth(siguiente.getUTCMonth() + 1);
+  else siguiente.setUTCDate(siguiente.getUTCDate() + (plan.tipo === "semanal" ? 7 : 15));
+  await prisma.planPago.update({ where: { id: plan.id }, data: { fechaProxPago: siguiente } });
 }
 
 // Checklist de revisión del Lic. sobre el PDF subido — solo admin lo toca (ver actions.ts).

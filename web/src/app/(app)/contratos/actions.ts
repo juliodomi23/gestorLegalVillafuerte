@@ -8,6 +8,7 @@ import {
   esTipoPlan,
   guardarRevisionContrato,
   guardarProrrogaContrato,
+  registrarPagoContrato,
   esEstadoRevision,
   type DatosPlan,
 } from "@/lib/services/contratos";
@@ -63,6 +64,35 @@ export async function guardarPlanAction(form: {
     return { ok: true, eventoCreado: r.eventoCreado };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "No se pudo guardar el plan" };
+  }
+}
+
+export async function registrarPagoAction(form: {
+  expedienteId: string;
+  monto: string;
+  fecha: string;
+  concepto: string;
+}): Promise<ResultadoRevision> {
+  try {
+    const sesion = await requireSession();
+    if (!(await puedeTocar(form.expedienteId, sesion.id, sesion.rol))) {
+      return { ok: false, error: "No tienes permiso sobre este expediente" };
+    }
+    const monto = Number(String(form.monto).replace(/[^0-9.]/g, ""));
+    if (!Number.isFinite(monto) || monto <= 0) return { ok: false, error: "El monto debe ser un número mayor a cero" };
+    if (!form.fecha) return { ok: false, error: "Elige la fecha del pago" };
+    await registrarPagoContrato({
+      expedienteId: form.expedienteId,
+      monto,
+      fecha: form.fecha,
+      concepto: form.concepto.trim() || null,
+      usuarioId: sesion.id,
+    });
+    revalidatePath("/contratos");
+    revalidatePath("/caja");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "No se pudo registrar el pago" };
   }
 }
 

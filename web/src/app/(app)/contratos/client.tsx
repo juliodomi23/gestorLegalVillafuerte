@@ -18,10 +18,12 @@ import {
   ClipboardCheck,
   ChevronRight,
   ChevronDown,
+  Banknote,
+  Download,
 } from "lucide-react";
 import { PageTitle, Card } from "@/components/ui";
 import { Modal, Field, Input, Select } from "@/components/modal";
-import { guardarPlanAction, guardarRevisionAction, guardarProrrogaAction } from "./actions";
+import { guardarPlanAction, guardarRevisionAction, guardarProrrogaAction, registrarPagoAction } from "./actions";
 import { crearExpedienteAction, crearClienteRapidoAction } from "@/app/(app)/expedientes/actions";
 import { ETIQUETA_PLAN, ETIQUETA_REVISION, type ContratoView, type EstadoRevision } from "@/lib/services/contratos";
 import { MATERIAS, ETAPAS } from "@/lib/constants";
@@ -36,10 +38,54 @@ const ESTILO_REVISION: Record<EstadoRevision, string> = {
   corregir: "bg-danger-wash text-danger",
 };
 
+const ESTADOS_COBRO = ["Vencido", "Con saldo", "Liquidado", "Sin plan"];
+const estadoCobro = (c: ContratoView) =>
+  !c.plan ? "Sin plan" : c.vencido ? "Vencido" : c.plan.saldo > 0 ? "Con saldo" : "Liquidado";
+
+// PlanPago es único por expediente: dos contratos del mismo expediente comparten plan
+// y pagos, así que para sumar hay que contar cada expediente una sola vez.
+const unicosPorExpediente = (lista: ContratoView[]) => [...new Map(lista.map((c) => [c.expedienteId, c])).values()];
+
+function resumirPor(lista: ContratoView[], clave: (c: ContratoView) => string) {
+  const grupos = new Map<string, { contratos: number; contratado: number; cobrado: number; vencidos: number }>();
+  for (const c of unicosPorExpediente(lista)) {
+    const g = grupos.get(clave(c)) ?? { contratos: 0, contratado: 0, cobrado: 0, vencidos: 0 };
+    g.contratos += 1;
+    g.contratado += c.plan?.montoTotal ?? 0;
+    g.cobrado += c.plan?.pagado ?? 0;
+    g.vencidos += c.vencido ? 1 : 0;
+    grupos.set(clave(c), g);
+  }
+  return [...grupos.entries()].sort((a, b) => b[1].contratado - a[1].contratado);
+}
+
+function descargarCsv(lista: ContratoView[]) {
+  const celda = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const filas = [
+    ["Expediente", "Cliente", "Abogado", "Sucursal", "Firma", "Subido", "Plan", "Total", "Cobrado", "Saldo", "Próximo pago", "Prórroga hasta", "Cobro", "Revisión"],
+    ...lista.map((c) => [
+      c.numeroExpediente, c.cliente, c.abogado, c.sucursal, c.fechaFirma ?? "", c.subidoEl,
+      c.plan?.etiqueta ?? "", c.plan?.montoTotal ?? "", c.plan?.pagado ?? "", c.plan?.saldo ?? "",
+      c.plan?.fechaProxPago ?? "", c.prorrogaHasta ?? "", estadoCobro(c), ETIQUETA_REVISION[c.revisionEstado],
+    ]),
+  ];
+  const csv = "\uFEFF" + filas.map((f) => f.map(celda).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `contratos-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+const MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const etiquetaMes = (m: string) => `${MESES_ES[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
+const filtrosVacios = { mes: "", abogado: "", sucursal: "", revision: "", cobro: "" };
+
 const expedienteVacio = { clienteNombre: "", clienteTel: "", materia: "", etapa: "", abogado: "", sucursal: "" };
 
 const pesos = (n: number) =>
   n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
+
+const pagoVacio = { expedienteId: "", monto: "", fecha: "", concepto: "" };
 
 const planVacio = {
   expedienteId: "",
@@ -82,6 +128,54 @@ export default function ContratosClient({
   const [formExp, setFormExp] = useState({ ...expedienteVacio, abogado: esAdmin ? "" : sesionNombre });
   const [creandoExp, setCreandoExp] = useState(false);
   const [errorExp, setErrorExp] = useState("");
+
+  const [abiertoPago, setAbiertoPago] = useState(false);
+  const [formPago, setFormPago] = useState(pagoVacio);
+  const [errorPago, setErrorPago] = useState("");
+  const [registrando, setRegistrando] = useState(false);
+
+  const [filtros, setFiltros] = useState(filtrosVacios);
+  const setFiltro = (c: keyof typeof filtrosVacios, v: string) => setFiltros((f) => ({ ...f, [c]: v }));
+
+  const meses = [...new Set(contratos.map((c) => c.mes))].sort().reverse();
+  const etiquetaRevision = (c: ContratoView) => ETIQUETA_REVISION[c.revisionEstado];
+  const visibles = contratos.filter(
+    (c) =>
+      (!filtros.mes || etiquetaMes(c.mes) === filtros.mes) &&
+      (!filtros.abogado || c.abogado === filtros.abogado) &&
+      (!filtros.sucursal || c.sucursal === filtros.sucursal) &&
+      (!filtros.revision || etiquetaRevision(c) === filtros.revision) &&
+      (!filtros.cobro || estadoCobro(c) === filtros.cobro)
+  );
+  const unicos = unicosPorExpediente(visibles);
+  const totalVisible = unicos.reduce((s, c) => s + (c.plan?.montoTotal ?? 0), 0);
+  const cobradoVisible = unicos.reduce((s, c) => s + (c.plan?.pagado ?? 0), 0);
+  const vencidosVisibles = unicos.filter((c) => c.vencido).length;
+
+  function abrirPago(c: ContratoView) {
+    setErrorPago("");
+    setFormPago({
+      expedienteId: c.expedienteId,
+      monto: c.plan?.montoPeriodico ? String(c.plan.montoPeriodico) : "",
+      fecha: new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }),
+      concepto: "",
+    });
+    setAbiertoPago(true);
+  }
+
+  async function guardarPago() {
+    setErrorPago("");
+    setRegistrando(true);
+    const r = await registrarPagoAction(formPago);
+    setRegistrando(false);
+    if (!r.ok) {
+      setErrorPago(r.error);
+      return;
+    }
+    setAbiertoPago(false);
+    setAviso("Pago registrado en Caja.");
+    router.refresh();
+  }
 
   const setExp = (c: keyof typeof expedienteVacio, v: string) => setFormExp((f) => ({ ...f, [c]: v }));
 
@@ -256,7 +350,90 @@ export default function ContratosClient({
         <p className="text-[13px] text-success bg-success-wash rounded-lg px-3 py-2 mb-4">{aviso}</p>
       )}
 
+      {esAdmin && contratos.length > 0 && (
+        <div className="grid md:grid-cols-2 gap-5 mb-5">
+          {[
+            { titulo: "Por abogado", filas: resumirPor(visibles, (c) => c.abogado) },
+            { titulo: "Por sucursal", filas: resumirPor(visibles, (c) => c.sucursal) },
+          ].map(({ titulo, filas }) => (
+            <Card key={titulo} className="overflow-x-auto">
+              <div className="px-5 py-3 border-b border-line">
+                <h3 className="font-serif text-[16px]">{titulo}</h3>
+                <p className="text-[12px] text-muted">Respeta los filtros de abajo.</p>
+              </div>
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-line text-left">
+                    <th className="eyebrow text-muted px-5 py-2">{titulo.slice(4)}</th>
+                    <th className="eyebrow text-muted px-2 py-2 text-right">Contr.</th>
+                    <th className="eyebrow text-muted px-2 py-2 text-right">Contratado</th>
+                    <th className="eyebrow text-muted px-2 py-2 text-right">Cobrado</th>
+                    <th className="eyebrow text-muted px-2 py-2 text-right">Saldo</th>
+                    <th className="eyebrow text-muted px-3 py-2 text-right">Venc.</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/70">
+                  {filas.map(([nombre, g]) => (
+                    <tr key={nombre}>
+                      <td className="px-5 py-2">{nombre}</td>
+                      <td className="px-2 py-2 num text-right">{g.contratos}</td>
+                      <td className="px-2 py-2 num text-right">{pesos(g.contratado)}</td>
+                      <td className="px-2 py-2 num text-right">{pesos(g.cobrado)}</td>
+                      <td className="px-2 py-2 num text-right">{pesos(g.contratado - g.cobrado)}</td>
+                      <td className={`px-3 py-2 num text-right ${g.vencidos ? "text-danger font-bold" : "text-muted"}`}>{g.vencidos}</td>
+                    </tr>
+                  ))}
+                  {filas.length === 0 && (
+                    <tr><td colSpan={6} className="px-5 py-4 text-center text-muted">Sin datos.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </Card>
+          ))}
+        </div>
+      )}
+
       <Card className="overflow-x-auto">
+        {esAdmin && (
+          <div className="px-5 py-3.5 border-b border-line flex gap-3 flex-wrap items-end">
+            <div className="min-w-[140px]">
+              <span className="eyebrow text-muted block mb-1.5">Mes</span>
+              <Select options={meses.map(etiquetaMes)} value={filtros.mes} onChange={(e) => setFiltro("mes", e.target.value)} />
+            </div>
+            <div className="min-w-[160px]">
+              <span className="eyebrow text-muted block mb-1.5">Abogado</span>
+              <Select options={abogados} value={filtros.abogado} onChange={(e) => setFiltro("abogado", e.target.value)} />
+            </div>
+            <div className="min-w-[140px]">
+              <span className="eyebrow text-muted block mb-1.5">Sucursal</span>
+              <Select options={sucursales} value={filtros.sucursal} onChange={(e) => setFiltro("sucursal", e.target.value)} />
+            </div>
+            <div className="min-w-[140px]">
+              <span className="eyebrow text-muted block mb-1.5">Revisión</span>
+              <Select options={ESTADOS_REVISION.map((s) => ETIQUETA_REVISION[s])} value={filtros.revision} onChange={(e) => setFiltro("revision", e.target.value)} />
+            </div>
+            <div className="min-w-[140px]">
+              <span className="eyebrow text-muted block mb-1.5">Cobro</span>
+              <Select options={ESTADOS_COBRO} value={filtros.cobro} onChange={(e) => setFiltro("cobro", e.target.value)} />
+            </div>
+            <button
+              onClick={() => setFiltros(filtrosVacios)}
+              className="px-3 py-2.5 rounded-lg border border-line text-[13px] hover:border-navy/40 transition-colors"
+            >
+              Limpiar
+            </button>
+            <p className="text-[12.5px] text-muted ml-auto">
+              {visibles.length} de {contratos.length} · contratado {pesos(totalVisible)} · cobrado {pesos(cobradoVisible)}
+              {vencidosVisibles > 0 && <span className="text-danger font-bold"> · {vencidosVisibles} vencido{vencidosVisibles === 1 ? "" : "s"}</span>}
+            </p>
+            <button
+              onClick={() => descargarCsv(visibles)}
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-line text-[13px] font-bold text-navy hover:border-navy/40 transition-colors"
+            >
+              <Download size={15} /> Excel
+            </button>
+          </div>
+        )}
         <div className="px-5 py-3.5 border-b border-line">
           <h3 className="font-serif text-[17px]">Contratos y sus pagos</h3>
           <p className="text-[12.5px] text-muted mt-0.5">
@@ -281,19 +458,20 @@ export default function ContratosClient({
             </tr>
           </thead>
           <tbody className="divide-y divide-line/70">
-            {contratos.map((c) => (
+            {visibles.map((c) => (
               <FilaContrato
                 key={c.documentoId}
                 c={c}
                 esAdmin={esAdmin}
                 onVerDetalle={() => setVerDetalle(c)}
                 onAbrirPlan={() => abrirPlan(c)}
+                onRegistrarPago={() => abrirPago(c)}
               />
             ))}
-            {contratos.length === 0 && (
+            {visibles.length === 0 && (
               <tr>
                 <td colSpan={esAdmin ? 11 : 8} className="px-5 py-10 text-center text-muted">
-                  Todavía no hay contratos subidos.
+                  {contratos.length === 0 ? "Todavía no hay contratos subidos." : "Ningún contrato coincide con los filtros."}
                 </td>
               </tr>
             )}
@@ -355,6 +533,24 @@ export default function ContratosClient({
       </Modal>
 
       <Modal
+        open={abiertoPago}
+        onClose={() => setAbiertoPago(false)}
+        title="Registrar pago"
+        onSubmit={guardarPago}
+        submitLabel={registrando ? "Guardando…" : "Registrar pago"}
+      >
+        <Field label="Monto"><Input value={formPago.monto} onChange={(e) => setFormPago((f) => ({ ...f, monto: e.target.value }))} placeholder="2500" autoFocus /></Field>
+        <Field label="Fecha del pago"><Input type="date" value={formPago.fecha} onChange={(e) => setFormPago((f) => ({ ...f, fecha: e.target.value }))} /></Field>
+        <Field label="Concepto (opcional)" full><Input value={formPago.concepto} onChange={(e) => setFormPago((f) => ({ ...f, concepto: e.target.value }))} placeholder="Pago de contrato" /></Field>
+        <p className="col-span-full text-[12px] text-muted -mt-1">
+          Se guarda como ingreso en Caja. Si el plan es por parcialidades, la fecha del próximo pago avanza sola.
+        </p>
+        {errorPago && (
+          <p className="col-span-full text-[13px] text-danger bg-danger-wash rounded-lg px-3 py-2">{errorPago}</p>
+        )}
+      </Modal>
+
+      <Modal
         open={abiertoExpediente}
         onClose={() => setAbiertoExpediente(false)}
         title="Cliente sin expediente"
@@ -401,6 +597,7 @@ export default function ContratosClient({
                 <div>
                   <p className="eyebrow text-muted">Contrato subido</p>
                   <p className="text-[13.5px] text-ink">{verDetalle.subidoEl}</p>
+                  {verDetalle.fechaFirma && <p className="text-muted text-[12.5px]">Firmado: {verDetalle.fechaFirma}</p>}
                   {verDetalle.link && (
                     <a href={verDetalle.link} target="_blank" rel="noreferrer" className="text-navy hover:underline inline-flex items-center gap-1 text-[12.5px] mt-0.5">
                       Ver PDF <ExternalLink size={11} />
@@ -498,11 +695,13 @@ function FilaContrato({
   esAdmin,
   onVerDetalle,
   onAbrirPlan,
+  onRegistrarPago,
 }: {
   c: ContratoView;
   esAdmin: boolean;
   onVerDetalle: () => void;
   onAbrirPlan: () => void;
+  onRegistrarPago: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
   const [estado, setEstado] = useState(c.revisionEstado);
@@ -569,10 +768,10 @@ function FilaContrato({
           {c.plan ? c.plan.etiqueta : <span className="text-amber font-bold">Sin registrar</span>}
         </td>
         <td className="px-3 py-3 num text-right">{c.plan ? pesos(c.plan.montoTotal) : "—"}</td>
-        <td className="px-3 py-3 num text-muted">
+        <td className={`px-3 py-3 num ${c.vencido ? "text-danger font-bold" : "text-muted"}`}>
           {c.plan?.fechaProxPago ? (
             <span className="inline-flex items-center gap-1.5">
-              <CalendarClock size={13} /> {c.plan.fechaProxPago}
+              <CalendarClock size={13} /> {c.plan.fechaProxPago}{c.vencido && " · vencido"}
             </span>
           ) : (
             "—"
@@ -615,6 +814,16 @@ function FilaContrato({
             >
               <Eye size={16} />
             </button>
+            {c.plan && (
+              <button
+                onClick={onRegistrarPago}
+                title="Registrar pago"
+                aria-label="Registrar pago"
+                className="p-1.5 rounded-md text-muted hover:text-navy hover:bg-navy/[.06] transition-colors"
+              >
+                <Banknote size={16} />
+              </button>
+            )}
             <button
               onClick={onAbrirPlan}
               title="Plan de pagos"
