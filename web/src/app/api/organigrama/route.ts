@@ -43,5 +43,6 @@ export async function POST(req: NextRequest) {
   const nombre = file.name.replace(/[\\/:*?"<>|]/g, "_").replace(/^\.+/, "");
   await listarOrganigramas();
   await writeFile(join(ORGANIGRAMA_DIR, nombre), buffer);
-  return NextResponse.redirect(new URL("/organigrama", req.url), 303);
+  // Ruta relativa: detrás del proxy req.url es localhost y el CSP form-action 'self' bloquea ese redirect.
+  return new NextResponse(null, { status: 303, headers: { Location: "/organigrama" } });
 }
