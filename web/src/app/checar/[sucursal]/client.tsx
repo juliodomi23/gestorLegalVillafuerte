@@ -90,6 +90,17 @@ export default function CheckarClient({
     };
   }, [geocerca]);
 
+  // Si el navegador restaura esta página desde el bfcache (botón atrás, o volver a
+  // abrir el mismo tab) en vez de cargarla de nuevo, "entrada" o "salida" sugerida
+  // queda congelada con la de la carga anterior. Forzar una recarga real.
+  useEffect(() => {
+    const alRestaurar = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", alRestaurar);
+    return () => window.removeEventListener("pageshow", alRestaurar);
+  }, []);
+
   async function conSesion() {
     setError("");
     setUbicando(true);
