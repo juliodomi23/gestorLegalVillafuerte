@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tieneAccesoDiligencia } from "@/lib/services/diligencias";
+import { tieneAccesoExpediente } from "@/lib/alcance";
 
 export async function GET(_req: NextRequest, { params }: { params: { filename: string } }) {
   // Defensa en profundidad: además del middleware, exigimos sesión aquí.
@@ -21,12 +22,12 @@ export async function GET(_req: NextRequest, { params }: { params: { filename: s
   const [doc, comprobante] = await Promise.all([
     prisma.documento.findFirst({
       where: { linkDrive: ruta },
-      select: { expediente: { select: { abogadoResponsableId: true } } },
+      select: { expedienteId: true },
     }),
     prisma.diligenciaComprobante.findFirst({ where: { ruta }, select: { diligenciaId: true, mimeType: true } }),
   ]);
   const autorizado = doc
-    ? session.user.rol === "admin" || doc.expediente.abogadoResponsableId === session.user.id
+    ? await tieneAccesoExpediente(doc.expedienteId, session.user.id, session.user.rol)
     : comprobante
     ? await tieneAccesoDiligencia(comprobante.diligenciaId, { id: session.user.id, rol: session.user.rol })
     : false;
