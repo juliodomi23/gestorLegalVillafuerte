@@ -44,9 +44,18 @@ export default async function SeguimientosPage() {
 
   const verResumen = alcance === null;
 
+  // Caso especial Lic. Alain: es encargado de Villaflores/Tapachula (ve esas
+  // sucursales en Agenda, que sí debe), pero en Seguimientos solo debe salirle
+  // Tuxtla. No es la regla general de los demás encargados.
+  const ALAIN_ID = "e9362f08-2ac4-420b-b110-a38dbcc911c2";
+  const where =
+    session?.user?.id === ALAIN_ID
+      ? { sucursal: { nombre: "Tuxtla" } }
+      : porSeguimiento(alcance);
+
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
     prisma.seguimiento.findMany({
-      where: porSeguimiento(alcance),
+      where,
       include: { cliente: true, abogado: true, sucursal: true },
       orderBy: { proximoLlamado: "asc" },
     }),
