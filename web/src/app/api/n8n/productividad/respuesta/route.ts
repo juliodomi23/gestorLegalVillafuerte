@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   const dia = fecha ?? hoyISO();
   const pendientes = await preguntasPendientesDe(u.id, dia);
   if (!pendientes.some((p) => p.plantillaId === plantillaId)) {
-    return fail("Esa pregunta no está pendiente para este usuario en esa fecha", 409);
+    return fail("Esa pregunta no está pendiente: ya se contestó, no se le preguntó, o pasaron más de 20 min desde que se envió (ya no cuenta)", 409);
   }
   await marcarRespuesta(plantillaId, dia, u.id, respuesta);
   return ok({ plantillaId, respuesta, fecha: dia });

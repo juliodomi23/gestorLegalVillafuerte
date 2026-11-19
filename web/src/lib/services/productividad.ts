@@ -6,6 +6,8 @@
 import { prisma } from "@/lib/prisma";
 import { calcularSenales, type Senal } from "./senales";
 import { hoyDespacho, TZ_DESPACHO } from "@/lib/fecha";
+import { coincideNombre } from "@/lib/turno-regla";
+import { destinatariosDe, tocaEnviar, dentroDeTiempo } from "@/lib/productividad-preguntas-regla";
 import { resumirCumplimiento, type Respuesta as RespuestaRegla } from "@/lib/productividad-regla";
 
 export const DIAS = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -184,34 +186,52 @@ export async function marcarRespuesta(
 
 export type PreguntaPendiente = { plantillaId: string; hora: string; descripcion: string };
 
-function preguntasSinContestar(actividades: ActividadDelDia[], usuarioId: string): PreguntaPendiente[] {
-  return actividades
-    .filter((a) => a.senal === null && !["si", "no"].includes(a.respuestas[usuarioId]))
-    .map((a) => ({ plantillaId: a.plantillaId, hora: a.hora, descripcion: a.descripcion }));
-}
-
-export async function preguntasPendientesDe(usuarioId: string, fechaISO: string) {
-  const actividades = await actividadesDelDia(fechaISO);
-  return preguntasSinContestar(actividades, usuarioId);
-}
-
-export async function preguntasPendientesPorTrabajador(fechaISO: string) {
+// Preguntas que ya tocan (hora llegada, aún no enviadas) agrupadas por destinatario. Las
+// registra como enviadas en el mismo paso: ese `enviadoEn` arranca los 20 min de respuesta.
+export async function reclamarPreguntasAhora(fechaISO: string, horaAhora: string) {
   const [actividades, usuarios] = await Promise.all([
     actividadesDelDia(fechaISO),
     prisma.usuario.findMany({
       where: { activo: true, telefonoWhatsapp: { not: null } },
       select: { id: true, nombre: true, telefonoWhatsapp: true },
-      orderBy: { nombre: "asc" },
     }),
   ]);
-  return usuarios
-    .map((u) => ({
-      usuarioId: u.id,
-      nombre: u.nombre,
-      telefono: u.telefonoWhatsapp as string,
-      preguntas: preguntasSinContestar(actividades, u.id),
-    }))
-    .filter((t) => t.preguntas.length > 0);
+  const fecha = new Date(fechaISO);
+  const yaEnviadas = new Set(
+    (await prisma.actividadPregunta.findMany({ where: { fecha }, select: { plantillaId: true, usuarioId: true } })).map(
+      (e) => `${e.plantillaId}|${e.usuarioId}`
+    )
+  );
+
+  const porUsuario = new Map<string, { usuarioId: string; nombre: string; telefono: string; preguntas: PreguntaPendiente[] }>();
+  const nuevas: { plantillaId: string; fecha: Date; usuarioId: string }[] = [];
+  for (const a of actividades) {
+    if (a.senal !== null || !tocaEnviar(a.hora, horaAhora)) continue;
+    for (const clave of destinatariosDe(a.descripcion)) {
+      const u = usuarios.find((x) => coincideNombre(x.nombre, clave));
+      if (!u || yaEnviadas.has(`${a.plantillaId}|${u.id}`)) continue;
+      nuevas.push({ plantillaId: a.plantillaId, fecha, usuarioId: u.id });
+      const t = porUsuario.get(u.id) ?? { usuarioId: u.id, nombre: u.nombre, telefono: u.telefonoWhatsapp as string, preguntas: [] };
+      t.preguntas.push({ plantillaId: a.plantillaId, hora: a.hora, descripcion: a.descripcion });
+      porUsuario.set(u.id, t);
+    }
+  }
+  if (nuevas.length) await prisma.actividadPregunta.createMany({ data: nuevas, skipDuplicates: true });
+  return [...porUsuario.values()];
+}
+
+// Preguntas que el bot le mandó hoy a este usuario, sin contestar y aún dentro de los 20 min.
+export async function preguntasPendientesDe(usuarioId: string, fechaISO: string): Promise<PreguntaPendiente[]> {
+  const fecha = new Date(fechaISO);
+  const [enviadas, actividades] = await Promise.all([
+    prisma.actividadPregunta.findMany({ where: { fecha, usuarioId } }),
+    actividadesDelDia(fechaISO),
+  ]);
+  const ahora = new Date();
+  const vivas = new Set(enviadas.filter((e) => dentroDeTiempo(e.enviadoEn, ahora)).map((e) => e.plantillaId));
+  return actividades
+    .filter((a) => vivas.has(a.plantillaId) && !["si", "no"].includes(a.respuestas[usuarioId]))
+    .map((a) => ({ plantillaId: a.plantillaId, hora: a.hora, descripcion: a.descripcion }));
 }
 
 export type PeriodoEstadistica = "semana" | "mes" | "todo";

@@ -1015,3 +1015,16 @@ model LeccionVista {
   @@id([usuarioId, leccion])
   @@map("lecciones_vistas")
 }
+
+// Cada pregunta de Productividad que el bot mandó por WhatsApp, y cuándo. La respuesta
+// solo cuenta si llega dentro de los 20 min siguientes a `enviadoEn`.
+model ActividadPregunta {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plantillaId String   @map("plantilla_id") @db.Uuid
+  fecha       DateTime @db.Date
+  usuarioId   String   @map("usuario_id") @db.Uuid
+  enviadoEn   DateTime @default(now()) @map("enviado_en") @db.Timestamptz
+
+  @@unique([plantillaId, fecha, usuarioId])
+  @@map("actividades_preguntas")
+}
