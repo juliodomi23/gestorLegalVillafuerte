@@ -80,7 +80,9 @@ export default async function ExpedientesPage({
   });
 
   const sucursales = sucursalesDb.map((s) => s.nombre);
-  const abogados = abogadosDb.map((u) => u.nombre);
+  const abogados = vista === "equipo"
+    ? Array.from(new Set(expedientes.map((e) => e.abogado))).filter((n) => n !== "—").sort()
+    : abogadosDb.map((u) => u.nombre);
   const clientes: ClienteBasico[] = clientesDb.map((c) => ({ id: c.id, nombre: c.nombre, telefono: c.telefono ?? undefined }));
 
   const pestana = (id: "mios" | "equipo", texto: string, total: number) => (
@@ -105,6 +107,7 @@ export default async function ExpedientesPage({
       sucursales={sucursales}
       abogados={abogados}
       clientes={clientes}
+      filtrarPorAbogado={vista === "equipo"}
       sesionRol={session?.user?.rol ?? "abogado"}
       sesionNombre={session?.user?.name ?? ""}
       preNombre={searchParams?.nuevo === "1" ? (searchParams.nombre ?? "") : ""}
