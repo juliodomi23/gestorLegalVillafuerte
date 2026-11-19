@@ -49,7 +49,7 @@ export function citaFueAtendida(
   cita: CitaBasica & { estado: string },
   detectarLlegada: ReturnType<typeof crearDetectorLlegada>
 ): boolean {
-  if (cita.estado === "cancelada" || cita.estado === "no_show") return false;
+  if (cita.estado === "cancelada" || cita.estado === "reagendada" || cita.estado === "no_show") return false;
   return cita.estado === "asesorada" || detectarLlegada(cita);
 }
 
@@ -63,10 +63,11 @@ export type ConteoCitas = {
   asistieron: number;
   noLlegaron: number;
   canceladas: number;
+  reagendadas: number;
   porVenir: number;
 };
 
-// Canceladas son bajas, no ausencias. Hoy y días futuros quedan como "por venir": el
+// Canceladas y reagendadas son bajas, no ausencias (la reagendada tiene otra cita viva). Hoy y días futuros quedan como "por venir": el
 // día de hoy todavía puede registrarse la asesoría de quien ya vino, y contarlo como
 // "no llegó" antes de que termine el día daría números falsos.
 export function contarCitas(
@@ -74,11 +75,12 @@ export function contarCitas(
   asesoriasPorDia: Record<string, AsesoriaDelDia[]>,
   hoy: string
 ): ConteoCitas {
-  const conteo: ConteoCitas = { agendadas: citas.length, asistieron: 0, noLlegaron: 0, canceladas: 0, porVenir: 0 };
+  const conteo: ConteoCitas = { agendadas: citas.length, asistieron: 0, noLlegaron: 0, canceladas: 0, reagendadas: 0, porVenir: 0 };
   const detectores: Record<string, ReturnType<typeof crearDetectorLlegada>> = {};
 
   for (const c of citas) {
     if (c.estado === "cancelada") conteo.canceladas++;
+    else if (c.estado === "reagendada") conteo.reagendadas++;
     else if (c.fechaDia >= hoy) conteo.porVenir++;
     else {
       detectores[c.fechaDia] ??= crearDetectorLlegada(asesoriasPorDia[c.fechaDia] ?? []);

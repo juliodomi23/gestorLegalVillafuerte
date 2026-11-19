@@ -67,7 +67,7 @@ export default async function InicioPage() {
     prisma.cita.count({
       where: {
         fechaHora: { gte: hoyInicio, lte: hoyFin },
-        estado: { not: "cancelada" },
+        estado: { notIn: ["cancelada", "reagendada"] },
         ...citaFilter,
       },
     }),

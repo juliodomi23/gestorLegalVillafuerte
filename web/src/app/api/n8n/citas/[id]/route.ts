@@ -1,14 +1,14 @@
 import { autorizado, noAutorizado, ok, fail, leerBody } from "@/lib/api";
 import { actualizarCita } from "@/lib/services/citas";
 
-// Cliente confirma o cancela su cita por WhatsApp.
+// Cliente confirma, cancela o reagenda su cita por WhatsApp.
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   if (!autorizado(req)) return noAutorizado();
-  const r = await leerBody<{ estado: "confirmada" | "cancelada" | "no_show" }>(req, ["estado"]);
+  const r = await leerBody<{ estado: "confirmada" | "cancelada" | "no_show" | "reagendada" }>(req, ["estado"]);
   if ("error" in r) return r.error;
   const { estado } = r.data;
-  if (estado !== "confirmada" && estado !== "cancelada" && estado !== "no_show") {
-    return fail("estado debe ser 'confirmada', 'cancelada' o 'no_show'");
+  if (estado !== "confirmada" && estado !== "cancelada" && estado !== "no_show" && estado !== "reagendada") {
+    return fail("estado debe ser 'confirmada', 'cancelada', 'no_show' o 'reagendada'");
   }
   try {
     const c = await actualizarCita(params.id, estado);
