@@ -182,6 +182,38 @@ export async function marcarRespuesta(
   });
 }
 
+export type PreguntaPendiente = { plantillaId: string; hora: string; descripcion: string };
+
+function preguntasSinContestar(actividades: ActividadDelDia[], usuarioId: string): PreguntaPendiente[] {
+  return actividades
+    .filter((a) => a.senal === null && !["si", "no"].includes(a.respuestas[usuarioId]))
+    .map((a) => ({ plantillaId: a.plantillaId, hora: a.hora, descripcion: a.descripcion }));
+}
+
+export async function preguntasPendientesDe(usuarioId: string, fechaISO: string) {
+  const actividades = await actividadesDelDia(fechaISO);
+  return preguntasSinContestar(actividades, usuarioId);
+}
+
+export async function preguntasPendientesPorTrabajador(fechaISO: string) {
+  const [actividades, usuarios] = await Promise.all([
+    actividadesDelDia(fechaISO),
+    prisma.usuario.findMany({
+      where: { activo: true, telefonoWhatsapp: { not: null } },
+      select: { id: true, nombre: true, telefonoWhatsapp: true },
+      orderBy: { nombre: "asc" },
+    }),
+  ]);
+  return usuarios
+    .map((u) => ({
+      usuarioId: u.id,
+      nombre: u.nombre,
+      telefono: u.telefonoWhatsapp as string,
+      preguntas: preguntasSinContestar(actividades, u.id),
+    }))
+    .filter((t) => t.preguntas.length > 0);
+}
+
 export type PeriodoEstadistica = "semana" | "mes" | "todo";
 
 export function rangoDelPeriodo(periodo: PeriodoEstadistica, fechaISO: string): { desde: string; hasta: string } | null {
