@@ -198,6 +198,7 @@ export default function ExpedientesClient({
   sesionNombre,
   preNombre = "",
   preClienteId = "",
+  filtrarPorAbogado = false,
 }: {
   expedientes: ExpView[];
   sucursales: string[];
@@ -207,6 +208,7 @@ export default function ExpedientesClient({
   sesionNombre: string;
   preNombre?: string;
   preClienteId?: string;
+  filtrarPorAbogado?: boolean;
 }) {
   const esAdmin = sesionRol === "admin";
   const router = useRouter();
@@ -300,7 +302,7 @@ export default function ExpedientesClient({
         <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar cliente o número…" />
         <FilterSelect label="Materia" value={fMateria} onChange={setFMateria} options={MATERIAS} />
         <FilterSelect label="Estado" value={fEstado} onChange={setFEstado} options={ESTADOS_EXP} />
-        {esAdmin && <FilterSelect label="Abogado" value={fAbogado} onChange={setFAbogado} options={abogados} />}
+        {(esAdmin || filtrarPorAbogado) && <FilterSelect label="Abogado" value={fAbogado} onChange={setFAbogado} options={abogados} />}
         <FilterSelect label="Sucursal" value={fSucursal} onChange={setFSucursal} options={sucursales} />
         <span className="flex-1" />
         <button onClick={abrirNuevo} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-navy text-white text-[13px] font-bold hover:bg-navy-deep transition-colors">

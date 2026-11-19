@@ -99,17 +99,18 @@ export default function ReportesClient({
       </div>
 
       <h2 className="eyebrow text-muted mb-2">Citas de {mesLabel}</h2>
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-4">
         <Indicador etiqueta="Agendadas" valor={citas.total.agendadas} />
         <Indicador etiqueta="Asistieron" valor={citas.total.asistieron} clase="text-success" />
         <Indicador etiqueta="No llegaron" valor={citas.total.noLlegaron} clase="text-danger" />
         <Indicador etiqueta="Canceladas" valor={citas.total.canceladas} />
+        <Indicador etiqueta="✓✓ Reagendadas" valor={citas.total.reagendadas} />
         <Indicador etiqueta="Por venir" valor={citas.total.porVenir} />
         <Indicador etiqueta="% asistencia" valor={pct(citas.total)} />
       </div>
 
       <Card className="overflow-x-auto mb-8">
-        <table className="w-full min-w-[560px] text-[13.5px]">
+        <table className="w-full min-w-[620px] text-[13.5px]">
           <thead>
             <tr className="border-b border-line text-left bg-paper/50">
               <th className="eyebrow text-muted px-4 py-3">Sucursal</th>
@@ -117,6 +118,7 @@ export default function ReportesClient({
               <th className="eyebrow text-muted px-2 py-3 text-right">Asistieron</th>
               <th className="eyebrow text-muted px-2 py-3 text-right">No llegaron</th>
               <th className="eyebrow text-muted px-2 py-3 text-right">Canceladas</th>
+              <th className="eyebrow text-muted px-2 py-3 text-right">✓✓ Reagendadas</th>
               <th className="eyebrow text-muted px-2 py-3 text-right">Por venir</th>
               <th className="eyebrow text-muted px-4 py-3 text-right">% asistencia</th>
             </tr>
@@ -129,13 +131,14 @@ export default function ReportesClient({
                 <td className="px-2 py-2.5 num text-right">{r.asistieron}</td>
                 <td className="px-2 py-2.5 num text-right">{r.noLlegaron}</td>
                 <td className="px-2 py-2.5 num text-right">{r.canceladas}</td>
+                <td className="px-2 py-2.5 num text-right">{r.reagendadas}</td>
                 <td className="px-2 py-2.5 num text-right">{r.porVenir}</td>
                 <td className="px-4 py-2.5 num text-right font-bold">{pct(r)}</td>
               </tr>
             ))}
             {citas.porSucursal.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted">
+                <td colSpan={8} className="px-4 py-10 text-center text-muted">
                   No hay citas en este mes.
                 </td>
               </tr>

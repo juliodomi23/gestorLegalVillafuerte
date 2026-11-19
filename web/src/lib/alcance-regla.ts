@@ -27,3 +27,11 @@ export function combinar(
     sucursalIdsAgenda,             // citas
   };
 }
+
+// Lic. Alain: es encargado de Fernando, Villaflores y Tapachula, pero en Expedientes
+// solo debe ver los suyos. Caso especial de él, no la regla de los demás encargados.
+export const ALAIN_ID = "e9362f08-2ac4-420b-b110-a38dbcc911c2";
+
+export function soloPropios<T extends { abogadoIds: string[] }>(userId: string | undefined, a: T): T {
+  return userId === ALAIN_ID ? { ...a, abogadoIds: [userId] } : a;
+}

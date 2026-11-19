@@ -52,6 +52,7 @@ const ESTADOS_CITA = [
   { valor: "confirmada", etiqueta: "Confirmado", clase: "bg-success-wash text-success" },
   { valor: "asesorada", etiqueta: "Asesorado", clase: "bg-navy/[.08] text-navy" },
   { valor: "no_show", etiqueta: "No asistió", clase: "bg-danger-wash text-danger" },
+  { valor: "reagendada", etiqueta: "✓✓ Reagendada", clase: "bg-navy/[.08] text-navy" },
 ] as const;
 
 function navegarFecha(fechaStr: string, vista: Vista, dir: 1 | -1): string {

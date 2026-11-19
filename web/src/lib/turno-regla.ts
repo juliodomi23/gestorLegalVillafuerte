@@ -5,7 +5,6 @@
 // haya duda si mañana entra alguien con el mismo nombre de pila.
 export const TURNO_TUXTLA = [
   "Alain Aquiahuatl Gomez",
-  "Estrella Fabiola Sanchez Vives",
   "Maria del Rosario Alvarez Vera",
   "Carolina Velazquez",
   "Karla Giselle Villafuerte De Paz",

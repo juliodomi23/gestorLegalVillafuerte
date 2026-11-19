@@ -28,7 +28,7 @@ export default async function InicioPage() {
   const semanaFin = new Date(); semanaFin.setDate(semanaFin.getDate() + 7); semanaFin.setHours(23, 59, 59, 999);
 
   const expWhere = alcance
-    ? { estado: "activo" as const, abogadoResponsableId: { in: alcance.abogadoIds } }
+    ? { estado: "activo" as const, abogadoResponsableId: session?.user?.id }
     : { estado: "activo" as const };
   const expFilter = alcance ? { expediente: { abogadoResponsableId: { in: alcance.abogadoIds } } } : {};
   // Mismo criterio que /agenda: la agenda se comparte por sucursal.
@@ -67,7 +67,7 @@ export default async function InicioPage() {
     prisma.cita.count({
       where: {
         fechaHora: { gte: hoyInicio, lte: hoyFin },
-        estado: { not: "cancelada" },
+        estado: { notIn: ["cancelada", "reagendada"] },
         ...citaFilter,
       },
     }),

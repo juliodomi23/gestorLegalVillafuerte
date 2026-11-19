@@ -11,12 +11,13 @@ const citas = [
   { fechaDia: "2026-09-21", estado: "agendada", nombre: "Asesoría Eunice +52 961 264 1203", telefono: null }, // llegó (teléfono en el nombre)
   { fechaDia: "2026-09-21", estado: "agendada", nombre: "María Gómez", telefono: "9610000000" }, // no llegó
   { fechaDia: "2026-09-21", estado: "cancelada", nombre: "Pedro Ruiz", telefono: null }, // baja
+  { fechaDia: "2026-09-21", estado: "reagendada", nombre: "Ana Soto", telefono: null }, // movió su cita
   { fechaDia: "2026-09-23", estado: "agendada", nombre: "Hoy Cliente", telefono: null }, // hoy: por venir
   { fechaDia: "2026-09-25", estado: "confirmada", nombre: "Futuro Cliente", telefono: null }, // por venir
 ];
 
 const c = contarCitas(citas, asesorias, hoy);
-assert.deepEqual(c, { agendadas: 6, asistieron: 2, noLlegaron: 1, canceladas: 1, porVenir: 2 });
+assert.deepEqual(c, { agendadas: 7, asistieron: 2, noLlegaron: 1, canceladas: 1, reagendadas: 1, porVenir: 2 });
 assert.equal(tasaAsistencia(c), 67);
 
 // Sin citas vencidas no hay porcentaje.

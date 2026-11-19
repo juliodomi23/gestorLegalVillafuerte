@@ -430,7 +430,7 @@ export async function listarProspectosNoContesto() {
   // Quien ya tiene cita (hoy o después) no debe recibir "le marcamos tal como nos lo
   // solicitó": la secretaria le llamó para confirmar, no porque pidiera llamada.
   const citas = await prisma.cita.findMany({
-    where: { fechaHora: { gte: inicioHoy }, estado: { not: "cancelada" } },
+    where: { fechaHora: { gte: inicioHoy }, estado: { notIn: ["cancelada", "reagendada"] } },
     select: { telefono: true, cliente: { select: { telefono: true } } },
   });
   const ultimos10 = (t: string | null) => String(t ?? "").replace(/\D/g, "").slice(-10);

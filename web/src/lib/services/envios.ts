@@ -160,7 +160,7 @@ export type NoShow = {
 export async function noShowsDelDia(fechaISO: string): Promise<NoShow[]> {
   const [citas, asesorias] = await Promise.all([
     prisma.cita.findMany({
-      where: { fechaHora: rangoDelDia(fechaISO), estado: { not: "cancelada" } },
+      where: { fechaHora: rangoDelDia(fechaISO), estado: { notIn: ["cancelada", "reagendada"] } },
       include: {
         cliente: { select: { nombre: true, telefono: true } },
         sucursal: { select: { nombre: true } },

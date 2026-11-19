@@ -3,7 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ExpedientesClient, { type ExpView } from "./client";
 import type { ClienteBasico } from "./client";
-import { alcanceDe, porCliente, porExpediente } from "@/lib/alcance";
+import Link from "next/link";
+import { alcanceDe, porCliente, porExpediente, porVista } from "@/lib/alcance";
+import { soloPropios } from "@/lib/alcance-regla";
 
 function textoVence(fecha: Date | null): { texto: string; urgente: boolean } | null {
   if (!fecha) return null;
@@ -19,15 +21,26 @@ function textoVence(fecha: Date | null): { texto: string; urgente: boolean } | n
 export default async function ExpedientesPage({
   searchParams,
 }: {
-  searchParams?: { nuevo?: string; nombre?: string; clienteId?: string };
+  searchParams?: { nuevo?: string; nombre?: string; clienteId?: string; vista?: string };
 }) {
   const session = await getServerSession(authOptions);
 
   const alcance = await alcanceDe(session?.user?.id, session?.user?.rol);
+  const userId = session?.user?.id;
+  const alcancePropio = alcance && soloPropios(userId, alcance);
+  const tienePestanas = !!alcancePropio && !!userId && alcancePropio.abogadoIds.some((id) => id !== userId);
+  const vista = tienePestanas && searchParams?.vista === "equipo" ? "equipo" : "mios";
+  const dondeExpedientes = tienePestanas ? porVista(alcancePropio, userId, vista) : porExpediente(alcancePropio, userId);
+  const [totalMios, totalEquipo] = tienePestanas
+    ? await Promise.all([
+        prisma.expediente.count({ where: porVista(alcancePropio, userId, "mios") }),
+        prisma.expediente.count({ where: porVista(alcancePropio, userId, "equipo") }),
+      ])
+    : [0, 0];
 
   const [rows, sucursalesDb, abogadosDb, clientesDb] = await Promise.all([
     prisma.expediente.findMany({
-      where: porExpediente(alcance, session?.user?.id),
+      where: dondeExpedientes,
       include: {
         cliente: true,
         abogadoResponsable: true,
@@ -67,19 +80,39 @@ export default async function ExpedientesPage({
   });
 
   const sucursales = sucursalesDb.map((s) => s.nombre);
-  const abogados = abogadosDb.map((u) => u.nombre);
+  const abogados = vista === "equipo"
+    ? Array.from(new Set(expedientes.map((e) => e.abogado))).filter((n) => n !== "—").sort()
+    : abogadosDb.map((u) => u.nombre);
   const clientes: ClienteBasico[] = clientesDb.map((c) => ({ id: c.id, nombre: c.nombre, telefono: c.telefono ?? undefined }));
 
+  const pestana = (id: "mios" | "equipo", texto: string, total: number) => (
+    <Link
+      href={`/expedientes?vista=${id}`}
+      className={`px-4 py-2 text-[13px] font-semibold border-b-2 ${vista === id ? "border-navy text-navy" : "border-transparent text-muted hover:text-navy"}`}
+    >
+      {texto} ({total})
+    </Link>
+  );
+
   return (
+    <>
+    {tienePestanas && (
+      <div className="flex gap-2 mb-4 border-b border-line">
+        {pestana("mios", "Míos", totalMios)}
+        {pestana("equipo", "Mi equipo", totalEquipo)}
+      </div>
+    )}
     <ExpedientesClient
       expedientes={expedientes}
       sucursales={sucursales}
       abogados={abogados}
       clientes={clientes}
+      filtrarPorAbogado={vista === "equipo"}
       sesionRol={session?.user?.rol ?? "abogado"}
       sesionNombre={session?.user?.name ?? ""}
       preNombre={searchParams?.nuevo === "1" ? (searchParams.nombre ?? "") : ""}
       preClienteId={searchParams?.nuevo === "1" ? (searchParams.clienteId ?? "") : ""}
     />
+    </>
   );
 }

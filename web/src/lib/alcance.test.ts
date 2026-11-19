@@ -1,7 +1,7 @@
 // Check de la regla de visibilidad. Correr con:
 //   node --experimental-strip-types src/lib/alcance.test.ts
 import assert from "node:assert/strict";
-import { combinar } from "./alcance-regla.ts";
+import { combinar, soloPropios, ALAIN_ID } from "./alcance-regla.ts";
 
 // Abogado sin nada a cargo: solo se ve a sí mismo.
 {
@@ -33,6 +33,13 @@ import { combinar } from "./alcance-regla.ts";
     sucursalesACargo: [],
   });
   assert.deepEqual(a.abogadoIds.sort(), ["carolina", "estrella"]);
+}
+
+// Alain tiene gente a cargo pero en Expedientes solo ve los suyos; otro encargado no cambia.
+{
+  const a = combinar(ALAIN_ID, { sucursalId: "tuxtla", personasACargo: [{ id: "fernando" }], sucursalesACargo: [] });
+  assert.deepEqual(soloPropios(ALAIN_ID, a).abogadoIds, [ALAIN_ID]);
+  assert.deepEqual(soloPropios("rosario", a).abogadoIds.sort(), [ALAIN_ID, "fernando"].sort());
 }
 
 console.log("alcance: ok");

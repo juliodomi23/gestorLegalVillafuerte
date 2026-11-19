@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { parseFecha, rangoDelDiaDespacho } from "@/lib/fecha";
 import { resolverSucursal, resolverAbogado, upsertCliente } from "./resolvers";
 import { moverPorEvento, sincronizarConChat } from "@/lib/chat/embudo";
+import { idsReagendadas } from "@/lib/cita-reagendada-regla";
 
 export type DatosCita = {
   cliente: string;
@@ -15,7 +16,7 @@ export type DatosCita = {
   googleEventId?: string;
   // Id de la conversación de WhatsApp (el bot lo manda); sin él se liga por teléfono.
   conversationId?: string;
-  // Solo "cancelada" tiene efecto: lo manda el sync de Calendar cuando el evento se borró
+  // Solo "cancelada" tiene efecto (si la cita tiene reemplazo pasa sola a "reagendada"): lo manda el sync de Calendar cuando el evento se borró
   // o quedó marcado con ❌ (cancelar_reagendar_cita). Sin esto, la cita seguía "agendada"
   // y a las 20:00 se le mandaba el mensaje de no-show a alguien que sí avisó.
   estado?: string;
@@ -51,7 +52,7 @@ export async function citasDelDia(fecha: string) {
   });
 }
 
-export async function actualizarCita(id: string, estado: "confirmada" | "cancelada" | "no_show") {
+export async function actualizarCita(id: string, estado: "confirmada" | "cancelada" | "no_show" | "reagendada") {
   const cita = await prisma.cita.update({ where: { id }, data: { estado } });
   if (estado === "no_show") {
     await moverPorEvento({
@@ -64,7 +65,24 @@ export async function actualizarCita(id: string, estado: "confirmada" | "cancela
   return cita;
 }
 
+// Pasa a "reagendada" las canceladas que ya tienen cita nueva del mismo teléfono.
+async function marcarReagendadas() {
+  const desde = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+  const citas = await prisma.cita.findMany({
+    where: { estado: { in: ["cancelada", "agendada", "confirmada"] }, fechaHora: { gte: desde } },
+    select: { id: true, estado: true, telefono: true, creadoEn: true, fechaHora: true },
+  });
+  const ids = idsReagendadas(citas);
+  if (ids.length) await prisma.cita.updateMany({ where: { id: { in: ids } }, data: { estado: "reagendada" } });
+}
+
 export async function agendarCita(d: DatosCita) {
+  const cita = await guardarCita(d);
+  await marcarReagendadas();
+  return cita;
+}
+
+async function guardarCita(d: DatosCita) {
   const fecha = parseFecha(d.fechaHora);
   if (!fecha) throw new Error("fechaHora inválida");
 
@@ -97,7 +115,7 @@ export async function agendarCita(d: DatosCita) {
           clienteNombre: clienteId ? null : (d.cliente ?? null),
           // Si la movieron de horario en Calendar, la cita sigue el evento.
           fechaHora: fecha,
-          ...(cancelada && { estado: "cancelada" }),
+          ...(cancelada && existente.estado !== "reagendada" && { estado: "cancelada" }),
         },
       });
       if (!cancelada) await enlazarConChat(actualizada.id, d);
