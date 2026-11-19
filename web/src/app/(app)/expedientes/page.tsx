@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import ExpedientesClient, { type ExpView } from "./client";
 import type { ClienteBasico } from "./client";
 import { alcanceDe, porCliente, porExpediente } from "@/lib/alcance";
+import { soloPropios } from "@/lib/alcance-regla";
 
 function textoVence(fecha: Date | null): { texto: string; urgente: boolean } | null {
   if (!fecha) return null;
@@ -27,7 +28,7 @@ export default async function ExpedientesPage({
 
   const [rows, sucursalesDb, abogadosDb, clientesDb] = await Promise.all([
     prisma.expediente.findMany({
-      where: porExpediente(alcance, session?.user?.id),
+      where: porExpediente(alcance && soloPropios(session?.user?.id, alcance), session?.user?.id),
       include: {
         cliente: true,
         abogadoResponsable: true,
