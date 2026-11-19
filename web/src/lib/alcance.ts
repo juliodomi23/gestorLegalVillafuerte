@@ -82,6 +82,14 @@ export function porExpediente(a: Alcance, userId: string | undefined) {
   };
 }
 
+// Expedientes activos con pestañas: "mios" = suyos + compartidos; "equipo" = los de su gente.
+export function porVista(a: NonNullable<Alcance>, userId: string, vista: "mios" | "equipo") {
+  if (vista === "equipo") {
+    return { abogadoResponsableId: { in: a.abogadoIds.filter((id) => id !== userId) } };
+  }
+  return { OR: [{ abogadoResponsableId: userId }, { compartidoCon: { some: { id: userId } } }] };
+}
+
 // ¿Puede este usuario ver/tocar este expediente? Admin, dueño, su encargado, o a
 // quien se le compartió puntualmente.
 export async function tieneAccesoExpediente(
