@@ -69,7 +69,7 @@ export async function crearSeguimientoDeExpediente(expedienteId: string, dias?: 
 export async function sincronizarSeguimientoConEstado(expedienteId: string, estadoExpediente: string) {
   await prisma.seguimiento.updateMany({
     where: { expedienteId },
-    data: { estado: estadoExpediente === "activo" ? "activo" : "cerrado" },
+    data: { estado: estadoExpediente === "activo" ? "activo" : "inactivo" },
   });
 }
 

@@ -38,9 +38,14 @@ export function EstadoEditor({
 
   async function guardar() {
     setGuardando(true);
-    await cambiarEstadoAction(expedienteId, estado, nota);
-    setGuardando(false);
-    setOpen(false);
+    try {
+      await cambiarEstadoAction(expedienteId, estado, nota);
+      setOpen(false);
+    } catch {
+      alert("No se pudo guardar el estado. Intenta de nuevo.");
+    } finally {
+      setGuardando(false);
+    }
   }
 
   return (
