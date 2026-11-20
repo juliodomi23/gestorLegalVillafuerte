@@ -139,7 +139,10 @@ export async function editarExpedienteAction(id: string, form: FormExpediente) {
       cuantia: form.cuantia ? parseFloat(form.cuantia) : null,
     },
   });
+  // El seguimiento se filtra por su propio abogadoId: si se reasigna el expediente, se va con él.
+  if (abogadoId) await prisma.seguimiento.updateMany({ where: { expedienteId: id }, data: { abogadoId } });
   revalidatePath("/expedientes");
+  revalidatePath("/seguimientos");
   revalidatePath(`/expedientes/${id}`);
 }
 
