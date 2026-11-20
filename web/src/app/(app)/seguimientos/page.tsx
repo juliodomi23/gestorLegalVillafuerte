@@ -3,7 +3,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import SeguimientosClient, { type SeguimientoView } from "./client";
 import { alcanceDe, porSeguimiento } from "@/lib/alcance";
-import { ALAIN_ID } from "@/lib/alcance-regla";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "—";
@@ -45,18 +44,11 @@ export default async function SeguimientosPage() {
 
   const verResumen = alcance === null;
 
-  // Caso especial Lic. Alain: es encargado de Villaflores/Tapachula (ve esas
-  // sucursales en Agenda, que sí debe), pero en Seguimientos solo debe salirle
-  // Tuxtla y de los abogados de su alcance (él y Giselle; no Rosario/Carolina). No es la regla general de los demás encargados.
   // Solo activos; quien no ve todo (admin/coordinación) ve únicamente los suyos,
   // no los de su equipo.
   const where = {
     estado: "activo",
-    ...(session?.user?.id === ALAIN_ID
-      ? { sucursal: { nombre: "Tuxtla" }, abogadoId: { in: alcance?.abogadoIds ?? [] } }
-      : alcance
-        ? { abogadoId: session?.user?.id }
-        : porSeguimiento(alcance)),
+    ...(alcance ? { abogadoId: session?.user?.id } : porSeguimiento(alcance)),
   };
 
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
