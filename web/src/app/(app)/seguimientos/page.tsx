@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { ALAIN_ID } from "@/lib/alcance-regla";
 import { prisma } from "@/lib/prisma";
 import SeguimientosClient, { type SeguimientoView } from "./client";
 import { alcanceDe, porSeguimiento } from "@/lib/alcance";
@@ -48,7 +49,11 @@ export default async function SeguimientosPage() {
   // no los de su equipo.
   const where = {
     estado: "activo",
-    ...(alcance ? { abogadoId: session?.user?.id } : porSeguimiento(alcance)),
+    ...(session?.user?.id === ALAIN_ID
+      ? { expediente: { abogadoResponsableId: ALAIN_ID, estado: "activo" } } // mismos que su lista de Expedientes
+      : alcance
+        ? { abogadoId: session?.user?.id }
+        : porSeguimiento(alcance)),
   };
 
   const [rows, sucursalesDb, abogadosDb] = await Promise.all([
