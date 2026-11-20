@@ -21,7 +21,7 @@ export default async function ContratosPage() {
       contratos={contratos}
       expedientes={expedientes}
       sucursales={sucursalesDb.map((s) => s.nombre)}
-      abogados={abogadosDb.map((u) => u.nombre)}
+      abogados={abogadosDb.filter((u) => !alcance || alcance.abogadoIds.includes(u.id)).map((u) => u.nombre)}
       esAdmin={session?.user?.rol === "admin"}
       sesionNombre={session?.user?.name ?? ""}
     />

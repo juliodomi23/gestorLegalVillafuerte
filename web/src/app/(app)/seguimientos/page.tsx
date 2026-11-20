@@ -47,13 +47,13 @@ export default async function SeguimientosPage() {
 
   // Caso especial Lic. Alain: es encargado de Villaflores/Tapachula (ve esas
   // sucursales en Agenda, que sí debe), pero en Seguimientos solo debe salirle
-  // Tuxtla. No es la regla general de los demás encargados.
+  // Tuxtla y de los abogados de su alcance (él y Giselle; no Rosario/Carolina). No es la regla general de los demás encargados.
   // Solo activos; quien no ve todo (admin/coordinación) ve únicamente los suyos,
   // no los de su equipo.
   const where = {
     estado: "activo",
     ...(session?.user?.id === ALAIN_ID
-      ? { sucursal: { nombre: "Tuxtla" } }
+      ? { sucursal: { nombre: "Tuxtla" }, abogadoId: { in: alcance?.abogadoIds ?? [] } }
       : alcance
         ? { abogadoId: session?.user?.id }
         : porSeguimiento(alcance)),
