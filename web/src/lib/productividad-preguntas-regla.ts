@@ -10,8 +10,16 @@ const COORDINADORES = ["Maria del Rosario Alvarez Vera", "Alain Aquiahuatl Gomez
 
 // ponytail: el destinatario se deduce del texto de la actividad (así lo redactó el despacho);
 // si el texto cambia mucho, conviene una columna `destinatario` en ActividadPlantilla.
+const COLABORADORES = ["Carolina", "Giselle", "Fernando Salas"];
+
+// Los textos empiezan con "Preguntar a ..." / "Escribir a ...": el destinatario va justo ahí.
+// Se mira el inicio porque el resto del texto nombra a otros (p. ej. "...mandó a la secretaria
+// general" o "...pasaron los datos al director") y confundiría.
 export function destinatariosDe(descripcion: string): string[] {
   if (/Fernando Salas/i.test(descripcion)) return ["Fernando Salas"];
+  if (/^\W*\w+ al (lic\.?|licenciado) Villafuerte/i.test(descripcion)) return ["Christian"];
+  if (/^\W*\w+ a la secretaria general/i.test(descripcion)) return ["Karen"];
+  if (/^\W*\w+ a los colaboradores/i.test(descripcion)) return COLABORADORES;
   if (/director/i.test(descripcion)) return ["Christian"];
   if (/coordinadores/i.test(descripcion)) return COORDINADORES;
   return [];

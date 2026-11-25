@@ -6,6 +6,11 @@ assert.deepEqual(destinatariosDe("Preguntar al colaborador Fernando Salas si ya 
 assert.deepEqual(destinatariosDe("Preguntar al director si ya realizó las preguntas para el crecimiento"), ["Christian"]);
 assert.equal(destinatariosDe("Mandar mensaje a los coordinadores para saber si").length, 3);
 assert.deepEqual(destinatariosDe("Otra cosa"), []);
+assert.deepEqual(destinatariosDe("Preguntar al lic Villafuerte si ya mando a la secretaria general las personas citadas"), ["Christian"]);
+assert.deepEqual(destinatariosDe("Preguntar a la secretaria General si ya le mando al licenciado Villafuerte la información"), ["Karen"]);
+assert.deepEqual(destinatariosDe("Escribir a la secretaria general para preguntarle si ya recabó"), ["Karen"]);
+assert.deepEqual(destinatariosDe("Preguntar a los colaboradores si ellos, sus colaboradores y titulares presentaron demandas y si le pasaron los datos al director."), ["Carolina", "Giselle", "Fernando Salas"]);
+assert.equal(destinatariosDe("Preguntar a los coordinadores si sus colaboradores o titulares ya pasaron la información").length, 3);
 
 assert.equal(tocaEnviar("12:00", "11:59"), false);
 assert.equal(tocaEnviar("12:00", "12:00"), true);
